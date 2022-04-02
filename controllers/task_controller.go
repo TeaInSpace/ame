@@ -19,6 +19,8 @@ package controllers
 import (
 	"context"
 
+	argo "github.com/argoproj/argo-workflows/v3/pkg/apis/workflow/v1alpha1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -47,9 +49,21 @@ type TaskReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.11.0/pkg/reconcile
 func (r *TaskReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = log.FromContext(ctx)
+	log := log.FromContext(ctx)
+	var task amev1alpha1.Task
 
-	// TODO(user): your logic here
+	err := r.Get(ctx, req.NamespacedName, &task)
+	if err != nil {
+		log.Error(err, "Unable to get a task.")
+		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+
+	wf := argo.Workflow{ObjectMeta: v1.ObjectMeta{Name: task.Name, Namespace: task.Namespace}}
+	err = r.Create(ctx, &wf)
+	if err != nil {
+		log.Error(err, "Unable able to create argo workflow.")
+		return ctrl.Result{}, err
+	}
 
 	return ctrl.Result{}, nil
 }
