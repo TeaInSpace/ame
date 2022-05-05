@@ -20,11 +20,12 @@ import (
 	"context"
 
 	argo "github.com/argoproj/argo-workflows/v3/pkg/apis/workflow/v1alpha1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	amev1alpha1 "teainspace.com/ame/api/v1alpha1"
 )
@@ -38,6 +39,7 @@ type TaskReconciler struct {
 //+kubebuilder:rbac:groups=ame.teainspace.com,resources=tasks,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=ame.teainspace.com,resources=tasks/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=ame.teainspace.com,resources=tasks/finalizers,verbs=update
+//+kubebuilder:rbac:groups=argoproj.io,resources=Workflows,verbs=get;list;watch;create;update;patch;delete
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -49,21 +51,39 @@ type TaskReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.11.0/pkg/reconcile
 func (r *TaskReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	// TODO: verify that workflows are correctly configured, even if they already exist.
+	// TODO: ensure that standard fields such as status are updated appropriately.
 	log := log.FromContext(ctx)
 	var task amev1alpha1.Task
 
 	err := r.Get(ctx, req.NamespacedName, &task)
 	if err != nil {
-		log.Error(err, "Unable to get a task.")
+		log.Error(err, "Unable to get a task")
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	wf := argo.Workflow{ObjectMeta: v1.ObjectMeta{Name: task.Name, Namespace: task.Namespace}}
-	err = r.Create(ctx, &wf)
+	var wf argo.Workflow
+	err = getArgoWorkflow(ctx, r.Client, task, &wf)
+	if err == nil {
+		log.Info("Workflow already present for task")
+		return ctrl.Result{}, nil
+	}
+
+	ownerRef, err := amev1alpha1.TaskOwnerRef(r.Scheme, task)
 	if err != nil {
-		log.Error(err, "Unable able to create argo workflow.")
+		log.Error(err, "Unable to generate OwnerReference for Task")
 		return ctrl.Result{}, err
 	}
+
+	wf = genArgoWorkflow(task, ownerRef)
+	err = r.Create(ctx, &wf)
+	// TODO: Should error messages have punctuation?
+	if err != nil {
+		log.Error(err, "Unable able to create argo workflow")
+		return ctrl.Result{}, err
+	}
+
+	log.Info("Workflow created for task " + task.GetName())
 
 	return ctrl.Result{}, nil
 }
@@ -72,5 +92,14 @@ func (r *TaskReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 func (r *TaskReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&amev1alpha1.Task{}).
+		Watches(
+			&source.Kind{
+				Type: &argo.Workflow{},
+			},
+			&handler.EnqueueRequestForOwner{
+				OwnerType:    &amev1alpha1.Task{},
+				IsController: false,
+			},
+		).
 		Complete(r)
 }

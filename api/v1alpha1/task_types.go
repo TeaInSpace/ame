@@ -17,7 +17,9 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"github.com/pkg/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	runtime "k8s.io/apimachinery/pkg/runtime"
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
@@ -61,4 +63,24 @@ type TaskList struct {
 
 func init() {
 	SchemeBuilder.Register(&Task{}, &TaskList{})
+}
+
+// TaskOwnerRef returns an OwnerReference referencing the given Task.
+func TaskOwnerRef(scheme *runtime.Scheme, task Task) (metav1.OwnerReference, error) {
+	gvks, _, err := scheme.ObjectKinds(&task)
+	if err != nil {
+		return metav1.OwnerReference{}, err
+	}
+
+	if len(gvks) == 0 {
+		return metav1.OwnerReference{}, errors.Errorf("Could not find a GroupVersionKind for task: %s", task.GetName())
+	}
+	// TODO: Add support for multiple GroupVersionKinds.
+
+	return metav1.OwnerReference{
+		APIVersion: gvks[0].GroupVersion().String(), // TODO: is there a better method for getting the APIVersion string?
+		Kind:       gvks[0].Kind,
+		Name:       task.GetName(),
+		UID:        task.GetUID(),
+	}, err
 }
