@@ -27,11 +27,14 @@ import (
 
 // TaskSpec defines the desired state of Task
 type TaskSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	// The command AME will use to execute the Task.
+	// The command must be runnable from a bash shell.
+	// TODO: define propper requirements for the run command.
+	RunCommand string `json:"runcommand,omitempty"`
 
-	// Foo is an example field of Task. Edit task_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	// A unique identifier for the project wich the Task will
+	// be running based on.
+	ProjectId string `json:"projectid,omitempty"`
 }
 
 // TaskStatus defines the observed state of Task
