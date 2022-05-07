@@ -35,9 +35,14 @@ spec:
           spec:
             description: TaskSpec defines the desired state of Task
             properties:
-              foo:
-                description: Foo is an example field of Task. Edit task_types.go to
-                  remove/update
+              projectid:
+                description: A unique identifier for the project wich the Task will
+                  be running based on.
+                type: string
+              runcommand:
+                description: 'The command AME will use to execute the Task. The command
+                  must be runnable from a bash shell. TODO: define propper requirements
+                  for the run command.'
                 type: string
             type: object
           status:
