@@ -1,0 +1,28 @@
+# Title: Summary, imperative, start upper case, don't end with a period.
+# Keep the summary at 50 characters, the dotted line indicates where the
+# line should end.
+# ------------------------------------------------
+
+# Remember a blank line between title and body.
+
+# Include the issue number on a separate line here. 
+# Replace # with the Issue number.
+# Make sure to maintain a blank line after the issue number.
+Issue: #
+
+# Body: Explain *what* and *why* (not *how*).
+# Wrap at 72 chars, the dotted line indicates where the line should wrap.
+# ----------------------------------------------------------------------
+
+# How to Write a Git Commit Message:
+# https://chris.beams.io/posts/git-commit/
+# TODO: include TeaInSpace guidelines here.
+#
+# Rules for writing a commit message:
+# 1. Separate subject from body with a blank line
+# 2. Limit the subject line to 50 characters
+# 3. Capitalize the first word of the subject line
+# 4. Do not end the subject line with a period
+# 5. Use the imperative mood in the subject line
+# 6. Wrap the body at 72 characters
+# 7. Use the body to explain what and why vs. how

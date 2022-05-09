@@ -128,3 +128,6 @@ GOBIN=$(PROJECT_DIR)/bin go get $(2) ;\
 rm -rf $$TMP_DIR ;\
 }
 endef
+
+enable-commit-message-template:
+	git config commit.template .git_commit_message_template
