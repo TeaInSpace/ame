@@ -25,13 +25,56 @@ func workflowName(taskName string) string {
 	return taskName + "-wf"
 }
 
-// genArgoWorkflow generates a Workflow object for the given task.
+// correctWorkflowSpec returns a corrected Workflow specification if the given Workflow specification
+// is not correct for the given Task. A boolean is returned aswell indicating is the Workflow speci-
+// fication  should be updated, true if the specification should be updated and false if not.
+func correctWorkflowSpec(taskSpec amev1alpha1.TaskSpec, wf argo.Workflow) (argo.WorkflowSpec, bool) {
+	correctWorkflowSpec := genWorkflowSpec(taskSpec)
+
+	if len(correctWorkflowSpec.Arguments.Parameters) != len(wf.Spec.Arguments.Parameters) {
+		return correctWorkflowSpec, true
+	}
+
+	for i, correctParam := range correctWorkflowSpec.Arguments.Parameters {
+		if correctParam.Name != wf.Spec.Arguments.Parameters[i].Name || correctParam.Value != wf.Spec.Arguments.Parameters[i].Value {
+			return correctWorkflowSpec, true
+		}
+	}
+
+	return argo.WorkflowSpec{}, false
+}
+
+// genArgoWorkflow generates a Workflow object for the given Task.
 func genArgoWorkflow(task amev1alpha1.Task, ownerRefs ...v1.OwnerReference) argo.Workflow {
 	return argo.Workflow{
 		ObjectMeta: v1.ObjectMeta{
 			GenerateName:    workflowName(task.Name),
 			Namespace:       task.Namespace,
 			OwnerReferences: ownerRefs,
+		},
+		Spec: genWorkflowSpec(task.Spec),
+	}
+}
+
+// genWorkflowSpec generates a Workflow specficiation from a Task specification.
+func genWorkflowSpec(spec amev1alpha1.TaskSpec) argo.WorkflowSpec {
+	return argo.WorkflowSpec{
+		Arguments: argo.Arguments{
+			Parameters: genParameters(spec),
+		},
+	}
+}
+
+// genParameters generates Workflow parameters from a Task specification.
+func genParameters(spec amev1alpha1.TaskSpec) []argo.Parameter {
+	return []argo.Parameter{
+		{
+			Name:  "project-id",
+			Value: argo.AnyStringPtr(spec.ProjectId),
+		},
+		{
+			Name:  "run-command",
+			Value: argo.AnyStringPtr(spec.RunCommand),
 		},
 	}
 }
