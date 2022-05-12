@@ -51,7 +51,6 @@ type TaskReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.11.0/pkg/reconcile
 func (r *TaskReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	// TODO: verify that workflows are correctly configured, even if they already exist.
 	// TODO: ensure that standard fields such as status are updated appropriately.
 	log := log.FromContext(ctx)
 	var task amev1alpha1.Task
@@ -66,6 +65,19 @@ func (r *TaskReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	err = getArgoWorkflow(ctx, r.Client, task, &wf)
 	if err == nil {
 		log.Info("Workflow already present for task")
+
+		newSpec, update := correctWorkflowSpec(task.Spec, wf)
+		if update {
+			log.Info("Workflow was misconfigured attempting to correct")
+			wf.Spec = newSpec
+			err = r.Update(ctx, &wf)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+			log.Info("Workflow was configuration was corrected")
+		}
+
+		log.Info("Workflow was correctly configured, nothing to reconcile")
 		return ctrl.Result{}, nil
 	}
 
