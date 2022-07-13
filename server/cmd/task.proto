@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+import "api/v1alpha1/generated.proto";
+import "k8s.io/apimachinery/pkg/apis/meta/v1/generated.proto";
+
+package task;
+
+message TaskCreateRequest {
+  string namespace = 1;
+  teainspace.com.ame.pkg.apis.ame.v1alpha1.Task task = 3;
+  k8s.io.apimachinery.pkg.apis.meta.v1.CreateOptions createOptions = 5;
+}
+
+message TaskGetRequest {
+  string name = 1;
+  string namespace = 2;
+  k8s.io.apimachinery.pkg.apis.meta.v1.GetOptions getOptions = 5;
+}
+
+service TaskService {
+  rpc GetTask(TaskGetRequest) returns (teainspace.com.ame.pkg.apis.ame.v1alpha1.Task);
+  rpc CreateTask(TaskCreateRequest) returns (teainspace.com.ame.pkg.apis.ame.v1alpha1.Task);
+}
