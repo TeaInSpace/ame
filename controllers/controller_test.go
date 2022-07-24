@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"strings"
 
 	argo "github.com/argoproj/argo-workflows/v3/pkg/apis/workflow/v1alpha1"
 	"github.com/brianvoe/gofakeit/v6"
@@ -50,7 +51,7 @@ var _ = Describe("Task execution", func() {
 		// TODO: should we context.Background?
 		ctx := context.Background()
 
-		test := genTask(gofakeit.Noun(), testNamespace)
+		test := genTask(strings.ToLower(gofakeit.Username()), testNamespace)
 
 		// Ensure that a Workflow for the Task does not already exist
 		// before creating it.
