@@ -10,6 +10,7 @@ require (
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.19.0
 	github.com/pkg/errors v0.9.1
+	github.com/spf13/cobra v1.4.0
 	github.com/stretchr/testify v1.7.0
 	google.golang.org/grpc v1.48.0
 	k8s.io/apimachinery v0.24.3
@@ -44,6 +45,7 @@ require (
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0 // indirect
 	github.com/imdario/mergo v0.3.13 // indirect
+	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/kr/pretty v0.3.0 // indirect
