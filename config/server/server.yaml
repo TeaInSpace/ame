@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ame-server
+  namespace: system
+  labels:
+    app: ame-server
+spec:
+  selector:
+    matchLabels:
+      app: ame-server
+  replicas: 1
+  template:
+    metadata:
+      annotations:
+        kubectl.kubernetes.io/default-container: server
+      labels:
+        app: ame-server
+    spec:
+      securityContext:
+        runAsNonRoot: true
+      containers:
+      - command:
+        - /bin/ame_server
+        image: ame-server:latest
+        name: server
+        securityContext:
+          allowPrivilegeEscalation: false
+        readinessProbe:
+          exec:
+            command: ["/bin/grpc_health_probe", "-addr=:3000"]
+          initialDelaySeconds: 5
+        livenessProbe:
+          exec:
+            command: ["/bin/grpc_health_probe", "-addr=:3000"]
+          initialDelaySeconds: 10
+        ports:
+          - containerPort: 3000
+        # TODO(user): Configure the resources accordingly based on the project requirements.
+        # More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+        resources:
+          limits:
+            cpu: 500m
+            memory: 128Mi
+          requests:
+            cpu: 10m
+            memory: 64Mi
+      serviceAccountName: controller-manager
+      terminationGracePeriodSeconds: 10
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: ame-server-service
+spec:
+  type: LoadBalancer
+  selector:
+    app: ame-server
+  ports:
+    - port: 3000
+      targetPort: 3000
+

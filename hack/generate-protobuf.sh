@@ -57,6 +57,8 @@ rm -r pkg
 # go-to-protobuf.
 echo "Generating gRPC server"
 protoc -I=. -I=$GOPATH/src --gofast_out=plugins=grpc:. ./server/cmd/task.proto
+protoc -I=. -I=$GOPATH/src --gofast_out=plugins=grpc:. ./server/cmd/health.proto
 
 # Correct import path errors caused by the directory structure of this project differing from what go-to-protobuf expects.
 sed -i -e 's/api\/v1alpha1/teainspace.com\/ame\/api\/v1alpha1/g' server/cmd/task.pb.go
+sed -i -e 's/grpc_health_v1/task/g' server/cmd/health.pb.go

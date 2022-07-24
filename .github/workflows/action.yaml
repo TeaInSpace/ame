@@ -1,5 +1,9 @@
 on: push
 
+env:
+  IMG: ame-controller:local
+  SERVER_IMG: ame-server:local
+
 jobs:
   validate:
     runs-on: ubuntu-20.04
@@ -12,6 +16,10 @@ jobs:
       - uses: arduino/setup-protoc@v1
         with:
           version: '3.19.4'
+      - name: Prep test environment
+        run: |
+          make kind
+          make deploy_local_cluster
       - name: Validate commit
         run: make test
       - name: Build

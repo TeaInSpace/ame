@@ -22,14 +22,16 @@ func NewTaskServer(client clientset.Interface) TaskServer {
 }
 
 func Run(cfg *rest.Config, port int) (net.Listener, func() error, error) {
-	listener, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", port))
+	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
 	if err != nil {
 		return listener, func() error { return nil }, err
 	}
 
 	var opts []grpc.ServerOption
 	grpcServer := grpc.NewServer(opts...)
-	RegisterTaskServiceServer(grpcServer, NewTaskServer(clientset.NewForConfigOrDie(cfg)))
+	taskServer := NewTaskServer(clientset.NewForConfigOrDie(cfg))
+	RegisterTaskServiceServer(grpcServer, taskServer)
+	RegisterHealthServer(grpcServer, taskServer)
 
 	return listener, func() error {
 		return grpcServer.Serve(listener)
@@ -51,4 +53,15 @@ func (s TaskServer) GetTask(ctx context.Context, taskGetRequest *TaskGetRequest)
 	}
 
 	return s.ameClientSet.AmeV1alpha1().Tasks(taskGetRequest.GetNamespace()).Get(ctx, taskGetRequest.GetName(), opts)
+}
+
+func (s TaskServer) Check(context.Context, *HealthCheckRequest) (*HealthCheckResponse, error) {
+	fmt.Println("got a check request")
+	return &HealthCheckResponse{
+		Status: HealthCheckResponse_SERVING,
+	}, nil
+}
+
+func (s TaskServer) Watch(*HealthCheckRequest, Health_WatchServer) error {
+	return nil
 }

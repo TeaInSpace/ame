@@ -34,7 +34,7 @@ rules:
 - apiGroups:
   - argoproj.io
   resources:
-  - Workflows
+  - workflows
   verbs:
   - create
   - delete

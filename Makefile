@@ -102,7 +102,9 @@ uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified 
 .PHONY: deploy
 deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
 	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
+	cd config/server && $(KUSTOMIZE) edit set image ame-server=${SERVER_IMG}
 	$(KUSTOMIZE) build config/default | kubectl apply -f -
+
 
 .PHONY: undeploy
 undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
@@ -116,7 +118,9 @@ controller-gen: ## Download controller-gen locally if necessary.
 KUSTOMIZE = $(shell pwd)/bin/kustomize
 .PHONY: kustomize
 kustomize: ## Download kustomize locally if necessary.
-	GOBIN=$(PROJECT_DIR)/bin go install sigs.k8s.io/kustomize/kustomize/v3@v3.8.7
+	GOBIN=$(PROJECT_DIR)/bin go install sigs.k8s.io/kustomize/kustomize/v4@v4.5.5 
+
+	
 
 ENVTEST = $(shell pwd)/bin/setup-envtest
 .PHONY: envtest
@@ -144,3 +148,28 @@ gogo-protobuf:
 
 goimports:
 	go install golang.org/x/tools/cmd/goimports@latest
+
+kind:
+	go install sigs.k8s.io/kind@v0.14.0 
+
+deploy_local_cluster: create_local_cluster load_local_images install deploy
+
+create_local_cluster:
+	kind create cluster
+	kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.12.1/manifests/namespace.yaml
+	kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.12.1/manifests/metallb.yaml
+	sleep 20
+	kubectl wait pods -n metallb-system -l app=metallb --for condition=Ready --timeout=90s
+	kubectl apply -f ./metallb_config.yaml
+	kubectl apply -f ./config/crd/bases/argo_workflow_crd.yaml
+	kubectl create ns ame-system
+	kubectl apply -n ame-system -f https://raw.githubusercontent.com/argoproj/argo-workflows/master/manifests/quick-start-postgres.yaml
+
+load_local_images:
+	docker buildx build . --target ame-server -t ame-server:local
+	docker buildx build . --target task-controller -t ame-controller:local
+	kind load docker-image ame-server:local
+	kind load docker-image ame-controller:local
+
+delete_local_cluster:
+	kind delete cluster

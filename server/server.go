@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+
 	"k8s.io/client-go/rest"
 	"teainspace.com/ame/server/cmd"
 )
@@ -8,7 +10,8 @@ import (
 func main() {
 	inclusterConfig, err := rest.InClusterConfig()
 	if err != nil {
-		panic(err)
+		// panic(err)
+		fmt.Println(err)
 	}
 
 	_, serve, err := task.Run(inclusterConfig, 3000)
