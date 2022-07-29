@@ -21,8 +21,8 @@ func NewTaskServer(client clientset.Interface) TaskServer {
 	return TaskServer{client}
 }
 
-func Run(cfg *rest.Config, port int) (net.Listener, func() error, error) {
-	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
+func Run(cfg *rest.Config, port string) (net.Listener, func() error, error) {
+	listener, err := net.Listen("tcp", fmt.Sprintf(":%s", port))
 	if err != nil {
 		return listener, func() error { return nil }, err
 	}
@@ -56,7 +56,6 @@ func (s TaskServer) GetTask(ctx context.Context, taskGetRequest *TaskGetRequest)
 }
 
 func (s TaskServer) Check(context.Context, *HealthCheckRequest) (*HealthCheckResponse, error) {
-	fmt.Println("got a check request")
 	return &HealthCheckResponse{
 		Status: HealthCheckResponse_SERVING,
 	}, nil

@@ -28,14 +28,14 @@ spec:
           allowPrivilegeEscalation: false
         readinessProbe:
           exec:
-            command: ["/bin/grpc_health_probe", "-addr=:3000"]
+            command: ["/bin/grpc_health_probe", "-addr=:3342"]
           initialDelaySeconds: 5
         livenessProbe:
           exec:
-            command: ["/bin/grpc_health_probe", "-addr=:3000"]
+            command: ["/bin/grpc_health_probe", "-addr=:3342"]
           initialDelaySeconds: 10
         ports:
-          - containerPort: 3000
+          - containerPort: 3342
         # TODO(user): Configure the resources accordingly based on the project requirements.
         # More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
         resources:
@@ -45,6 +45,12 @@ spec:
           requests:
             cpu: 10m
             memory: 64Mi
+        env:
+          - name: AME_SERVER_PORT
+            valueFrom:
+              configMapKeyRef:
+                name: ame-server-configmap
+                key: server_port
       serviceAccountName: controller-manager
       terminationGracePeriodSeconds: 10
 ---
@@ -57,6 +63,12 @@ spec:
   selector:
     app: ame-server
   ports:
-    - port: 3000
-      targetPort: 3000
-
+    - port: 3342
+      targetPort: 3342
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ame-server-configmap
+data:
+  server_port: "3342"
