@@ -1,20 +1,32 @@
 package main
 
 import (
-	"fmt"
+	"os"
 
 	"k8s.io/client-go/rest"
-	"teainspace.com/ame/server/cmd"
+	task "teainspace.com/ame/server/cmd"
 )
+
+const (
+	AME_SERVER_PORT_ENV_VAR_KEY = "AME_SERVER_PORT"
+	AME_SEVER_DEFAULT_PORT      = "3342"
+)
+
+func serverPort() string {
+	ameServerPort := os.Getenv(AME_SERVER_PORT_ENV_VAR_KEY)
+	if ameServerPort == "" {
+		ameServerPort = AME_SEVER_DEFAULT_PORT
+	}
+
+	return ameServerPort
+}
 
 func main() {
 	inclusterConfig, err := rest.InClusterConfig()
 	if err != nil {
-		// panic(err)
-		fmt.Println(err)
+		panic(err)
 	}
-
-	_, serve, err := task.Run(inclusterConfig, 3000)
+	_, serve, err := task.Run(inclusterConfig, serverPort())
 	if err != nil {
 		panic(err)
 	}

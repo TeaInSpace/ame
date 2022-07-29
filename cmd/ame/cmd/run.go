@@ -33,7 +33,7 @@ func runTask(cmd *cobra.Command, args []string) {
 	var opts []grpc.DialOption
 	opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 
-	conn, err := grpc.Dial("172.18.255.200:3000", opts...)
+	conn, err := grpc.Dial("172.18.255.200:3342", opts...)
 	if err != nil {
 		panic(err)
 	}
