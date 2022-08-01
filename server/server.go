@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"os"
 
 	"k8s.io/client-go/rest"
@@ -22,11 +23,12 @@ func serverPort() string {
 }
 
 func main() {
+	ctx := context.Background()
 	inclusterConfig, err := rest.InClusterConfig()
 	if err != nil {
 		panic(err)
 	}
-	_, serve, err := task.Run(inclusterConfig, serverPort())
+	_, serve, err := task.Run(ctx, inclusterConfig, serverPort())
 	if err != nil {
 		panic(err)
 	}

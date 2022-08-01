@@ -28,6 +28,31 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
+type UploadStatus_Status int32
+
+const (
+	UploadStatus_FAILURE UploadStatus_Status = 0
+	UploadStatus_SUCCESS UploadStatus_Status = 1
+)
+
+var UploadStatus_Status_name = map[int32]string{
+	0: "FAILURE",
+	1: "SUCCESS",
+}
+
+var UploadStatus_Status_value = map[string]int32{
+	"FAILURE": 0,
+	"SUCCESS": 1,
+}
+
+func (x UploadStatus_Status) String() string {
+	return proto.EnumName(UploadStatus_Status_name, int32(x))
+}
+
+func (UploadStatus_Status) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_730c863b5f65847c, []int{3, 0}
+}
+
 type TaskCreateRequest struct {
 	Namespace            string            `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
 	Task                 *v1alpha1.Task    `protobuf:"bytes,3,opt,name=task,proto3" json:"task,omitempty"`
@@ -154,37 +179,141 @@ func (m *TaskGetRequest) GetGetOptions() *v1.GetOptions {
 	return nil
 }
 
+type Chunk struct {
+	Contents             []byte   `protobuf:"bytes,1,opt,name=contents,proto3" json:"contents,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *Chunk) Reset()         { *m = Chunk{} }
+func (m *Chunk) String() string { return proto.CompactTextString(m) }
+func (*Chunk) ProtoMessage()    {}
+func (*Chunk) Descriptor() ([]byte, []int) {
+	return fileDescriptor_730c863b5f65847c, []int{2}
+}
+func (m *Chunk) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *Chunk) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_Chunk.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *Chunk) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Chunk.Merge(m, src)
+}
+func (m *Chunk) XXX_Size() int {
+	return m.Size()
+}
+func (m *Chunk) XXX_DiscardUnknown() {
+	xxx_messageInfo_Chunk.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_Chunk proto.InternalMessageInfo
+
+func (m *Chunk) GetContents() []byte {
+	if m != nil {
+		return m.Contents
+	}
+	return nil
+}
+
+type UploadStatus struct {
+	Status               UploadStatus_Status `protobuf:"varint,1,opt,name=status,proto3,enum=task.UploadStatus_Status" json:"status,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}            `json:"-"`
+	XXX_unrecognized     []byte              `json:"-"`
+	XXX_sizecache        int32               `json:"-"`
+}
+
+func (m *UploadStatus) Reset()         { *m = UploadStatus{} }
+func (m *UploadStatus) String() string { return proto.CompactTextString(m) }
+func (*UploadStatus) ProtoMessage()    {}
+func (*UploadStatus) Descriptor() ([]byte, []int) {
+	return fileDescriptor_730c863b5f65847c, []int{3}
+}
+func (m *UploadStatus) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *UploadStatus) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_UploadStatus.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *UploadStatus) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_UploadStatus.Merge(m, src)
+}
+func (m *UploadStatus) XXX_Size() int {
+	return m.Size()
+}
+func (m *UploadStatus) XXX_DiscardUnknown() {
+	xxx_messageInfo_UploadStatus.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_UploadStatus proto.InternalMessageInfo
+
+func (m *UploadStatus) GetStatus() UploadStatus_Status {
+	if m != nil {
+		return m.Status
+	}
+	return UploadStatus_FAILURE
+}
+
 func init() {
+	proto.RegisterEnum("task.UploadStatus_Status", UploadStatus_Status_name, UploadStatus_Status_value)
 	proto.RegisterType((*TaskCreateRequest)(nil), "task.TaskCreateRequest")
 	proto.RegisterType((*TaskGetRequest)(nil), "task.TaskGetRequest")
+	proto.RegisterType((*Chunk)(nil), "task.Chunk")
+	proto.RegisterType((*UploadStatus)(nil), "task.UploadStatus")
 }
 
 func init() { proto.RegisterFile("server/cmd/task.proto", fileDescriptor_730c863b5f65847c) }
 
 var fileDescriptor_730c863b5f65847c = []byte{
-	// 346 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x52, 0xcd, 0x4e, 0xc2, 0x40,
-	0x10, 0x76, 0x15, 0x35, 0x2c, 0xd1, 0xe8, 0x46, 0x23, 0x21, 0xa4, 0x21, 0x9c, 0x38, 0xcd, 0x0a,
-	0x78, 0xf0, 0x0c, 0x07, 0x8e, 0x98, 0xaa, 0x07, 0x8f, 0x63, 0x99, 0x94, 0xa6, 0xb6, 0x5d, 0xbb,
-	0x6b, 0x13, 0xdf, 0xc3, 0x83, 0x2f, 0xe2, 0x3b, 0x78, 0xe4, 0x11, 0x0c, 0xbe, 0x88, 0xd9, 0x45,
-	0x84, 0xea, 0x45, 0x6e, 0x33, 0xd3, 0x7e, 0x7f, 0x33, 0xcb, 0x4f, 0x35, 0xe5, 0x05, 0xe5, 0x32,
-	0x48, 0x26, 0xd2, 0xa0, 0x8e, 0x41, 0xe5, 0x99, 0xc9, 0x44, 0xc5, 0xd6, 0x8d, 0x26, 0xaa, 0x48,
-	0x16, 0x5d, 0x7c, 0x50, 0x53, 0xec, 0xca, 0x90, 0x52, 0xca, 0xd1, 0xd0, 0x64, 0xf1, 0x4f, 0xe3,
-	0x22, 0xbe, 0xd4, 0x10, 0x65, 0x12, 0x55, 0x94, 0x60, 0x30, 0x8d, 0x52, 0xca, 0x9f, 0xa5, 0x8a,
-	0x43, 0x3b, 0xd0, 0x32, 0x21, 0x83, 0xb2, 0xf8, 0x83, 0x6a, 0xcf, 0x18, 0x3f, 0xbe, 0x41, 0x1d,
-	0x0f, 0x73, 0x42, 0x43, 0x3e, 0x3d, 0x3e, 0x91, 0x36, 0xa2, 0xc9, 0xab, 0x29, 0x26, 0xa4, 0x15,
-	0x06, 0x54, 0x67, 0x2d, 0xd6, 0xa9, 0xfa, 0xab, 0x81, 0x18, 0x70, 0xe7, 0xa7, 0xbe, 0xd3, 0x62,
-	0x9d, 0x5a, 0x0f, 0xc0, 0x10, 0x46, 0xa9, 0xfb, 0x04, 0x41, 0x96, 0x00, 0x26, 0x04, 0x2a, 0x0e,
-	0xc1, 0xea, 0xba, 0x66, 0x69, 0x19, 0xac, 0x90, 0xef, 0xb0, 0xe2, 0x8e, 0x1f, 0x04, 0x4e, 0x72,
-	0xac, 0x4c, 0x94, 0xa5, 0xba, 0xbe, 0xeb, 0xc8, 0xfa, 0xb0, 0x48, 0x01, 0xeb, 0x29, 0x56, 0x6c,
-	0x36, 0x05, 0x14, 0x5d, 0x18, 0xae, 0x43, 0xfd, 0x32, 0x53, 0xfb, 0x85, 0xf1, 0x43, 0xab, 0x34,
-	0x22, 0xb3, 0xcc, 0x23, 0x78, 0xc5, 0xda, 0xff, 0x8e, 0xe2, 0xea, 0x72, 0xc6, 0xed, 0xdf, 0x19,
-	0xaf, 0x38, 0x0f, 0xc9, 0x94, 0xcd, 0x9d, 0xff, 0xcf, 0xdc, 0xe8, 0x07, 0xe7, 0xaf, 0x71, 0xf4,
-	0xde, 0x18, 0xaf, 0x59, 0x5b, 0xd7, 0x94, 0x17, 0x51, 0x40, 0x62, 0xcc, 0xf7, 0x47, 0x64, 0xec,
-	0x44, 0x9c, 0x80, 0xbb, 0x75, 0xd9, 0x74, 0x63, 0xc3, 0xc5, 0x8a, 0x5b, 0xce, 0x17, 0x7b, 0x71,
-	0xdd, 0xd9, 0x8a, 0xb3, 0x74, 0xdb, 0x4d, 0x69, 0x07, 0x47, 0xef, 0x73, 0x8f, 0xcd, 0xe6, 0x1e,
-	0xfb, 0x98, 0x7b, 0xec, 0xf5, 0xd3, 0xdb, 0xba, 0xdf, 0x73, 0x4f, 0xa7, 0xff, 0x15, 0x00, 0x00,
-	0xff, 0xff, 0xa6, 0xa1, 0x83, 0xd5, 0xad, 0x02, 0x00, 0x00,
+	// 450 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x52, 0xcd, 0x6e, 0xd3, 0x40,
+	0x10, 0xee, 0x42, 0x9b, 0xd2, 0x49, 0xa9, 0xc2, 0x0a, 0x44, 0xb0, 0xaa, 0xa8, 0x32, 0x97, 0x9c,
+	0x76, 0x49, 0xca, 0x81, 0x2b, 0xb5, 0xda, 0x08, 0x09, 0xa9, 0xc8, 0x26, 0x07, 0x8e, 0x83, 0x33,
+	0x4a, 0x2c, 0xc7, 0xf6, 0xe2, 0xdd, 0x58, 0xe2, 0x3d, 0x38, 0xf0, 0x48, 0x1c, 0xfb, 0x08, 0x28,
+	0x48, 0x3c, 0x07, 0xda, 0x75, 0xda, 0xd8, 0xf4, 0xd2, 0x9c, 0x3c, 0x33, 0x9e, 0xf9, 0x7e, 0x66,
+	0x07, 0x5e, 0x68, 0x2a, 0x2b, 0x2a, 0x65, 0x9c, 0xcd, 0xa4, 0x41, 0x9d, 0x0a, 0x55, 0x16, 0xa6,
+	0xe0, 0xfb, 0x36, 0xf6, 0x4e, 0x51, 0x25, 0xb2, 0x1a, 0xe1, 0x52, 0x2d, 0x70, 0x24, 0xe7, 0x94,
+	0x53, 0x89, 0x86, 0x66, 0x75, 0x8f, 0xf7, 0x36, 0x7d, 0xa7, 0x45, 0x52, 0x48, 0x54, 0x49, 0x86,
+	0xf1, 0x22, 0xc9, 0xa9, 0xfc, 0x2e, 0x55, 0x3a, 0xb7, 0x05, 0x2d, 0x33, 0x32, 0x28, 0xab, 0x7b,
+	0x53, 0xfe, 0x0d, 0x83, 0x67, 0x9f, 0x51, 0xa7, 0x41, 0x49, 0x68, 0x28, 0xa4, 0x6f, 0x2b, 0xd2,
+	0x86, 0x9f, 0xc2, 0x51, 0x8e, 0x19, 0x69, 0x85, 0x31, 0xf5, 0xd9, 0x19, 0x1b, 0x1e, 0x85, 0xdb,
+	0x02, 0xbf, 0x00, 0xa7, 0xa7, 0xff, 0xf8, 0x8c, 0x0d, 0xbb, 0x63, 0x21, 0x0c, 0x61, 0x92, 0xbb,
+	0x5f, 0x22, 0x2e, 0x32, 0x81, 0x19, 0x09, 0x95, 0xce, 0x85, 0xe5, 0x75, 0xc9, 0xad, 0x64, 0x61,
+	0x89, 0x42, 0x37, 0xcb, 0xbf, 0xc0, 0xd3, 0xd8, 0x51, 0x5e, 0x2b, 0x93, 0x14, 0xb9, 0xee, 0x1f,
+	0x38, 0xb0, 0x73, 0x51, 0xbb, 0x10, 0x4d, 0x17, 0x5b, 0x34, 0xeb, 0x42, 0x54, 0x23, 0x11, 0x34,
+	0x47, 0xc3, 0x36, 0x92, 0xff, 0x83, 0xc1, 0x89, 0x65, 0x9a, 0x90, 0xb9, 0xf5, 0xc3, 0x61, 0xdf,
+	0xca, 0xdf, 0x58, 0x71, 0x71, 0xdb, 0xe3, 0xa3, 0xff, 0x3d, 0x7e, 0x02, 0x98, 0x93, 0x69, 0x8b,
+	0x7b, 0xf3, 0x30, 0x71, 0x93, 0xbb, 0xb9, 0xb0, 0x81, 0xe1, 0xbf, 0x86, 0x83, 0x60, 0xb1, 0xca,
+	0x53, 0xee, 0xc1, 0x93, 0xb8, 0xc8, 0x0d, 0xe5, 0x46, 0x3b, 0x41, 0xc7, 0xe1, 0x5d, 0xee, 0x13,
+	0x1c, 0x4f, 0xd5, 0xb2, 0xc0, 0x59, 0x64, 0xd0, 0xac, 0x34, 0x1f, 0x41, 0x47, 0xbb, 0xc8, 0x75,
+	0x9e, 0x8c, 0x5f, 0x09, 0x77, 0x15, 0xcd, 0x1e, 0x51, 0x7f, 0xc2, 0x4d, 0xa3, 0xef, 0x43, 0x67,
+	0x33, 0xdc, 0x85, 0xc3, 0xab, 0xf7, 0x1f, 0x3e, 0x4e, 0xc3, 0xcb, 0xde, 0x9e, 0x4d, 0xa2, 0x69,
+	0x10, 0x5c, 0x46, 0x51, 0x8f, 0x8d, 0xff, 0x32, 0xe8, 0xda, 0x15, 0x45, 0x54, 0x56, 0x49, 0x4c,
+	0xfc, 0x1a, 0x0e, 0x27, 0x64, 0x6c, 0x85, 0x3f, 0xaf, 0x19, 0xda, 0x0b, 0xf4, 0x76, 0x7c, 0x64,
+	0x3e, 0x05, 0xa8, 0xdf, 0xc8, 0x65, 0x2f, 0xb7, 0x98, 0xad, 0x3b, 0xdb, 0x19, 0x56, 0x02, 0x5c,
+	0x25, 0x4b, 0xaa, 0xed, 0xf3, 0x6e, 0x0d, 0xeb, 0xb6, 0xea, 0xf1, 0xfb, 0x9b, 0x19, 0xb2, 0x8b,
+	0xde, 0xaf, 0xf5, 0x80, 0xdd, 0xac, 0x07, 0xec, 0xf7, 0x7a, 0xc0, 0x7e, 0xfe, 0x19, 0xec, 0x7d,
+	0xed, 0xb8, 0xbb, 0x3f, 0xff, 0x17, 0x00, 0x00, 0xff, 0xff, 0x5d, 0xf6, 0x8a, 0x0e, 0x6a, 0x03,
+	0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -201,6 +330,7 @@ const _ = grpc.SupportPackageIsVersion4
 type TaskServiceClient interface {
 	GetTask(ctx context.Context, in *TaskGetRequest, opts ...grpc.CallOption) (*v1alpha1.Task, error)
 	CreateTask(ctx context.Context, in *TaskCreateRequest, opts ...grpc.CallOption) (*v1alpha1.Task, error)
+	FileUpload(ctx context.Context, opts ...grpc.CallOption) (TaskService_FileUploadClient, error)
 }
 
 type taskServiceClient struct {
@@ -229,10 +359,45 @@ func (c *taskServiceClient) CreateTask(ctx context.Context, in *TaskCreateReques
 	return out, nil
 }
 
+func (c *taskServiceClient) FileUpload(ctx context.Context, opts ...grpc.CallOption) (TaskService_FileUploadClient, error) {
+	stream, err := c.cc.NewStream(ctx, &_TaskService_serviceDesc.Streams[0], "/task.TaskService/FileUpload", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &taskServiceFileUploadClient{stream}
+	return x, nil
+}
+
+type TaskService_FileUploadClient interface {
+	Send(*Chunk) error
+	CloseAndRecv() (*UploadStatus, error)
+	grpc.ClientStream
+}
+
+type taskServiceFileUploadClient struct {
+	grpc.ClientStream
+}
+
+func (x *taskServiceFileUploadClient) Send(m *Chunk) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *taskServiceFileUploadClient) CloseAndRecv() (*UploadStatus, error) {
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	m := new(UploadStatus)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // TaskServiceServer is the server API for TaskService service.
 type TaskServiceServer interface {
 	GetTask(context.Context, *TaskGetRequest) (*v1alpha1.Task, error)
 	CreateTask(context.Context, *TaskCreateRequest) (*v1alpha1.Task, error)
+	FileUpload(TaskService_FileUploadServer) error
 }
 
 // UnimplementedTaskServiceServer can be embedded to have forward compatible implementations.
@@ -244,6 +409,9 @@ func (*UnimplementedTaskServiceServer) GetTask(ctx context.Context, req *TaskGet
 }
 func (*UnimplementedTaskServiceServer) CreateTask(ctx context.Context, req *TaskCreateRequest) (*v1alpha1.Task, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateTask not implemented")
+}
+func (*UnimplementedTaskServiceServer) FileUpload(srv TaskService_FileUploadServer) error {
+	return status.Errorf(codes.Unimplemented, "method FileUpload not implemented")
 }
 
 func RegisterTaskServiceServer(s *grpc.Server, srv TaskServiceServer) {
@@ -286,6 +454,32 @@ func _TaskService_CreateTask_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
+func _TaskService_FileUpload_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(TaskServiceServer).FileUpload(&taskServiceFileUploadServer{stream})
+}
+
+type TaskService_FileUploadServer interface {
+	SendAndClose(*UploadStatus) error
+	Recv() (*Chunk, error)
+	grpc.ServerStream
+}
+
+type taskServiceFileUploadServer struct {
+	grpc.ServerStream
+}
+
+func (x *taskServiceFileUploadServer) SendAndClose(m *UploadStatus) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *taskServiceFileUploadServer) Recv() (*Chunk, error) {
+	m := new(Chunk)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 var _TaskService_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "task.TaskService",
 	HandlerType: (*TaskServiceServer)(nil),
@@ -299,7 +493,13 @@ var _TaskService_serviceDesc = grpc.ServiceDesc{
 			Handler:    _TaskService_CreateTask_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "FileUpload",
+			Handler:       _TaskService_FileUpload_Handler,
+			ClientStreams: true,
+		},
+	},
 	Metadata: "server/cmd/task.proto",
 }
 
@@ -414,6 +614,72 @@ func (m *TaskGetRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
+func (m *Chunk) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *Chunk) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *Chunk) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.XXX_unrecognized != nil {
+		i -= len(m.XXX_unrecognized)
+		copy(dAtA[i:], m.XXX_unrecognized)
+	}
+	if len(m.Contents) > 0 {
+		i -= len(m.Contents)
+		copy(dAtA[i:], m.Contents)
+		i = encodeVarintTask(dAtA, i, uint64(len(m.Contents)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *UploadStatus) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *UploadStatus) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *UploadStatus) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.XXX_unrecognized != nil {
+		i -= len(m.XXX_unrecognized)
+		copy(dAtA[i:], m.XXX_unrecognized)
+	}
+	if m.Status != 0 {
+		i = encodeVarintTask(dAtA, i, uint64(m.Status))
+		i--
+		dAtA[i] = 0x8
+	}
+	return len(dAtA) - i, nil
+}
+
 func encodeVarintTask(dAtA []byte, offset int, v uint64) int {
 	offset -= sovTask(v)
 	base := offset
@@ -466,6 +732,37 @@ func (m *TaskGetRequest) Size() (n int) {
 	if m.GetOptions != nil {
 		l = m.GetOptions.Size()
 		n += 1 + l + sovTask(uint64(l))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
+	return n
+}
+
+func (m *Chunk) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Contents)
+	if l > 0 {
+		n += 1 + l + sovTask(uint64(l))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
+	return n
+}
+
+func (m *UploadStatus) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Status != 0 {
+		n += 1 + sovTask(uint64(m.Status))
 	}
 	if m.XXX_unrecognized != nil {
 		n += len(m.XXX_unrecognized)
@@ -763,6 +1060,161 @@ func (m *TaskGetRequest) Unmarshal(dAtA []byte) error {
 				return err
 			}
 			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTask(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthTask
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *Chunk) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTask
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Chunk: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Chunk: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Contents", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTask
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				byteLen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return ErrInvalidLengthTask
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex < 0 {
+				return ErrInvalidLengthTask
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Contents = append(m.Contents[:0], dAtA[iNdEx:postIndex]...)
+			if m.Contents == nil {
+				m.Contents = []byte{}
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTask(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthTask
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *UploadStatus) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTask
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: UploadStatus: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: UploadStatus: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Status", wireType)
+			}
+			m.Status = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTask
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Status |= UploadStatus_Status(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
 		default:
 			iNdEx = preIndex
 			skippy, err := skipTask(dAtA[iNdEx:])

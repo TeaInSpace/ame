@@ -17,7 +17,20 @@ message TaskGetRequest {
   k8s.io.apimachinery.pkg.apis.meta.v1.GetOptions getOptions = 5;
 }
 
+message Chunk {
+ bytes  contents = 1;
+}
+
+message UploadStatus {
+  enum Status {
+    FAILURE = 0;
+    SUCCESS = 1;
+  }
+  Status status = 1;
+}
+
 service TaskService {
   rpc GetTask(TaskGetRequest) returns (teainspace.com.ame.pkg.apis.ame.v1alpha1.Task);
   rpc CreateTask(TaskCreateRequest) returns (teainspace.com.ame.pkg.apis.ame.v1alpha1.Task);
+  rpc FileUpload(stream Chunk) returns (UploadStatus);
 }

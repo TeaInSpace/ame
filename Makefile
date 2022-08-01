@@ -61,8 +61,9 @@ vet: ## Run go vet against code.
 	go vet ./...
 
 .PHONY: test
-test: manifests vet fmt envtest ## Run tests.
+test: manifests vet fmt envtest start_minio ## Run tests.
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test ./... -coverprofile cover.out
+	make stop_minio
 
 ##@ Build
 
@@ -173,3 +174,18 @@ load_local_images:
 
 delete_local_cluster:
 	kind delete cluster
+
+start_minio:
+	docker run \
+  -p 9000:9000 \
+  -p 9001:9001 \
+  --name minio1 \
+  -e "MINIO_ROOT_USER=minio" \
+  -e "MINIO_ROOT_PASSWORD=minio123" \
+  -v /mnt/data:/data \
+	--detach \
+  quay.io/minio/minio server /data --console-address ":9001"
+
+stop_minio:
+	docker stop minio1
+	docker rm minio1
