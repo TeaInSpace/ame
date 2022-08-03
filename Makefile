@@ -179,7 +179,7 @@ prepare_local_cluster:
 	kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.12.1/manifests/metallb.yaml
 	# Argo Workflows now requires cert manager, see: https://github.com/argoproj/argo-workflows#quickstart
 	kubectl get ns cert-manager || kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.9.1/cert-manager.yaml
-	sleep 10
+	sleep 20
 	kubectl wait --for=condition=Ready pods --all --namespace cert-manager
 	sleep 20
 	kubectl wait pods -n metallb-system -l app=metallb --for condition=Ready --timeout=90s
