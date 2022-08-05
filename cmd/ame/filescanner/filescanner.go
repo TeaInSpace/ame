@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path"
@@ -40,7 +41,8 @@ func TarDirectory(dir string, filters []string) (*bytes.Buffer, error) {
 	var buf bytes.Buffer
 	tw := tar.NewWriter(&buf)
 	err := filepath.WalkDir(dir, func(walkPath string, d fs.DirEntry, err error) error {
-		if d.IsDir() {
+		fmt.Println(walkPath, dir, d)
+		if d == nil || d.IsDir() {
 			return nil
 		}
 
@@ -90,5 +92,34 @@ func writeToTar(tw *tar.Writer, path string, d fs.DirEntry) error {
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+type TarWalk func(*tar.Header, []byte) error
+
+func ReadFromTar(buf io.Reader, tarWalk TarWalk) error {
+	tr := tar.NewReader(buf)
+	for {
+		hdr, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+
+		if err != nil {
+			return err
+		}
+
+		fileContents, err := io.ReadAll(tr)
+		if err != nil {
+			return err
+		}
+
+		err = tarWalk(hdr, fileContents)
+		if err != nil {
+			return err
+		}
+
+	}
+
 	return nil
 }

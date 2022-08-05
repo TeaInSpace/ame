@@ -50,7 +50,7 @@ func runTask(cmd *cobra.Command, args []string) {
 	}
 	currentDir := filepath.Base(wd)
 
-	t, err := filescanner.TarDirectory(wd, []string{})
+	t, err := filescanner.TarDirectory("./", []string{})
 	if err != nil {
 		log.Fatalln("Could not tar directory", err)
 	}
@@ -67,7 +67,7 @@ func runTask(cmd *cobra.Command, args []string) {
 		if err == io.EOF {
 			status, err := uploadClient.CloseAndRecv()
 			if err != nil {
-				log.Fatalln(err)
+				log.Println(err)
 			}
 
 			fmt.Println(status)

@@ -15,6 +15,7 @@ COPY api/ api/
 COPY controllers/ controllers/
 COPY generated/ generated/
 COPY server/ server/
+COPY cmd/ cmd/
 
 
 # Builder the ame controller.

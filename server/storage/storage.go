@@ -9,6 +9,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 )
@@ -183,8 +184,6 @@ func (s *s3Storage) DownloadFiles(ctx context.Context, projectDir string) ([]Pro
 }
 
 func CreateS3Client(ctx context.Context, endpoint string, region string, overrider ...func(*s3.Options)) (*s3.Client, error) {
-	region = "us-west-1"
-
 	// We need to ensure that all requests resolve to the endpoint where minio is running.
 	// This does not match the normal AWS endpoints therefore we override with a custom
 	// endpoint resovler function.
@@ -215,5 +214,6 @@ func CreateS3Client(ctx context.Context, endpoint string, region string, overrid
 func CreateS3ClientForLocalStorage(ctx context.Context) (*s3.Client, error) {
 	return CreateS3Client(ctx, "http://127.0.0.1:9000", "", func(opts *s3.Options) {
 		opts.EndpointOptions.DisableHTTPS = true
+		opts.Credentials = credentials.NewStaticCredentialsProvider("minio", "minio123", "")
 	})
 }

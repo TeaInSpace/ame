@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"strings"
 	"testing"
 
 	argo "github.com/argoproj/argo-workflows/v3/pkg/client/clientset/versioned/typed/workflow/v1alpha1"
@@ -25,7 +26,7 @@ const (
 	testNamespace   = "ame-system"
 	testDataDir     = "test_data"
 	testProjectName = "ame"
-	testBucketName  = "mybucket"
+	testBucketName  = "ameprojectstorage"
 )
 
 var (
@@ -115,9 +116,20 @@ func TestRun(t *testing.T) {
 
 	s3Client, err := storage.CreateS3ClientForLocalStorage(ctx)
 	assert.NoError(t, err)
-	storage := storage.NewS3Storage(*s3Client, testBucketName)
-	storedFiles, err := storage.DownloadFiles(ctx, testProjectName)
-	assert.ElementsMatch(t, files, storedFiles)
+	store := storage.NewS3Storage(*s3Client, testBucketName)
+	storedFiles, err := store.DownloadFiles(ctx, testProjectName)
+	assert.NoError(t, err)
+
+	trimmedStored := []storage.ProjectFile{}
+	for _, f := range storedFiles {
+		p := strings.Replace(f.Path, testProjectName+"/", "", 1)
+		trimmedStored = append(trimmedStored, storage.ProjectFile{
+			Path: p,
+			Data: f.Data,
+		})
+	}
+
+	assert.ElementsMatch(t, files, trimmedStored)
 
 	err = os.Chdir("../../")
 	assert.NoError(t, err)

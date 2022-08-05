@@ -1,11 +1,14 @@
 package task
 
 import (
+	"archive/tar"
+	"bytes"
 	"context"
 	fmt "fmt"
 	io "io"
 	"net"
 	"os"
+	"path"
 
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -15,6 +18,7 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
 	"teainspace.com/ame/api/v1alpha1"
+	"teainspace.com/ame/cmd/ame/filescanner"
 	clientset "teainspace.com/ame/generated/clientset/versioned"
 	"teainspace.com/ame/server/storage"
 )
@@ -58,7 +62,7 @@ func TaskServerConfigFromEnv() (TaskServerConfiguration, error) {
 		return TaskServerConfiguration{}, NewMissingEnvVarError(taskServerEnvKeyObjectStorageBucketName)
 	}
 
-	objectStorageEndpoint := os.Getenv(taskServerEnvKeyObjectStorageBucketName)
+	objectStorageEndpoint := os.Getenv(taskServerEnvKeyObjectStorageEndpoint)
 	if objectStorageEndpoint == "" {
 		return TaskServerConfiguration{}, NewMissingEnvVarError(taskServerEnvKeyObjectStorageEndpoint)
 	}
@@ -83,15 +87,20 @@ func TaskServerConfigFromEnv() (TaskServerConfiguration, error) {
 }
 
 func NewTaskServer(ctx context.Context, client clientset.Interface, cfg TaskServerConfiguration) (TaskServer, error) {
-	s3Client, err := storage.CreateS3Client(ctx, cfg.objectStorageEndpoint, "us-west-1", func(opts *s3.Options) {
+	s3Client, err := storage.CreateS3Client(ctx, cfg.objectStorageEndpoint, "us-east-1", func(opts *s3.Options) {
 		opts.EndpointOptions.DisableHTTPS = !cfg.useHTTPSForObjectStorage
 		opts.Credentials = credentials.NewStaticCredentialsProvider(cfg.objectStorageAccessKey, cfg.objectStorageAccessSecret, "")
+		fmt.Println("using credentials", cfg.objectStorageAccessKey, cfg.objectStorageAccessSecret)
 	})
 	if err != nil {
 		return TaskServer{}, err
 	}
 
 	return TaskServer{client, storage.NewS3Storage(*s3Client, cfg.bucketName)}, nil
+}
+
+func (s *TaskServer) InitStorage(ctx context.Context) error {
+	return s.fileStorage.PrepareStorage(ctx)
 }
 
 func Run(ctx context.Context, cfg *rest.Config, port string) (net.Listener, func() error, error) {
@@ -102,10 +111,23 @@ func Run(ctx context.Context, cfg *rest.Config, port string) (net.Listener, func
 
 	var opts []grpc.ServerOption
 	grpcServer := grpc.NewServer(opts...)
-	taskServer, err := NewTaskServer(ctx, clientset.NewForConfigOrDie(cfg), TaskServerConfiguration{})
+	taskServerConfig, err := TaskServerConfigFromEnv()
 	if err != nil {
 		return listener, func() error { return nil }, err
 	}
+
+	fmt.Println("Using config: ", taskServerConfig)
+
+	taskServer, err := NewTaskServer(ctx, clientset.NewForConfigOrDie(cfg), taskServerConfig)
+	if err != nil {
+		return listener, func() error { return nil }, err
+	}
+
+	err = taskServer.InitStorage(ctx)
+	if err != nil {
+		return listener, func() error { return nil }, err
+	}
+
 	RegisterTaskServiceServer(grpcServer, taskServer)
 	RegisterHealthServer(grpcServer, taskServer)
 
@@ -138,7 +160,33 @@ func (s TaskServer) Check(context.Context, *HealthCheckRequest) (*HealthCheckRes
 }
 
 func (s TaskServer) FileUpload(fileUploadServer TaskService_FileUploadServer) error {
-	md, ok := metadata.FromOutgoingContext(fileUploadServer.Context())
+	data := []byte{}
+	for {
+		f, err := fileUploadServer.Recv()
+
+		if err == io.EOF {
+			err = s.uploadReceivedFiles(fileUploadServer.Context(), data)
+			if err != nil {
+				errFromClose := fileUploadServer.SendAndClose(&UploadStatus{Status: UploadStatus_FAILURE})
+				if errFromClose != nil {
+					return errFromClose
+				}
+
+				return err
+			}
+			return nil
+		}
+
+		if err != nil {
+			return err
+		}
+
+		data = append(data, f.Contents...)
+	}
+}
+
+func (s TaskServer) uploadReceivedFiles(ctx context.Context, data []byte) error {
+	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
 		return fmt.Errorf("Could not get metadata from incoming stream.")
 	}
@@ -149,22 +197,11 @@ func (s TaskServer) FileUpload(fileUploadServer TaskService_FileUploadServer) er
 	}
 
 	projectName := vals[0]
+	fmt.Println(projectName)
 
-	data := []byte{}
-	for {
-		f, err := fileUploadServer.Recv()
-
-		if err == io.EOF {
-			s.fileStorage.StoreFile(fileUploadServer.Context(), storage.ProjectFile{Path: projectName, Data: data})
-			return fileUploadServer.SendAndClose(&UploadStatus{Status: UploadStatus_SUCCESS})
-		}
-
-		if err != nil {
-			return err
-		}
-
-		data = append(data, f.Contents...)
-	}
+	return filescanner.ReadFromTar(bytes.NewBuffer(data), func(h *tar.Header, b []byte) error {
+		return s.fileStorage.StoreFile(ctx, storage.ProjectFile{Path: path.Join(projectName, h.Name), Data: b})
+	})
 }
 
 func (s TaskServer) Watch(*HealthCheckRequest, Health_WatchServer) error {

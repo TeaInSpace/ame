@@ -2,7 +2,6 @@ package filescanner
 
 import (
 	"archive/tar"
-	"io"
 	"os"
 	"testing"
 
@@ -44,22 +43,13 @@ func TestTarDirectory(t *testing.T) {
 	assert.NoError(t, err)
 
 	fsInTar := []storage.ProjectFile{}
-	tr := tar.NewReader(buf)
-	for {
-		hdr, err := tr.Next()
-		if err == io.EOF {
-			break
-		}
-		assert.NoError(t, err)
-
-		fileContents, err := io.ReadAll(tr)
-		assert.NoError(t, err)
-
+	err = ReadFromTar(buf, func(hdr *tar.Header, contents []byte) error {
 		fsInTar = append(fsInTar, storage.ProjectFile{
 			Path: hdr.Name,
-			Data: fileContents,
+			Data: contents,
 		})
-	}
+		return nil
+	})
 
 	filterFiles := files[0:2]
 

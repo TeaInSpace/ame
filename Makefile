@@ -153,24 +153,31 @@ goimports:
 kind:
 	go install sigs.k8s.io/kind@v0.14.0 
 
-deploy_local_cluster: create_local_cluster load_local_images install deploy
+deploy_local_cluster: create_local_cluster prepare_local_cluster load_local_images install deploy
 
 create_local_cluster:
 	kind create cluster
+
+prepare_local_cluster:
 	kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.12.1/manifests/namespace.yaml
 	kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.12.1/manifests/metallb.yaml
 	sleep 20
 	kubectl wait pods -n metallb-system -l app=metallb --for condition=Ready --timeout=90s
 	kubectl apply -f ./metallb_config.yaml
-	kubectl apply -f ./config/crd/bases/argo_workflow_crd.yaml
 	kubectl create ns ame-system
 	kubectl apply -n ame-system -f https://raw.githubusercontent.com/argoproj/argo-workflows/master/manifests/quick-start-postgres.yaml
+	kubectl apply -n ame-system -f ./config/minio/deployment.yaml
+	kubectl apply -n ame-system -f ./config/minio/minio-pvc.yaml
+	kubectl apply -n ame-system -f ./config/minio/service.yaml
+
 
 load_local_images:
 	docker buildx build . --target ame-server -t ame-server:local
 	docker buildx build . --target task-controller -t ame-controller:local
 	kind load docker-image ame-server:local
 	kind load docker-image ame-controller:local
+
+refresh_deployment: undeploy prepare_local_cluster  load_local_images deploy
 
 delete_local_cluster:
 	kind delete cluster
