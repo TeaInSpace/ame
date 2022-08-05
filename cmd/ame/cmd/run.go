@@ -40,6 +40,7 @@ func runTask(cmd *cobra.Command, args []string) {
 	taskClient := task.NewTaskServiceClient(conn)
 
 	wd, err := os.Getwd()
+	fmt.Println("wd", wd)
 	if err != nil {
 		log.Fatalln(err)
 	}

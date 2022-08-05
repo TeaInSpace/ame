@@ -17,12 +17,15 @@ import (
 	amev1alpha1 "teainspace.com/ame/api/v1alpha1"
 	clientset "teainspace.com/ame/generated/clientset/versioned"
 	"teainspace.com/ame/generated/clientset/versioned/typed/ame/v1alpha1"
+	"teainspace.com/ame/internal/dirtools"
+	"teainspace.com/ame/server/storage"
 )
 
 const (
 	testNamespace   = "ame-system"
-	testDataDir     = "../"
+	testDataDir     = "test_data"
 	testProjectName = "ame"
+	testBucketName  = "mybucket"
 )
 
 var (
@@ -67,10 +70,26 @@ func TestMain(m *testing.M) {
 
 	testProjectDir = fmt.Sprintf("%s/%s/%s", path, testDataDir, testProjectName)
 
-	os.Exit(m.Run())
+	exitCode := m.Run()
+	err = os.RemoveAll(testDataDir)
+	if err != nil {
+		log.Fatal(err)
+	}
+	os.Exit(exitCode)
 }
 
 func TestRun(t *testing.T) {
+	err := os.Chdir(testProjectDir)
+	assert.NoError(t, err)
+	files := []storage.ProjectFile{
+		{
+			"somefile.txt",
+			[]byte("somecontents"),
+		},
+	}
+
+	dirtools.PopulateDir(testProjectDir, files)
+
 	testTask := amev1alpha1.Task{
 		ObjectMeta: v1.ObjectMeta{
 			Name: testProjectName,
@@ -79,11 +98,12 @@ func TestRun(t *testing.T) {
 		},
 	}
 
-	cmd := exec.Command("go", "run", "./main.go", "run", testTask.Spec.RunCommand)
+	cmd := exec.Command("go", "run", "../../main.go", "run", testTask.Spec.RunCommand)
 	cmd.Dir = testProjectDir
 	out, err := cmd.CombinedOutput()
 	assert.NoError(t, err)
 
+	fmt.Println(string(out))
 	inclusterTask, err := tasks.Get(ctx, testProjectName, v1.GetOptions{})
 	assert.NoError(t, err)
 	assert.Equal(t, testTask.Spec.RunCommand, inclusterTask.Spec.RunCommand)
@@ -92,4 +112,13 @@ func TestRun(t *testing.T) {
 	wfList, err := workflows.List(ctx, v1.ListOptions{})
 	assert.NoError(t, err)
 	assert.Equal(t, testTask.Spec.RunCommand, wfList.Items[0].Spec.Arguments.Parameters[1].Value.String())
+
+	s3Client, err := storage.CreateS3ClientForLocalStorage(ctx)
+	assert.NoError(t, err)
+	storage := storage.NewS3Storage(*s3Client, testBucketName)
+	storedFiles, err := storage.DownloadFiles(ctx, testProjectName)
+	assert.ElementsMatch(t, files, storedFiles)
+
+	err = os.Chdir("../../")
+	assert.NoError(t, err)
 }
