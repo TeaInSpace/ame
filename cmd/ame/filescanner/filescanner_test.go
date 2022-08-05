@@ -23,12 +23,24 @@ func TestTarDirectory(t *testing.T) {
 			testingDir + "/somedir/anotherfile.txt",
 			[]byte("anotherfilescontents"),
 		},
+		{
+			testingDir + "/somedir/filtered.txt",
+			[]byte("filteredcontents"),
+		},
+		{
+			testingDir + "/rootfiltered.txt",
+			[]byte("anotherfilntents"),
+		},
+		{
+			testingDir + "/.hidden",
+			[]byte("hiddenfile"),
+		},
 	}
 
 	err := dirtools.PopulateDir(".", files)
 	assert.NoError(t, err)
 
-	buf, err := TarDirectory(testingDir)
+	buf, err := TarDirectory(testingDir, []string{testingDir + "/somedir/fi*", "*/rootfiltered.txt", "*/.hidden"})
 	assert.NoError(t, err)
 
 	fsInTar := []storage.ProjectFile{}
@@ -49,7 +61,17 @@ func TestTarDirectory(t *testing.T) {
 		})
 	}
 
-	assert.ElementsMatch(t, files, fsInTar)
+	filterFiles := files[0:2]
+
+	assert.ElementsMatch(t, filterFiles, fsInTar)
 	err = os.RemoveAll(testingDir)
 	assert.NoError(t, err)
+}
+
+func TestNegativeValidateDirEntry(t *testing.T) {
+	filePath := "d_ir/.hidden"
+	filters := []string{"*/.hidden"}
+	valid, err := validateDirEntry(filePath, filters)
+	assert.NoError(t, err)
+	assert.False(t, valid)
 }

@@ -3,17 +3,54 @@ package filescanner
 import (
 	"archive/tar"
 	"bytes"
+	"fmt"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 )
 
-func TarDirectory(dir string) (*bytes.Buffer, error) {
+func isFiltered(input string, filters []string) (bool, error) {
+	for _, filter := range filters {
+		matched, err := filepath.Match(filter, input)
+		if err != nil {
+			return false, err
+		}
+
+		if matched {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
+func validateDirEntry(filePath string, filers []string) (bool, error) {
+	filtered, err := isFiltered(filePath, filers)
+	if err != nil {
+		return false, err
+	}
+
+	fmt.Println(filePath, filtered)
+
+	return !filtered, nil
+}
+
+func TarDirectory(dir string, filters []string) (*bytes.Buffer, error) {
 	var buf bytes.Buffer
 	tw := tar.NewWriter(&buf)
-	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
-		if !d.IsDir() {
-			writeToTar(tw, path, d)
+	err := filepath.WalkDir(dir, func(walkPath string, d fs.DirEntry, err error) error {
+		if d.IsDir() {
+			return nil
+		}
+
+		valid, err := validateDirEntry(path.Join(walkPath), filters)
+		if err != nil {
+			return err
+		}
+
+		if valid {
+			writeToTar(tw, walkPath, d)
 		}
 
 		return nil
