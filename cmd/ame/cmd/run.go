@@ -3,6 +3,7 @@ package commands
 import (
 	"context"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -10,8 +11,10 @@ import (
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/metadata"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"teainspace.com/ame/api/v1alpha1"
+	"teainspace.com/ame/cmd/ame/filescanner"
 	task "teainspace.com/ame/server/cmd"
 )
 
@@ -25,6 +28,8 @@ func attachRun(rootCmd *cobra.Command) *cobra.Command {
 
 	return rootCmd
 }
+
+const chunkSize = 64 * 1024
 
 func runTask(cmd *cobra.Command, args []string) {
 	ctx := context.Background()
@@ -43,9 +48,51 @@ func runTask(cmd *cobra.Command, args []string) {
 	if err != nil {
 		log.Fatalln(err)
 	}
-
 	currentDir := filepath.Base(wd)
-	_, err = taskClient.CreateTask(ctx, &task.TaskCreateRequest{Namespace: "ame-system", Task: &v1alpha1.Task{ObjectMeta: metav1.ObjectMeta{Name: currentDir}, Spec: v1alpha1.TaskSpec{RunCommand: args[0]}}})
+
+	t, err := filescanner.TarDirectory("./", []string{})
+	if err != nil {
+		log.Fatalln("Could not tar directory", err)
+	}
+
+	grpcCtx := metadata.AppendToOutgoingContext(ctx, task.MdKeyProjectName, currentDir)
+	uploadClient, err := taskClient.FileUpload(grpcCtx)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	for {
+		nextChunk := make([]byte, chunkSize)
+		_, err := t.Read(nextChunk)
+		if err == io.EOF {
+			_, err := uploadClient.CloseAndRecv()
+			if err != nil && err != io.EOF {
+				log.Fatalln(err)
+			}
+
+			break
+		}
+
+		if err != nil {
+			log.Fatalln(err)
+		}
+
+		uploadClient.Send(&task.Chunk{
+			Contents: nextChunk,
+		})
+	}
+
+	_, err = taskClient.CreateTask(ctx,
+		&task.TaskCreateRequest{
+			Namespace: "ame-system",
+			Task: &v1alpha1.Task{
+				ObjectMeta: metav1.ObjectMeta{Name: currentDir},
+				Spec: v1alpha1.TaskSpec{
+					RunCommand: args[0],
+					ProjectId:  currentDir,
+				},
+			},
+		})
 	if err != nil {
 		panic(err)
 	}

@@ -2,94 +2,222 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"os"
 	"os/exec"
+	"path"
+	"strings"
 	"testing"
 
 	argo "github.com/argoproj/argo-workflows/v3/pkg/client/clientset/versioned/typed/workflow/v1alpha1"
 
-	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 
 	amev1alpha1 "teainspace.com/ame/api/v1alpha1"
-	clientset "teainspace.com/ame/generated/clientset/versioned"
+	"teainspace.com/ame/controllers"
 	"teainspace.com/ame/generated/clientset/versioned/typed/ame/v1alpha1"
+	"teainspace.com/ame/internal/dirtools"
+	"teainspace.com/ame/server/storage"
 )
 
 const (
-	testNamespace   = "ame-system"
-	testDataDir     = "../"
-	testProjectName = "ame"
+	testNamespace  = "ame-system"
+	testBucketName = "ameprojectstorage"
+	cliName        = "ame"
 )
 
 var (
-	tasks          v1alpha1.TaskInterface
-	workflows      argo.WorkflowInterface
-	ctx            context.Context
-	testProjectDir string
+	tasks     v1alpha1.TaskInterface
+	workflows argo.WorkflowInterface
+	ctx       context.Context
+	cliCmd    exec.Cmd
 )
 
-func TestMain(m *testing.M) {
-	ctx = context.Background()
+func kubeClientFromConfig() (*rest.Config, error) {
 	configLoadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
 	configOverrides := &clientcmd.ConfigOverrides{}
 	kubeConfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(configLoadingRules, configOverrides)
 	config, err := kubeConfig.ClientConfig()
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
-	argoClientSent := argo.NewForConfigOrDie(config)
-	workflows = argoClientSent.Workflows(testNamespace)
+	return config, nil
+}
 
-	cliSet := clientset.NewForConfigOrDie(config)
-	tasks = cliSet.AmeV1alpha1().Tasks(testNamespace)
+func workflowsClientFromConfig(cfg *rest.Config, ns string) argo.WorkflowInterface {
+	return argo.NewForConfigOrDie(cfg).Workflows(ns)
+}
 
+func tasksClientFromConfig(cfg *rest.Config, ns string) v1alpha1.TaskInterface {
+	return v1alpha1.NewForConfigOrDie(cfg).Tasks(ns)
+}
+
+func clearTasksInCluster() error {
 	taskList, err := tasks.List(ctx, v1.ListOptions{})
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	for _, ta := range taskList.Items {
 		err := tasks.Delete(ctx, ta.GetName(), v1.DeleteOptions{})
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
 	}
 
-	path, err := os.Getwd()
+	return nil
+}
+
+func TestMain(m *testing.M) {
+	ctx = context.Background()
+	kubeCfg, err := kubeClientFromConfig()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	testProjectDir = fmt.Sprintf("%s/%s/%s", path, testDataDir, testProjectName)
+	workflows = workflowsClientFromConfig(kubeCfg, testNamespace)
+	tasks = tasksClientFromConfig(kubeCfg, testNamespace)
 
-	os.Exit(m.Run())
+	err = clearTasksInCluster()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	cmd := exec.Command("go", "build", ".")
+	err = cmd.Run()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	wd, err := os.Getwd()
+	if err != nil {
+		log.Fatal(err)
+	}
+	cliCmd = *exec.Command(path.Join(wd, cliName))
+
+	exitCode := m.Run()
+	// Ensure that the CLI binary is cleanedup.
+	os.Remove(cliName)
+	os.Exit(exitCode)
+}
+
+func setupStoreage() (*storage.Storage, error) {
+	s3Client, err := storage.CreateS3ClientForLocalStorage(ctx)
+	if err != nil {
+		return nil, err
+	}
+	store := storage.NewS3Storage(*s3Client, testBucketName)
+
+	// If clear storage fails it does not matter too much
+	// as that means the bucket was not present to begin with.
+	store.ClearStorage(ctx)
+
+	err = store.PrepareStorage(ctx)
+	if err != nil {
+		return &store, err
+	}
+
+	return &store, nil
 }
 
 func TestRun(t *testing.T) {
-	testTask := amev1alpha1.Task{
-		ObjectMeta: v1.ObjectMeta{
-			Name: testProjectName,
-		}, Spec: amev1alpha1.TaskSpec{
-			RunCommand: "python test.py",
+	storePtr, err := setupStoreage()
+	if err != nil {
+		t.Error(err)
+	}
+
+	store := *storePtr
+
+	files := []storage.ProjectFile{
+		{
+			Path: "somefile.txt",
+			Data: []byte("somecontents"),
 		},
 	}
 
-	cmd := exec.Command("go", "run", "./main.go", "run", testTask.Spec.RunCommand)
-	cmd.Dir = testProjectDir
-	out, err := cmd.CombinedOutput()
-	assert.NoError(t, err)
+	testDir, err := dirtools.MkAndPopulateDirTemp("myproject", files)
+	if err != nil {
+		t.Error(err)
+	}
+	// The CLI defaults to using the folder name as the project name.
+	// Note that the input to MkAndPopulateDirTemp is not the final
+	// directory name but only used as prefix for a random name.
+	// Hence why exctracting the directory name is necessary.
+	projectName := path.Base(testDir)
 
-	inclusterTask, err := tasks.Get(ctx, testProjectName, v1.GetOptions{})
-	assert.NoError(t, err)
-	assert.Equal(t, testTask.Spec.RunCommand, inclusterTask.Spec.RunCommand)
-	assert.Contains(t, string(out), "Your task will be executed!")
+	testTask := amev1alpha1.Task{
+		ObjectMeta: v1.ObjectMeta{
+			Name: projectName,
+		}, Spec: amev1alpha1.TaskSpec{
+			RunCommand: "python test.py",
+			ProjectId:  projectName,
+		},
+	}
 
+	cliCmd.Args = []string{"", "run", testTask.Spec.RunCommand}
+	cliCmd.Dir = testDir // The CLI expects to be executed from the project directory.
+	out, err := cliCmd.CombinedOutput()
+	if err != nil {
+		t.Error(err)
+	}
+
+	if strings.Contains(string(out), "Error") {
+		t.Errorf("Got error in CLI output: %s", string(out))
+	}
+
+	// Validate the specification of the task generated by the CLI.
+	inclusterTask, err := tasks.Get(ctx, projectName, v1.GetOptions{})
+	if err != nil {
+		t.Error(err)
+	}
+
+	if testTask.Spec.RunCommand != inclusterTask.Spec.RunCommand {
+		t.Errorf("Run created a task with Spec.RunCommand=%s , but the cli received the run command %s",
+			inclusterTask.Spec.RunCommand,
+			testTask.Spec.RunCommand)
+	}
+
+	// Validate that a Workflow was actually created based on the task.
 	wfList, err := workflows.List(ctx, v1.ListOptions{})
-	assert.NoError(t, err)
-	assert.Equal(t, testTask.Spec.RunCommand, wfList.Items[0].Spec.Arguments.Parameters[1].Value.String())
+	if err != nil {
+		t.Error(err)
+	}
+
+	if len(wfList.Items) != 1 {
+		t.Errorf("Got %d workflows, expected %d", len(wfList.Items), 1)
+	}
+
+	wf := wfList.Items[0]
+	wfRunCmd := controllers.ExtractRunCommand(&wf)
+	wfProjectID := controllers.ExtractProjectID(&wf)
+
+	if testTask.Spec.RunCommand != wfRunCmd {
+		t.Errorf("Workflow has run command: %s, but expected: %s",
+			wfRunCmd,
+			testTask.Spec.RunCommand)
+	}
+
+	if testTask.Spec.ProjectId != wfProjectID {
+		t.Errorf("Workflow has project ID: %s, but expected: %s",
+			wfProjectID,
+			testTask.Spec.ProjectId)
+	}
+
+	storedFiles, err := store.DownloadFiles(ctx, projectName)
+	if err != nil {
+		t.Error(err)
+	}
+
+	diffs := dirtools.DiffFiles(files, storedFiles)
+	if len(diffs) > 0 {
+		t.Errorf("The CLI uploaded %+v, expected %+v for project %s, diffs: %v\n stdout: %s", storedFiles, files, projectName, diffs, out)
+	}
+
+	err = store.ClearStorage(ctx)
+	if err != nil {
+		t.Error(err)
+	}
 }

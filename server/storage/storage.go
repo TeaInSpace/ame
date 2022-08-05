@@ -3,17 +3,22 @@ package storage
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io/ioutil"
+	"path"
+	"strings"
 
 	"golang.org/x/sync/errgroup"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 )
 
 type Storage interface {
+	StoreFileInProject(ctx context.Context, project string, file ProjectFile) error
 	StoreFile(ctx context.Context, file ProjectFile) error
 	DownloadFiles(ctx context.Context, path string) ([]ProjectFile, error)
 	PrepareStorage(ctx context.Context) error
@@ -86,14 +91,21 @@ func (s *s3Storage) ClearStorage(ctx context.Context) error {
 	return nil
 }
 
+func (s *s3Storage) StoreFileInProject(ctx context.Context, project string, file ProjectFile) error {
+	return s.StoreFile(ctx, ProjectFile{
+		Path: path.Join(project, file.Path),
+		Data: file.Data,
+	})
+}
+
 func (s *s3Storage) StoreFile(ctx context.Context, projectFile ProjectFile) error {
-	_, err := s.s3Client.PutObject(ctx, &s3.PutObjectInput{
+	output, err := s.s3Client.PutObject(ctx, &s3.PutObjectInput{
 		Bucket: aws.String(s.bucketName),
 		Key:    aws.String(projectFile.Path),
 		Body:   bytes.NewReader(projectFile.Data),
 	})
 	if err != nil {
-		return err
+		return fmt.Errorf("Got err: %s from S3 client with output %+v", err, output)
 	}
 
 	return nil
@@ -156,11 +168,15 @@ func (s *s3Storage) DownloadFiles(ctx context.Context, projectDir string) ([]Pro
 		// variables from the for loop iterator.
 		filePath := c
 		goRoutineIndex := i
+
 		eGroup.Go(func() error {
 			output, err := s.s3Client.GetObject(ctx, &s3.GetObjectInput{
 				Bucket: aws.String(s.bucketName),
 				Key:    aws.String(filePath),
 			})
+			if err != nil {
+				return err
+			}
 
 			defer output.Body.Close()
 
@@ -169,7 +185,9 @@ func (s *s3Storage) DownloadFiles(ctx context.Context, projectDir string) ([]Pro
 				return err
 			}
 
-			files[goRoutineIndex] = ProjectFile{filePath, data}
+			relativePath := strings.Replace(filePath, projectDir+"/", "", 1)
+
+			files[goRoutineIndex] = ProjectFile{relativePath, data}
 			return nil
 		})
 	}
@@ -183,8 +201,6 @@ func (s *s3Storage) DownloadFiles(ctx context.Context, projectDir string) ([]Pro
 }
 
 func CreateS3Client(ctx context.Context, endpoint string, region string, overrider ...func(*s3.Options)) (*s3.Client, error) {
-	region = "us-west-1"
-
 	// We need to ensure that all requests resolve to the endpoint where minio is running.
 	// This does not match the normal AWS endpoints therefore we override with a custom
 	// endpoint resovler function.
@@ -215,5 +231,6 @@ func CreateS3Client(ctx context.Context, endpoint string, region string, overrid
 func CreateS3ClientForLocalStorage(ctx context.Context) (*s3.Client, error) {
 	return CreateS3Client(ctx, "http://127.0.0.1:9000", "", func(opts *s3.Options) {
 		opts.EndpointOptions.DisableHTTPS = true
+		opts.Credentials = credentials.NewStaticCredentialsProvider("minio", "minio123", "")
 	})
 }

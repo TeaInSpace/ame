@@ -21,7 +21,9 @@ jobs:
           make kind
           make deploy_local_cluster
       - name: Validate commit
-        run: make test
+        run: |
+          kubectl port-forward deployment/minio-deployment 9000 -n ame-system > /dev/null &
+          make test
       - name: Build
         run: |
           echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u USERNAME --password-stdin
