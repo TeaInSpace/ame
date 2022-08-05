@@ -51,6 +51,20 @@ spec:
               configMapKeyRef:
                 name: ame-server-configmap
                 key: server_port
+          - name: TASK_SERVER_OBJECT_STORAGE_BUCKET_NAME
+            valueFrom:
+              configMapKeyRef:
+                name: ame-server-configmap
+                key: minio_bucket_name 
+          - name: TASK_SERVER_OBJECT_STORAGE_ENDPOINT
+            valueFrom:
+              configMapKeyRef:
+                name: ame-server-configmap
+                key: minio_endpoint
+          - name: TASK_SERVER_OBJECT_STORAGE_ENDPOINT_ACCESS_KEY
+            value: minio
+          - name: TASK_SERVER_OBJECT_STORAGE_ENDPOINT_ACCESS_SECRET
+            value: minio123
       serviceAccountName: controller-manager
       terminationGracePeriodSeconds: 10
 ---
@@ -72,3 +86,5 @@ metadata:
   name: ame-server-configmap
 data:
   server_port: "3342"
+  minio_endpoint: "http://ame-minio:9000"
+  minio_bucket_name: "ameprojectstorage"
