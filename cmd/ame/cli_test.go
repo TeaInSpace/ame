@@ -83,8 +83,8 @@ func TestRun(t *testing.T) {
 	assert.NoError(t, err)
 	files := []storage.ProjectFile{
 		{
-			"somefile.txt",
-			[]byte("somecontents"),
+			Path: "somefile.txt",
+			Data: []byte("somecontents"),
 		},
 	}
 

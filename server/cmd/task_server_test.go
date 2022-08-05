@@ -87,7 +87,7 @@ func TestFileUpload(t *testing.T) {
 	projectName := "myproject"
 	ctx := context.Background()
 
-	ctx = metadata.AppendToOutgoingContext(ctx, mdKeyProjectName, projectName)
+	ctx = metadata.AppendToOutgoingContext(ctx, MdKeyProjectName, projectName)
 	taskServer, _, err := GenerateTaskServer(ctx, amev1alpha1.Task{})
 	assert.NoError(t, err)
 

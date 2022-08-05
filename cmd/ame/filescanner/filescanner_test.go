@@ -16,24 +16,24 @@ const testingDir = "filescanner_test_dir"
 func TestTarDirectory(t *testing.T) {
 	files := []storage.ProjectFile{
 		{
-			testingDir + "/somefile.txt",
-			[]byte("somecontents"),
+			Path: testingDir + "/somefile.txt",
+			Data: []byte("somecontents"),
 		},
 		{
-			testingDir + "/somedir/anotherfile.txt",
-			[]byte("anotherfilescontents"),
+			Path: testingDir + "/somedir/anotherfile.txt",
+			Data: []byte("anotherfilescontents"),
 		},
 		{
-			testingDir + "/somedir/filtered.txt",
-			[]byte("filteredcontents"),
+			Path: testingDir + "/somedir/filtered.txt",
+			Data: []byte("filteredcontents"),
 		},
 		{
-			testingDir + "/rootfiltered.txt",
-			[]byte("anotherfilntents"),
+			Path: testingDir + "/rootfiltered.txt",
+			Data: []byte("anotherfilntents"),
 		},
 		{
-			testingDir + "/.hidden",
-			[]byte("hiddenfile"),
+			Path: testingDir + "/.hidden",
+			Data: []byte("hiddenfile"),
 		},
 	}
 

@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	mdKeyProjectName                          = "project-name"
+	MdKeyProjectName                          = "project-name"
 	taskServerEnvKeyObjectStorageBucketName   = "TASK_SERVER_OBJECT_STORAGE_BUCKET_NAME"
 	taskServerEnvKeyObjectStorageEndpoint     = "TASK_SERVER_OBJECT_STORAGE_ENDPOINT"
 	taskServerEnvKeyObjectStorageAccessKey    = "TASK_SERVER_OBJECT_STORAGE_ENDPOINT_ACCESS_KEY"
@@ -143,7 +143,7 @@ func (s TaskServer) FileUpload(fileUploadServer TaskService_FileUploadServer) er
 		return fmt.Errorf("Could not get metadata from incoming stream.")
 	}
 
-	vals := md.Get(mdKeyProjectName)
+	vals := md.Get(MdKeyProjectName)
 	if len(vals) != 1 {
 		return fmt.Errorf("Expect to get one project name in metdata instead got %s", vals)
 	}
