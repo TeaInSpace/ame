@@ -74,13 +74,24 @@ func TestMain(m *testing.M) {
 	exitCode := m.Run()
 	err = os.RemoveAll(testDataDir)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 	}
 	os.Exit(exitCode)
 }
 
 func TestRun(t *testing.T) {
-	err := os.Chdir(testProjectDir)
+	s3Client, err := storage.CreateS3ClientForLocalStorage(ctx)
+	assert.NoError(t, err)
+	store := storage.NewS3Storage(*s3Client, testBucketName)
+
+	err = store.ClearStorage(ctx)
+	assert.NoError(t, err)
+	err = store.PrepareStorage(ctx)
+	assert.NoError(t, err)
+
+	err = os.MkdirAll(testProjectDir, 0o755)
+	assert.NoError(t, err)
+	err = os.Chdir(testProjectDir)
 	assert.NoError(t, err)
 	files := []storage.ProjectFile{
 		{
@@ -114,9 +125,6 @@ func TestRun(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, testTask.Spec.RunCommand, wfList.Items[0].Spec.Arguments.Parameters[1].Value.String())
 
-	s3Client, err := storage.CreateS3ClientForLocalStorage(ctx)
-	assert.NoError(t, err)
-	store := storage.NewS3Storage(*s3Client, testBucketName)
 	storedFiles, err := store.DownloadFiles(ctx, testProjectName)
 	assert.NoError(t, err)
 
@@ -132,5 +140,7 @@ func TestRun(t *testing.T) {
 	assert.ElementsMatch(t, files, trimmedStored)
 
 	err = os.Chdir("../../")
+	assert.NoError(t, err)
+	err = store.ClearStorage(ctx)
 	assert.NoError(t, err)
 }
