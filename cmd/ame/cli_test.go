@@ -115,7 +115,6 @@ func TestRun(t *testing.T) {
 	out, err := cmd.CombinedOutput()
 	assert.NoError(t, err)
 
-	fmt.Println(string(out))
 	inclusterTask, err := tasks.Get(ctx, testProjectName, v1.GetOptions{})
 	assert.NoError(t, err)
 	assert.Equal(t, testTask.Spec.RunCommand, inclusterTask.Spec.RunCommand)

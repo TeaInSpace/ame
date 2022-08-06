@@ -196,11 +196,8 @@ func (s TaskServer) uploadReceivedFiles(ctx context.Context, data []byte) error 
 		return fmt.Errorf("Expect to get one project name in metdata instead got %s", vals)
 	}
 
-	projectName := vals[0]
-	fmt.Println(projectName)
-
-	return filescanner.ReadFromTar(bytes.NewBuffer(data), func(h *tar.Header, b []byte) error {
-		return s.fileStorage.StoreFile(ctx, storage.ProjectFile{Path: path.Join(projectName, h.Name), Data: b})
+	return filescanner.NewTarProjectPacker(vals[0]).WalkProject(bytes.NewBuffer(data), func(p storage.ProjectFile) error {
+		return s.fileStorage.StoreFile(ctx, p)
 	})
 }
 
