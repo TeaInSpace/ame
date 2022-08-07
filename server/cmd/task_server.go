@@ -1,14 +1,12 @@
 package task
 
 import (
-	"archive/tar"
 	"bytes"
 	"context"
 	fmt "fmt"
 	io "io"
 	"net"
 	"os"
-	"path"
 
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
