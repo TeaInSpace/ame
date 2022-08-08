@@ -1,7 +1,6 @@
 package dirtools
 
 import (
-	"bytes"
 	"fmt"
 	"io/fs"
 	"os"
@@ -36,53 +35,6 @@ var testingFiles = []storage.ProjectFile{
 	},
 }
 
-// diffFiles validates that the files in actualFiles matches the files in expectedFiles.
-func diffFiles(expectedFiles []storage.ProjectFile, actualFiles []storage.ProjectFile) []string {
-	diffs := []string{}
-	diffFile := func(fExpected storage.ProjectFile, fActual storage.ProjectFile) (bool, string) {
-		if fExpected.Path == fActual.Path {
-			if !bytes.Equal(fExpected.Data, fActual.Data) {
-				return true, fmt.Sprintf("file %s has mismatching data expected: %s actual: %s", fExpected.Path, string(fExpected.Data), string(fActual.Data))
-			}
-
-			return true, ""
-		}
-
-		return false, ""
-	}
-
-	for _, fExpected := range expectedFiles {
-		foundMatch := false
-		for _, fActual := range actualFiles {
-			pathMatch, diff := diffFile(fExpected, fActual)
-			if diff != "" {
-				diffs = append(diffs, diff)
-			}
-
-			// Here we make sure that if we have previously found a match
-			// foundMatch is not overwritten.
-			// Normally we would exit early when a match is found, but we
-			// want to ensure that all errors are caught and therefore we
-			// do no exit early.
-			foundMatch = foundMatch || pathMatch && diff == ""
-		}
-
-		if !foundMatch {
-			diffs = append(diffs, fmt.Sprintf("Missing file: %s", fExpected.Path))
-		}
-	}
-
-	if len(expectedFiles) != len(actualFiles) {
-		diffs = append(diffs, fmt.Sprintf("Number of actual files %d does not match the expected amount %d", len(actualFiles), len(expectedFiles)))
-	}
-
-	return diffs
-}
-
-func removeParentDir(path string, prefix string) string {
-	return strings.Replace(path, prefix+"/", "", 1)
-}
-
 // testDirMatchesFiles checks if the supplied directory contains the files in the
 // testingFiles list and no other files. It ignores empty directories.
 func testDirMatchesFiles(dir string) error {
@@ -100,14 +52,14 @@ func testDirMatchesFiles(dir string) error {
 		// The relative filepath is stored as this makes it possible to compare
 		// with the list of testFiles.
 		filesCreated = append(filesCreated, storage.ProjectFile{
-			Path: removeParentDir(entryPath, dir),
+			Path: RemoveParentDir(entryPath, dir),
 			Data: data,
 		})
 
 		return nil
 	})
 
-	diffs := diffFiles(testingFiles, filesCreated)
+	diffs := DiffFiles(testingFiles, filesCreated)
 	if len(diffs) > 0 {
 		return fmt.Errorf("%+v\n\n expected: %+v\n\n%v", filesCreated, testingFiles, diffs)
 	}

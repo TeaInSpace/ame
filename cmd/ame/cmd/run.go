@@ -66,8 +66,8 @@ func runTask(cmd *cobra.Command, args []string) {
 		_, err := t.Read(nextChunk)
 		if err == io.EOF {
 			status, err := uploadClient.CloseAndRecv()
-			if err != nil {
-				log.Println(err)
+			if err != nil && err != io.EOF {
+				log.Fatalln(err)
 			}
 
 			fmt.Println(status)

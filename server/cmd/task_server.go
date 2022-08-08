@@ -166,10 +166,16 @@ func (s TaskServer) FileUpload(fileUploadServer TaskService_FileUploadServer) er
 			err = s.uploadReceivedFiles(fileUploadServer.Context(), data)
 			if err != nil {
 				errFromClose := fileUploadServer.SendAndClose(&UploadStatus{Status: UploadStatus_FAILURE})
+
 				if errFromClose != nil {
 					return errFromClose
 				}
 
+				return err
+			}
+
+			err = fileUploadServer.SendAndClose(&UploadStatus{Status: UploadStatus_SUCCESS})
+			if err != nil {
 				return err
 			}
 			return nil

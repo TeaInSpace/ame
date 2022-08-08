@@ -10,37 +10,39 @@ import (
 	"teainspace.com/ame/server/storage"
 )
 
-const testingDir = "filescanner_test_dir"
-
 func TestTarDirectory(t *testing.T) {
 	files := []storage.ProjectFile{
 		{
-			Path: testingDir + "/somefile.txt",
+			Path: "somefile.txt",
 			Data: []byte("somecontents"),
 		},
 		{
-			Path: testingDir + "/somedir/anotherfile.txt",
+			Path: "somedir/anotherfile.txt",
 			Data: []byte("anotherfilescontents"),
 		},
 		{
-			Path: testingDir + "/somedir/filtered.txt",
+			Path: "somedir/filtered.txt",
 			Data: []byte("filteredcontents"),
 		},
 		{
-			Path: testingDir + "/rootfiltered.txt",
+			Path: "rootfiltered.txt",
 			Data: []byte("anotherfilntents"),
 		},
 		{
-			Path: testingDir + "/.hidden",
+			Path: ".hidden",
 			Data: []byte("hiddenfile"),
 		},
 	}
 
-	err := dirtools.PopulateDir(".", files)
-	assert.NoError(t, err)
+	testingDir, err := dirtools.MkAndPopulateDirTemp("mytempdir", files)
+	if err != nil {
+		t.Error(err)
+	}
 
-	buf, err := TarDirectory(testingDir, []string{testingDir + "/somedir/fi*", "*/rootfiltered.txt", "*/.hidden"})
-	assert.NoError(t, err)
+	buf, err := TarDirectory(testingDir, []string{"somedir/fi*", "rootfiltered.txt", ".hidden"})
+	if err != nil {
+		t.Error(err)
+	}
 
 	fsInTar := []storage.ProjectFile{}
 	err = ReadFromTar(buf, func(hdr *tar.Header, contents []byte) error {

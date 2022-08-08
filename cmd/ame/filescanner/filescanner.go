@@ -3,12 +3,11 @@ package filescanner
 import (
 	"archive/tar"
 	"bytes"
-	"fmt"
 	"io"
 	"io/fs"
 	"os"
-	"path"
 	"path/filepath"
+	"strings"
 )
 
 func isFiltered(input string, filters []string) (bool, error) {
@@ -32,27 +31,25 @@ func validateDirEntry(filePath string, filers []string) (bool, error) {
 		return false, err
 	}
 
-	fmt.Println(filePath, filtered)
-
 	return !filtered, nil
 }
 
 func TarDirectory(dir string, filters []string) (*bytes.Buffer, error) {
 	var buf bytes.Buffer
 	tw := tar.NewWriter(&buf)
-	err := filepath.WalkDir(dir, func(walkPath string, d fs.DirEntry, err error) error {
-		fmt.Println(walkPath, dir, d)
+	err := filepath.WalkDir(dir, func(walkPath string, d fs.DirEntry, _ error) error {
 		if d == nil || d.IsDir() {
 			return nil
 		}
 
-		valid, err := validateDirEntry(path.Join(walkPath), filters)
+		relativePath := strings.Replace(walkPath, dir+"/", "", 1)
+		valid, err := validateDirEntry(relativePath, filters)
 		if err != nil {
 			return err
 		}
 
 		if valid {
-			writeToTar(tw, walkPath, d)
+			writeToTar(tw, walkPath, relativePath, d)
 		}
 
 		return nil
@@ -69,13 +66,13 @@ func TarDirectory(dir string, filters []string) (*bytes.Buffer, error) {
 	return &buf, err
 }
 
-func writeToTar(tw *tar.Writer, path string, d fs.DirEntry) error {
+func writeToTar(tw *tar.Writer, path string, relativePath string, d fs.DirEntry) error {
 	fInfo, err := d.Info()
 	if err != nil {
 		return err
 	}
 	hdr := tar.Header{
-		Name: path,
+		Name: relativePath,
 		Mode: int64(fInfo.Mode()),
 		Size: fInfo.Size(),
 	}

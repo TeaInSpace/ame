@@ -3,7 +3,6 @@ package task
 import (
 	context "context"
 	io "io"
-	math "math"
 	"os"
 	"testing"
 	"time"
@@ -14,7 +13,10 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	amev1alpha1 "teainspace.com/ame/api/v1alpha1"
+	"teainspace.com/ame/cmd/ame/filescanner"
 	"teainspace.com/ame/generated/clientset/versioned/fake"
+	"teainspace.com/ame/internal/dirtools"
+	"teainspace.com/ame/server/storage"
 )
 
 const (
@@ -86,8 +88,7 @@ func TestGetTask(t *testing.T) {
 func TestFileUpload(t *testing.T) {
 	projectName := "myproject"
 	ctx := context.Background()
-
-	ctx = metadata.AppendToOutgoingContext(ctx, MdKeyProjectName, projectName)
+	ctx = metadata.NewIncomingContext(ctx, metadata.MD{MdKeyProjectName: []string{projectName}})
 	taskServer, _, err := GenerateTaskServer(ctx, amev1alpha1.Task{})
 	assert.NoError(t, err)
 
@@ -99,32 +100,51 @@ func TestFileUpload(t *testing.T) {
 	mockStream := NewMockFileUploadStream(ctx, fileChan, &uploadSt)
 	go func() {
 		err := taskServer.FileUpload(&mockStream)
-		assert.NoError(t, err)
+		if err != nil && err != io.EOF {
+			t.Error(err)
+		}
 	}()
 
-	fileData := "this is my data it will be split into multiple chunks"
-	dataBytes := []byte(fileData)
-	chunks := [][]byte{}
-	nChunks := 10
-	chunkLength := len(dataBytes) / nChunks
-	for i := 0; i < nChunks+1; i++ {
-		chunks = append(chunks, dataBytes[i*chunkLength:int(math.Min(float64((i*chunkLength)+chunkLength), float64(len(dataBytes))))])
+	files := []storage.ProjectFile{
+		{
+			Path: "myfile",
+			Data: []byte("this is my data it will be split into multiple chunks"),
+		},
 	}
 
-	for _, c := range chunks {
-		fileChan <- c
+	tempDir, err := dirtools.MkAndPopulateDirTemp("mydir", files)
+	data, err := filescanner.TarDirectory(tempDir, []string{})
+
+	nChunks := 0
+	for {
+		d := make([]byte, 5)
+		_, err := data.Read(d)
+		if err == io.EOF {
+			break
+		}
+		nChunks += 1
+		fileChan <- d
+	}
+
+	if nChunks <= 2 {
+		// To properly test the file uploades we need to send
+		// multiple chunks.
+		t.Errorf("Should send >2 chunks, but sent %d", nChunks)
 	}
 
 	close(fileChan)
 	assert.Eventually(t, func() bool {
 		return uploadSt.GetStatus() == UploadStatus_SUCCESS
 	}, time.Second, 10*time.Millisecond)
-	files, err := taskServer.fileStorage.DownloadFiles(ctx, projectName)
-	assert.NoError(t, err)
-	assert.Len(t, files, 1)
-	assert.Equal(t, string(dataBytes), string(files[0].Data))
-	err = taskServer.fileStorage.ClearStorage(ctx)
-	assert.NoError(t, err)
+	uploadedFiles, err := taskServer.fileStorage.DownloadFiles(ctx, projectName)
+	if err != nil {
+		t.Error(err)
+	}
+
+	fileDiffs := dirtools.DiffFiles(files, uploadedFiles)
+	if len(fileDiffs) > 0 {
+		t.Errorf("Uploaded %v, expected %v, diffs: %v", uploadedFiles, files, fileDiffs)
+	}
 }
 
 type MockFileUploadStream struct {

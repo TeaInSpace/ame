@@ -3,7 +3,9 @@ package storage
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io/ioutil"
+	"strings"
 
 	"golang.org/x/sync/errgroup"
 
@@ -88,13 +90,13 @@ func (s *s3Storage) ClearStorage(ctx context.Context) error {
 }
 
 func (s *s3Storage) StoreFile(ctx context.Context, projectFile ProjectFile) error {
-	_, err := s.s3Client.PutObject(ctx, &s3.PutObjectInput{
+	output, err := s.s3Client.PutObject(ctx, &s3.PutObjectInput{
 		Bucket: aws.String(s.bucketName),
 		Key:    aws.String(projectFile.Path),
 		Body:   bytes.NewReader(projectFile.Data),
 	})
 	if err != nil {
-		return err
+		return fmt.Errorf("Got err: %s from S3 client with output %+v", err, output)
 	}
 
 	return nil
@@ -157,11 +159,15 @@ func (s *s3Storage) DownloadFiles(ctx context.Context, projectDir string) ([]Pro
 		// variables from the for loop iterator.
 		filePath := c
 		goRoutineIndex := i
+
 		eGroup.Go(func() error {
 			output, err := s.s3Client.GetObject(ctx, &s3.GetObjectInput{
 				Bucket: aws.String(s.bucketName),
 				Key:    aws.String(filePath),
 			})
+			if err != nil {
+				return err
+			}
 
 			defer output.Body.Close()
 
@@ -169,8 +175,9 @@ func (s *s3Storage) DownloadFiles(ctx context.Context, projectDir string) ([]Pro
 			if err != nil {
 				return err
 			}
+			parentDirSplit := strings.Split(filePath, projectDir+"/")
 
-			files[goRoutineIndex] = ProjectFile{filePath, data}
+			files[goRoutineIndex] = ProjectFile{parentDirSplit[len(parentDirSplit)-1], data}
 			return nil
 		})
 	}
