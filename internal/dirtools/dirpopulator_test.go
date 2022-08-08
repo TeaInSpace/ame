@@ -2,7 +2,7 @@ package dirtools
 
 import (
 	"bytes"
-	"errors"
+	"fmt"
 	"io/fs"
 	"os"
 	"path"
@@ -13,7 +13,7 @@ import (
 	"teainspace.com/ame/server/storage"
 )
 
-var files = []storage.ProjectFile{
+var testingFiles = []storage.ProjectFile{
 	{
 		Path: "somefile",
 		Data: []byte("somedata"),
@@ -36,86 +36,105 @@ var files = []storage.ProjectFile{
 	},
 }
 
-func TestPopulateDir(t *testing.T) {
-	tempDir, err := os.MkdirTemp("", "mydir")
-	if err != nil {
-		t.Error(err)
+// diffFiles validates that the files in actualFiles matches the files in expectedFiles.
+func diffFiles(expectedFiles []storage.ProjectFile, actualFiles []storage.ProjectFile) []string {
+	diffs := []string{}
+	diffFile := func(fExpected storage.ProjectFile, fActual storage.ProjectFile) (bool, string) {
+		if fExpected.Path == fActual.Path {
+			if bytes.Compare(fExpected.Data, fActual.Data) != 0 {
+				return true, fmt.Sprintf("file %s has mismatching data expected: %s actual: %s", fExpected.Path, string(fExpected.Data), string(fActual.Data))
+			}
+
+			return true, ""
+		}
+
+		return false, ""
 	}
 
-	err = ApplyFilesToDir(files)(tempDir)
-	if err != nil {
-		t.Error(err)
+	for _, fExpected := range expectedFiles {
+		foundMatch := false
+		for _, fActual := range actualFiles {
+			pathMatch, diff := diffFile(fExpected, fActual)
+			diffs = append(diffs, diff)
+			foundMatch = pathMatch && diff == ""
+			continue
+		}
+
+		if !foundMatch {
+			diffs = append(diffs, fmt.Sprintf("Missing file: %s", fExpected.Path))
+		}
 	}
 
+	if len(expectedFiles) != len(actualFiles) {
+		diffs = append(diffs, fmt.Sprintf("Number of actual files %d does not match the expected amount %d", len(actualFiles), len(expectedFiles)))
+	}
+
+	return diffs
+}
+
+func removeParentDir(path string, prefix string) string {
+	return strings.Replace(path, prefix+"/", "", 1)
+}
+
+// testDirMatchesFiles checks if the supplied directory contains the files in the
+// testingFiles list and no other files. It ignores empty directories.
+func testDirMatchesFiles(dir string) error {
 	filesCreated := []storage.ProjectFile{}
-	filepath.WalkDir(tempDir, func(entryPath string, d fs.DirEntry, err error) error {
+	filepath.WalkDir(dir, func(entryPath string, d fs.DirEntry, err error) error {
 		if d.IsDir() {
 			return nil
 		}
 
 		data, err := os.ReadFile(entryPath)
 		if err != nil {
-			t.Error(err)
+			return err
 		}
 
+		// The relative filepath is stored as this makes it possible to compare
+		// with the list of testFiles.
 		filesCreated = append(filesCreated, storage.ProjectFile{
-			Path: strings.Replace(entryPath, tempDir+"/", "", 1),
+			Path: removeParentDir(entryPath, dir),
 			Data: data,
 		})
 
 		return nil
 	})
 
-	for _, f := range files {
-		foundMatch := false
-		for _, fc := range filesCreated {
-			if f.Path == fc.Path {
-				if bytes.Compare(f.Data, fc.Data) != 0 {
-					t.Errorf("Found file %s with mismatching data between original %s and created file %s", f.Path, string(f.Data), string(fc.Data))
-				}
-
-				foundMatch = true
-				continue
-			}
-		}
-
-		if !foundMatch {
-			t.Errorf("Did not match created for %s", f.Path)
-		}
+	diffs := diffFiles(testingFiles, filesCreated)
+	if len(diffs) > 0 {
+		return fmt.Errorf("%+v\n\n expected: %+v\n\n%v", filesCreated, testingFiles, diffs)
 	}
 
-	if len(files) != len(filesCreated) {
-		t.Errorf("Number of created files %d does not match the expected amount %d", len(filesCreated), len(files))
+	return nil
+}
+
+func TestPopulateDir(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "mydir")
+	if err != nil {
+		t.Error(err)
+	}
+
+	err = PopulateDir(tempDir, testingFiles)
+	if err != nil {
+		t.Error(err)
+	}
+
+	err = testDirMatchesFiles(tempDir)
+	if err != nil {
+		t.Errorf("PopulateDir created: %s", err)
 	}
 }
 
 func TestMkDirTempAndApplyReturnsCorrectError(t *testing.T) {
-	var dirInApply string
-	testErr := errors.New("test error")
-	apply := func(dir string) error {
-		dirInApply = dirInApply
-		return testErr
-	}
-
 	tempInput := "myproject"
-	_, err := MkDirTempAndApply(tempInput, apply)
-
-	if err != testErr {
-		t.Errorf("Expected to receive the test error %s but got %s instead", testErr, err)
-	}
-}
-
-func TestMkdirDirTempAndApplyCreatesCorrectDirectoryName(t *testing.T) {
-	var dirInApply string
-	apply := func(dir string) error {
-		dirInApply = dirInApply
-		return nil
-	}
-
-	tempInput := "myproject"
-	tempDir, err := MkDirTempAndApply(tempInput, apply)
+	tempDir, err := MkAndPopulateDirTemp(tempInput, testingFiles)
 	if err != nil {
 		t.Error(err)
+	}
+
+	err = testDirMatchesFiles(tempDir)
+	if err != nil {
+		t.Errorf("MkAndPopulateDirTemp created: %s", err)
 	}
 
 	if !strings.HasPrefix(path.Base(tempDir), tempInput) {
