@@ -41,7 +41,7 @@ func diffFiles(expectedFiles []storage.ProjectFile, actualFiles []storage.Projec
 	diffs := []string{}
 	diffFile := func(fExpected storage.ProjectFile, fActual storage.ProjectFile) (bool, string) {
 		if fExpected.Path == fActual.Path {
-			if bytes.Compare(fExpected.Data, fActual.Data) != 0 {
+			if !bytes.Equal(fExpected.Data, fActual.Data) {
 				return true, fmt.Sprintf("file %s has mismatching data expected: %s actual: %s", fExpected.Path, string(fExpected.Data), string(fActual.Data))
 			}
 
@@ -55,9 +55,16 @@ func diffFiles(expectedFiles []storage.ProjectFile, actualFiles []storage.Projec
 		foundMatch := false
 		for _, fActual := range actualFiles {
 			pathMatch, diff := diffFile(fExpected, fActual)
-			diffs = append(diffs, diff)
-			foundMatch = pathMatch && diff == ""
-			continue
+			if diff != "" {
+				diffs = append(diffs, diff)
+			}
+
+			// Here we make sure that if we have previously found a match
+			// foundMatch is not overwritten.
+			// Normally we would exit early when a match is found, but we
+			// want to ensure that all errors are caught and therefore we
+			// do no exit early.
+			foundMatch = foundMatch || pathMatch && diff == ""
 		}
 
 		if !foundMatch {
