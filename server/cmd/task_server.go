@@ -201,7 +201,7 @@ func (s TaskServer) uploadReceivedFiles(ctx context.Context, data []byte) error 
 	}
 
 	return filescanner.NewTarProjectPacker(vals[0]).WalkProject(bytes.NewBuffer(data), func(p storage.ProjectFile) error {
-		return s.fileStorage.StoreFile(ctx, p)
+		return s.fileStorage.StoreFileInProject(ctx, vals[0], p)
 	})
 }
 

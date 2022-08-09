@@ -92,6 +92,7 @@ func TestFileUpload(t *testing.T) {
 	taskServer, _, err := GenerateTaskServer(ctx, amev1alpha1.Task{})
 	assert.NoError(t, err)
 
+	taskServer.fileStorage.ClearStorage(ctx)
 	err = taskServer.fileStorage.PrepareStorage(ctx)
 	assert.NoError(t, err)
 

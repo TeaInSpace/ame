@@ -195,7 +195,7 @@ func TestRun(t *testing.T) {
 
 	diffs := dirtools.DiffFiles(files, storedFiles)
 	if len(diffs) > 0 {
-		t.Errorf("The CLI uploadded %+v, expected %+v, diffs: %v", files, storedFiles, diffs)
+		t.Errorf("The CLI uploadded %+v, expected %+v for project %s, diffs: %v\n stdout: %s", storedFiles, files, projectName, diffs, out)
 	}
 
 	err = store.ClearStorage(ctx)

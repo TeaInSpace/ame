@@ -2,7 +2,6 @@ package storage
 
 import (
 	"context"
-	fmt "fmt"
 	"testing"
 
 	"github.com/brianvoe/gofakeit/v6"
@@ -21,6 +20,7 @@ func TestUploadAndDownloadMultipleFiles(t *testing.T) {
 	assert.NoError(t, err)
 
 	storeage := NewS3Storage(*s3Client, testBucketName)
+	storeage.ClearStorage(ctx)
 	err = storeage.PrepareStorage(ctx)
 	assert.NoError(t, err)
 
@@ -29,19 +29,19 @@ func TestUploadAndDownloadMultipleFiles(t *testing.T) {
 	testFiles := []ProjectFile{
 		{
 			Data: []byte(gofakeit.Name()),
-			Path: fmt.Sprintf("%s/somedir/somefile", testProjectDir),
+			Path: "somedir/somefile",
 		},
 		{
 			Data: []byte(gofakeit.Name()),
-			Path: fmt.Sprintf("%s/anotherfile.txt", testProjectDir),
+			Path: "anotherfile.txt",
 		},
 		{
 			Data: []byte(gofakeit.Name()),
-			Path: fmt.Sprintf("%s/.gitignore", testProjectDir),
+			Path: ".gitignore",
 		},
 		{
 			Data: []byte(gofakeit.Name()),
-			Path: fmt.Sprintf("%s/somedir/somedeepdir/deepfile.go", testProjectDir),
+			Path: "somedir/somedeepdir/deepfile.go",
 		},
 	}
 
@@ -49,7 +49,7 @@ func TestUploadAndDownloadMultipleFiles(t *testing.T) {
 	assert.Empty(t, contents)
 
 	for _, projectFile := range testFiles {
-		err = storeage.StoreFile(ctx, projectFile)
+		err = storeage.StoreFileInProject(ctx, testProjectDir, projectFile)
 		assert.NoError(t, err)
 	}
 

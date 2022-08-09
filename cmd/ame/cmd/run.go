@@ -65,12 +65,11 @@ func runTask(cmd *cobra.Command, args []string) {
 		nextChunk := make([]byte, chunkSize)
 		_, err := t.Read(nextChunk)
 		if err == io.EOF {
-			status, err := uploadClient.CloseAndRecv()
+			_, err := uploadClient.CloseAndRecv()
 			if err != nil && err != io.EOF {
 				log.Fatalln(err)
 			}
 
-			fmt.Println(status)
 			break
 		}
 

@@ -3,7 +3,6 @@ package filescanner
 import (
 	"archive/tar"
 	"bytes"
-	"path"
 
 	"teainspace.com/ame/server/storage"
 )
@@ -38,7 +37,7 @@ func (p *TarProjectPacker) PackageProject(dir string, filters []string) (*bytes.
 func (p *TarProjectPacker) WalkProject(data *bytes.Buffer, walkFunc WalkProjectFunc) error {
 	return ReadFromTar(data, func(h *tar.Header, b []byte) error {
 		return walkFunc(storage.ProjectFile{
-			Path: path.Join(p.cfg.name, h.Name),
+			Path: h.Name,
 			Data: b,
 		})
 	})

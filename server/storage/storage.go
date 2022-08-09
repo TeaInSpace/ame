@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"path"
 	"strings"
 
 	"golang.org/x/sync/errgroup"
@@ -17,6 +18,7 @@ import (
 )
 
 type Storage interface {
+	StoreFileInProject(ctx context.Context, project string, file ProjectFile) error
 	StoreFile(ctx context.Context, file ProjectFile) error
 	DownloadFiles(ctx context.Context, path string) ([]ProjectFile, error)
 	PrepareStorage(ctx context.Context) error
@@ -87,6 +89,13 @@ func (s *s3Storage) ClearStorage(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (s *s3Storage) StoreFileInProject(ctx context.Context, project string, file ProjectFile) error {
+	return s.StoreFile(ctx, ProjectFile{
+		Path: path.Join(project, file.Path),
+		Data: file.Data,
+	})
 }
 
 func (s *s3Storage) StoreFile(ctx context.Context, projectFile ProjectFile) error {
@@ -175,9 +184,10 @@ func (s *s3Storage) DownloadFiles(ctx context.Context, projectDir string) ([]Pro
 			if err != nil {
 				return err
 			}
-			parentDirSplit := strings.Split(filePath, projectDir+"/")
 
-			files[goRoutineIndex] = ProjectFile{parentDirSplit[len(parentDirSplit)-1], data}
+			relativePath := strings.Replace(filePath, projectDir+"/", "", 1)
+
+			files[goRoutineIndex] = ProjectFile{relativePath, data}
 			return nil
 		})
 	}
