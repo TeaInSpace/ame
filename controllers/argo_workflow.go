@@ -101,3 +101,11 @@ func getArgoWorkflow(ctx context.Context, k8sClient client.Client, task amev1alp
 
 	return newWorkflowNotFoundError(task)
 }
+
+func ExtractRunCommand(wf *argo.Workflow) string {
+	return wf.Spec.Arguments.Parameters[1].Value.String()
+}
+
+func ExtractProjectID(wf *argo.Workflow) string {
+	return wf.Spec.Arguments.Parameters[0].Value.String()
+}

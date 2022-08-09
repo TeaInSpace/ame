@@ -82,7 +82,17 @@ func runTask(cmd *cobra.Command, args []string) {
 		})
 	}
 
-	_, err = taskClient.CreateTask(ctx, &task.TaskCreateRequest{Namespace: "ame-system", Task: &v1alpha1.Task{ObjectMeta: metav1.ObjectMeta{Name: currentDir}, Spec: v1alpha1.TaskSpec{RunCommand: args[0]}}})
+	_, err = taskClient.CreateTask(ctx,
+		&task.TaskCreateRequest{
+			Namespace: "ame-system",
+			Task: &v1alpha1.Task{
+				ObjectMeta: metav1.ObjectMeta{Name: currentDir},
+				Spec: v1alpha1.TaskSpec{
+					RunCommand: args[0],
+					ProjectId:  currentDir,
+				},
+			},
+		})
 	if err != nil {
 		panic(err)
 	}
