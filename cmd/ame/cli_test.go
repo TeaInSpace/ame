@@ -11,7 +11,6 @@ import (
 
 	argo "github.com/argoproj/argo-workflows/v3/pkg/client/clientset/versioned/typed/workflow/v1alpha1"
 
-	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -218,5 +217,7 @@ func TestRun(t *testing.T) {
 	}
 
 	err = store.ClearStorage(ctx)
-	assert.NoError(t, err)
+	if err != nil {
+		t.Error(err)
+	}
 }

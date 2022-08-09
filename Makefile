@@ -61,9 +61,8 @@ vet: ## Run go vet against code.
 	go vet ./...
 
 .PHONY: test
-test: manifests vet fmt envtest start_minio ## Run tests.
+test: manifests vet fmt envtest # Run tests.
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test ./... -coverprofile cover.out
-	make stop_minio
 
 ##@ Build
 
