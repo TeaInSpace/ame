@@ -10,6 +10,8 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
+	grpc_auth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
 	_ "github.com/joho/godotenv/autoload"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
@@ -18,6 +20,7 @@ import (
 	"teainspace.com/ame/api/v1alpha1"
 	"teainspace.com/ame/cmd/ame/filescanner"
 	clientset "teainspace.com/ame/generated/clientset/versioned"
+	"teainspace.com/ame/server/auth"
 	"teainspace.com/ame/server/storage"
 )
 
@@ -107,8 +110,11 @@ func Run(ctx context.Context, cfg *rest.Config, port string) (net.Listener, func
 		return listener, func() error { return nil }, err
 	}
 
-	var opts []grpc.ServerOption
-	grpcServer := grpc.NewServer(opts...)
+	authenticator, err := auth.EnvAuthenticator()
+	if err != nil {
+		return listener, func() error { return nil }, err
+	}
+	grpcServer := grpc.NewServer(grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(grpc_auth.StreamServerInterceptor(authenticator))))
 	taskServerConfig, err := TaskServerConfigFromEnv()
 	if err != nil {
 		return listener, func() error { return nil }, err

@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
@@ -33,6 +34,10 @@ const chunkSize = 64 * 1024
 
 func runTask(cmd *cobra.Command, args []string) {
 	ctx := context.Background()
+
+	viper.SetEnvPrefix("AME_CLI")
+	viper.BindEnv("authToken")
+
 	fmt.Println("Your task will be executed!", args[0])
 
 	var opts []grpc.DialOption
@@ -55,7 +60,8 @@ func runTask(cmd *cobra.Command, args []string) {
 		log.Fatalln("Could not tar directory", err)
 	}
 
-	grpcCtx := metadata.AppendToOutgoingContext(ctx, task.MdKeyProjectName, currentDir)
+	grpcCtx := metadata.AppendToOutgoingContext(ctx, task.MdKeyProjectName, currentDir, "authorization", "Bearer "+viper.GetString("authToken"))
+
 	uploadClient, err := taskClient.FileUpload(grpcCtx)
 	if err != nil {
 		log.Fatalln(err)

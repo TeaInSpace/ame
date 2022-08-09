@@ -98,6 +98,9 @@ func TestMain(m *testing.M) {
 	}
 	cliCmd = *exec.Command(path.Join(wd, cliName))
 
+	// Ensure that the CLI has an authentication token.
+	os.Setenv("AME_CLI_AUTHTOKEN", "mytoken")
+
 	exitCode := m.Run()
 	// Ensure that the CLI binary is cleanedup.
 	os.Remove(cliName)
@@ -175,9 +178,10 @@ func TestRun(t *testing.T) {
 	}
 
 	if testTask.Spec.RunCommand != inclusterTask.Spec.RunCommand {
-		t.Errorf("Run created a task with Spec.RunCommand=%s , but the cli received the run command %s",
+		t.Errorf("Run created a task with Spec.RunCommand=%s , but the cli received the run command %s, got the CLI output: %v",
 			inclusterTask.Spec.RunCommand,
-			testTask.Spec.RunCommand)
+			testTask.Spec.RunCommand,
+			string(out))
 	}
 
 	// Validate that a Workflow was actually created based on the task.
@@ -195,9 +199,10 @@ func TestRun(t *testing.T) {
 	wfProjectID := controllers.ExtractProjectID(&wf)
 
 	if testTask.Spec.RunCommand != wfRunCmd {
-		t.Errorf("Workflow has run command: %s, but expected: %s",
+		t.Errorf("Workflow has run command: %s, but expected: %s, got cli output: %s",
 			wfRunCmd,
-			testTask.Spec.RunCommand)
+			testTask.Spec.RunCommand,
+			out)
 	}
 
 	if testTask.Spec.ProjectId != wfProjectID {

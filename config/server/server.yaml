@@ -65,6 +65,8 @@ spec:
             value: minio
           - name: TASK_SERVER_OBJECT_STORAGE_ENDPOINT_ACCESS_SECRET
             value: minio123
+          - name: AME_AUTH_TOKEN
+            value: mytoken
       serviceAccountName: controller-manager
       terminationGracePeriodSeconds: 10
 ---
@@ -88,3 +90,4 @@ data:
   server_port: "3342"
   minio_endpoint: "http://ame-minio:9000"
   minio_bucket_name: "ameprojectstorage"
+  auth_token: "mytoken"
