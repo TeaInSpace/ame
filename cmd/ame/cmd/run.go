@@ -9,13 +9,13 @@ import (
 	"path/filepath"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"teainspace.com/ame/api/v1alpha1"
 	"teainspace.com/ame/cmd/ame/filescanner"
+	"teainspace.com/ame/internal/config"
 	task "teainspace.com/ame/server/cmd"
 )
 
@@ -34,16 +34,17 @@ const chunkSize = 64 * 1024
 
 func runTask(cmd *cobra.Command, args []string) {
 	ctx := context.Background()
-
-	viper.SetEnvPrefix("AME_CLI")
-	viper.BindEnv("authToken")
+	cfg, err := config.GenCliConfig()
+	if err != nil {
+		panic(err)
+	}
 
 	fmt.Println("Your task will be executed!", args[0])
 
 	var opts []grpc.DialOption
 	opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 
-	conn, err := grpc.Dial("172.18.255.200:3342", opts...)
+	conn, err := grpc.Dial(cfg.AmeEndpoint, opts...)
 	if err != nil {
 		panic(err)
 	}
@@ -60,7 +61,7 @@ func runTask(cmd *cobra.Command, args []string) {
 		log.Fatalln("Could not tar directory", err)
 	}
 
-	grpcCtx := metadata.AppendToOutgoingContext(ctx, task.MdKeyProjectName, currentDir, "authorization", "Bearer "+viper.GetString("authToken"))
+	grpcCtx := metadata.AppendToOutgoingContext(ctx, task.MdKeyProjectName, currentDir, "authorization", "Bearer "+cfg.AuthToken)
 
 	uploadClient, err := taskClient.FileUpload(grpcCtx)
 	if err != nil {
