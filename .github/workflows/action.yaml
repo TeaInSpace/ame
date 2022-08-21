@@ -18,7 +18,7 @@ jobs:
           version: '3.19.4'
       - name: Prep test environment
         run: |
-          make kind
+          make tools
           make deploy_local_cluster
       - name: Validate commit
         run: |

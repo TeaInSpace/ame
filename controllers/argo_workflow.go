@@ -17,7 +17,7 @@ func (e workflowNotFoundError) Error() string {
 	return "Workflow not found for " + e.task.GetName()
 }
 
-func newWorkflowNotFoundError(task amev1alpha1.Task) workflowNotFoundError {
+func NewWorkflowNotFoundError(task amev1alpha1.Task) workflowNotFoundError {
 	return workflowNotFoundError{task}
 }
 
@@ -28,8 +28,8 @@ func workflowName(taskName string) string {
 // correctWorkflowSpec returns a corrected Workflow specification if the given Workflow specification
 // is not correct for the given Task. A boolean is returned aswell indicating is the Workflow speci-
 // fication  should be updated, true if the specification should be updated and false if not.
-func correctWorkflowSpec(taskSpec amev1alpha1.TaskSpec, wf argo.Workflow) (argo.WorkflowSpec, bool) {
-	correctWorkflowSpec := genWorkflowSpec(taskSpec)
+func correctWorkflowSpec(task amev1alpha1.Task, wf argo.Workflow) (argo.WorkflowSpec, bool) {
+	correctWorkflowSpec := genWorkflowSpec(task)
 
 	if len(correctWorkflowSpec.Arguments.Parameters) != len(wf.Spec.Arguments.Parameters) {
 		return correctWorkflowSpec, true
@@ -52,36 +52,49 @@ func genArgoWorkflow(task amev1alpha1.Task, ownerRefs ...v1.OwnerReference) argo
 			Namespace:       task.Namespace,
 			OwnerReferences: ownerRefs,
 		},
-		Spec: genWorkflowSpec(task.Spec),
+		Spec: genWorkflowSpec(task),
 	}
 }
 
 // genWorkflowSpec generates a Workflow specficiation from a Task specification.
-func genWorkflowSpec(spec amev1alpha1.TaskSpec) argo.WorkflowSpec {
+func genWorkflowSpec(task amev1alpha1.Task) argo.WorkflowSpec {
 	return argo.WorkflowSpec{
 		Arguments: argo.Arguments{
-			Parameters: genParameters(spec),
+			Parameters: genParameters(task),
+		},
+		PodMetadata: &argo.Metadata{
+			Labels: map[string]string{
+				"ame-task": task.GetName(),
+			},
+		},
+		WorkflowTemplateRef: &argo.WorkflowTemplateRef{
+			ClusterScope: false,
+			Name:         "ame-task-execution",
 		},
 	}
 }
 
 // genParameters generates Workflow parameters from a Task specification.
-func genParameters(spec amev1alpha1.TaskSpec) []argo.Parameter {
+func genParameters(task amev1alpha1.Task) []argo.Parameter {
 	return []argo.Parameter{
 		{
+			Name:  "task-id",
+			Value: argo.AnyStringPtr(task.GetName()),
+		},
+		{
 			Name:  "project-id",
-			Value: argo.AnyStringPtr(spec.ProjectId),
+			Value: argo.AnyStringPtr(task.Spec.ProjectId),
 		},
 		{
 			Name:  "run-command",
-			Value: argo.AnyStringPtr(spec.RunCommand),
+			Value: argo.AnyStringPtr(task.Spec.RunCommand),
 		},
 	}
 }
 
-// getArgoWorkflow retrieves the workflow owned by the task, if such a workflow exists the out object will be populated
+// GetArgoWorkflow retrieves the workflow owned by the task, if such a workflow exists the out object will be populated
 // with that workflow.
-func getArgoWorkflow(ctx context.Context, k8sClient client.Client, task amev1alpha1.Task, out *argo.Workflow) error {
+func GetArgoWorkflow(ctx context.Context, k8sClient client.Client, task amev1alpha1.Task, out *argo.Workflow) error {
 	// TODO: Find an alternative method of gettting the workflow for a task, without fetching the entire list and filtering it.
 	// TODO: How should we handle the possibility of multiple workflows owned by a single task?
 	workflows := argo.WorkflowList{}
@@ -99,13 +112,13 @@ func getArgoWorkflow(ctx context.Context, k8sClient client.Client, task amev1alp
 		}
 	}
 
-	return newWorkflowNotFoundError(task)
+	return NewWorkflowNotFoundError(task)
 }
 
 func ExtractRunCommand(wf *argo.Workflow) string {
-	return wf.Spec.Arguments.Parameters[1].Value.String()
+	return wf.Spec.Arguments.Parameters[2].Value.String()
 }
 
 func ExtractProjectID(wf *argo.Workflow) string {
-	return wf.Spec.Arguments.Parameters[0].Value.String()
+	return wf.Spec.Arguments.Parameters[1].Value.String()
 }

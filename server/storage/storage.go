@@ -23,6 +23,8 @@ type Storage interface {
 	DownloadFiles(ctx context.Context, path string) ([]ProjectFile, error)
 	PrepareStorage(ctx context.Context) error
 	ClearStorage(ctx context.Context) error
+	DownloadArtifacts(ctx context.Context, taskName string) ([]ProjectFile, error)
+	StoreArtifacts(ctx context.Context, taskName string, files []ProjectFile) error
 }
 
 type ProjectFile struct {
@@ -105,14 +107,26 @@ func (s *s3Storage) StoreFile(ctx context.Context, projectFile ProjectFile) erro
 		Body:   bytes.NewReader(projectFile.Data),
 	})
 	if err != nil {
-		return fmt.Errorf("Got err: %s from S3 client with output %+v", err, output)
+		return fmt.Errorf("got err: %s from S3 client with output %+v", err, output)
+	}
+
+	return nil
+}
+
+func (s *s3Storage) StoreArtifacts(ctx context.Context, taskName string, files []ProjectFile) error {
+	artifactsPath := artifactPath(taskName)
+	for _, f := range files {
+		err := s.StoreFileInProject(ctx, artifactsPath, f)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
 }
 
 func (s *s3Storage) listStoredFilesWithPrefix(ctx context.Context, prefix string) ([]string, error) {
-	objects, err := listBucketContents(ctx, &s.s3Client, s.bucketName, "")
+	objects, err := listBucketContents(ctx, &s.s3Client, s.bucketName, prefix)
 	if err != nil {
 		return nil, err
 	}
@@ -136,10 +150,7 @@ func listBucketContents(ctx context.Context, s3Client *s3.Client, bucketName str
 	})
 
 	contents := []types.Object{}
-	for {
-		if !paginator.HasMorePages() {
-			break
-		}
+	for paginator.HasMorePages() {
 
 		out, err := paginator.NextPage(ctx)
 		if err != nil {
@@ -150,6 +161,14 @@ func listBucketContents(ctx context.Context, s3Client *s3.Client, bucketName str
 	}
 
 	return contents, nil
+}
+
+func artifactPath(taskName string) string {
+	return path.Join(taskName, "artifacts")
+}
+
+func (s *s3Storage) DownloadArtifacts(ctx context.Context, taskName string) ([]ProjectFile, error) {
+	return s.DownloadFiles(ctx, artifactPath(taskName))
 }
 
 func (s *s3Storage) DownloadFiles(ctx context.Context, projectDir string) ([]ProjectFile, error) {
@@ -228,9 +247,36 @@ func CreateS3Client(ctx context.Context, endpoint string, region string, overrid
 	return s3Client, nil
 }
 
-func CreateS3ClientForLocalStorage(ctx context.Context) (*s3.Client, error) {
-	return CreateS3Client(ctx, "http://127.0.0.1:9000", "", func(opts *s3.Options) {
+func CreateS3ClientForLocalStorage(ctx context.Context, endpoint string) (*s3.Client, error) {
+	return CreateS3Client(ctx, endpoint, "", func(opts *s3.Options) {
 		opts.EndpointOptions.DisableHTTPS = true
 		opts.Credentials = credentials.NewStaticCredentialsProvider("minio", "minio123", "")
 	})
 }
+
+// TODO: should setup storage be renamed to make it clear  that it is s3 specific?
+// TODO: refactor Setupstorage and CreateS3ClientForLocalStorage so the object etorage host is not hardcoded.
+
+// SetupStoreage prepares object storage for AME which is running on localhost, see CreateS3ClientForLocalStorage.
+// This is meant setup during tests.
+// The Storage object used to interact with AME object storeage is returned.
+func SetupStoreage(ctx context.Context, bucket string, endpoint string) (Storage, error) {
+	s3Client, err := CreateS3ClientForLocalStorage(ctx, endpoint)
+	if err != nil {
+		return nil, err
+	}
+	store := NewS3Storage(*s3Client, bucket)
+
+	// If clear storage fails it does not matter too much
+	// as that means the bucket was not present to begin with.
+	store.ClearStorage(ctx)
+
+	err = store.PrepareStorage(ctx)
+	if err != nil {
+		return store, err
+	}
+
+	return store, nil
+}
+
+func FileCmp(a, b ProjectFile) bool { return a.Path < b.Path }

@@ -3,11 +3,15 @@ package task
 import (
 	context "context"
 	io "io"
+	"log"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/brianvoe/gofakeit/v6"
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/metadata"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -15,29 +19,42 @@ import (
 	amev1alpha1 "teainspace.com/ame/api/v1alpha1"
 	"teainspace.com/ame/cmd/ame/filescanner"
 	"teainspace.com/ame/generated/clientset/versioned/fake"
+	"teainspace.com/ame/internal/ameproject"
+	"teainspace.com/ame/internal/auth"
+	"teainspace.com/ame/internal/clients"
 	"teainspace.com/ame/internal/dirtools"
+	"teainspace.com/ame/internal/testcfg"
+	"teainspace.com/ame/internal/testdata"
+	testenv "teainspace.com/ame/internal/testenv"
+	task_service "teainspace.com/ame/server/grpc"
 	"teainspace.com/ame/server/storage"
 )
 
-const (
-	objectStorageEndpoint = "http://127.0.0.1:9000"
-	testBucketName        = "testbucket"
-)
-
 var (
+	testCfg       testcfg.TestEnvConfig
 	tasksResource = schema.GroupVersionResource{Group: "ame.teainspace.com", Version: "v1alpha1", Resource: "tasks"}
-	testNamespace string
+	taskClient    task_service.TaskServiceClient
+	ctx           context.Context
 )
 
 func TestMain(m *testing.M) {
 	// Generate a random namespace to ensure that
-	testNamespace = gofakeit.FirstName()
+	testCfg = testcfg.TestEnv()
+
+	var err error
+	taskClient, err = task_service.PrepareTaskClient(testCfg.AmeServerEndpoint)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	ctx = context.Background()
+
 	os.Exit(m.Run())
 }
 
 func generateRandomTask() amev1alpha1.Task {
 	return amev1alpha1.Task{
-		ObjectMeta: v1.ObjectMeta{Name: gofakeit.FirstName(), Namespace: testNamespace},
+		ObjectMeta: v1.ObjectMeta{Name: gofakeit.FirstName(), Namespace: testCfg.Namespace},
 		TypeMeta:   v1.TypeMeta{APIVersion: "ame/v1alpha1", Kind: "Task"},
 	}
 }
@@ -49,9 +66,13 @@ func GenerateTaskServer(ctx context.Context, task amev1alpha1.Task) (TaskServer,
 		return TaskServer{}, nil, err
 	}
 
-	serverCfg.bucketName = testBucketName
-	serverCfg.objectStorageEndpoint = objectStorageEndpoint
-	server, err := NewTaskServer(ctx, fakeClient, serverCfg)
+	serverCfg.bucketName = testCfg.BucketName
+	serverCfg.objectStorageEndpoint = testCfg.ObjectStorageEndpoint
+	restCfg, err := clients.KubeClientFromConfig()
+	if err != nil {
+		return TaskServer{}, nil, err
+	}
+	server, err := NewTaskServer(ctx, fakeClient, serverCfg, restCfg)
 	if err != nil {
 		return TaskServer{}, nil, err
 	}
@@ -59,27 +80,102 @@ func GenerateTaskServer(ctx context.Context, task amev1alpha1.Task) (TaskServer,
 }
 
 func TestCreateTask(t *testing.T) {
-	ctx := context.Background()
 	taskServer, fakeClient, err := GenerateTaskServer(ctx, generateRandomTask())
 	assert.NoError(t, err)
-	testTask, err := taskServer.CreateTask(ctx, &TaskCreateRequest{Namespace: testNamespace, Task: &amev1alpha1.Task{
-		ObjectMeta: v1.ObjectMeta{Name: "test123", Namespace: testNamespace},
+	testTask, err := taskServer.CreateTask(ctx, &task_service.TaskCreateRequest{Namespace: testCfg.Namespace, Task: &amev1alpha1.Task{
+		ObjectMeta: v1.ObjectMeta{Name: "test123", Namespace: testCfg.Namespace},
 		TypeMeta:   v1.TypeMeta{APIVersion: "ame/v1alpha1", Kind: "Task"},
 	}})
 	assert.NoError(t, err)
 	assert.NotNil(t, testTask)
 
-	trackedTask, err := fakeClient.Tracker().Get(tasksResource, testNamespace, testTask.GetName())
+	trackedTask, err := fakeClient.Tracker().Get(tasksResource, testCfg.Namespace, testTask.GetName())
 	assert.NoError(t, err)
 	assert.EqualValues(t, testTask, trackedTask)
 }
 
+func TestGetLogs(t *testing.T) {
+	_, err := testenv.SetupCluster(ctx, testCfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expectedLogEntry := "somelog"
+	p := ameproject.NewProject(ameproject.ProjectConfig{
+		Name:      ameproject.ProjectNameFromDir(testenv.EchoProjectDir),
+		Directory: testenv.EchoProjectDir,
+	},
+		taskClient,
+	)
+
+	echoTask := amev1alpha1.NewTask("python echo.py "+expectedLogEntry, p.Name)
+
+	ctx = auth.AuthorarizeCtx(ctx, testCfg.AuthToken)
+	echoTask, err = p.UploadAndRun(ctx, echoTask)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Setting a timeout for the context ensures that logs are not streamed
+	// indefinitely.
+	ctx, cancelCtx := context.WithTimeout(ctx, time.Second*100)
+	defer cancelCtx()
+
+	var logs []*task_service.LogEntry
+	err = p.ProcessTaskLogs(ctx, echoTask, func(le *task_service.LogEntry) error {
+		logs = append(logs, le)
+		return nil
+	})
+
+	if err != nil {
+		t.Error(err)
+	}
+
+	foundLog := false
+	for _, logEntry := range logs {
+		if strings.Contains(logEntry.Content, expectedLogEntry) {
+			foundLog = true
+			break
+		}
+	}
+
+	if !foundLog {
+		t.Errorf("did not find expected log entry: %s, in logs: %v", expectedLogEntry, logs)
+	}
+}
+
+func TestGetArtifacts(t *testing.T) {
+	taskName := "mytasksdsads"
+	store, err := testenv.SetupCluster(ctx, testCfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = store.StoreArtifacts(ctx, taskName, testdata.TestFiles)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Note that the project name is left empty here as it should not be required
+	// to call GetArtifacts.
+	ctx = auth.AuthorarizeCtx(ctx, testCfg.AuthToken)
+
+	files, err := ameproject.GetArtifacts(ctx, taskClient, taskName)
+	if err != nil {
+		t.Error(err)
+	}
+
+	diff := cmp.Diff(testdata.TestFiles, files, cmpopts.SortSlices(storage.FileCmp))
+	if diff != "" {
+		t.Errorf("expected downloaded artifacts: %+v to match the uploaded artifacts: %+v, but got diff: %s", files, testdata.TestFiles, diff)
+	}
+}
+
 func TestGetTask(t *testing.T) {
-	ctx := context.Background()
 	randomTask := generateRandomTask()
 	taskServer, _, err := GenerateTaskServer(ctx, randomTask)
 	assert.NoError(t, err)
-	extractedTask, err := taskServer.GetTask(ctx, &TaskGetRequest{Namespace: testNamespace, Name: randomTask.GetName()})
+	extractedTask, err := taskServer.GetTask(ctx, &task_service.TaskGetRequest{Namespace: testCfg.Namespace, Name: randomTask.GetName()})
 	assert.NoError(t, err)
 	assert.NotNil(t, *extractedTask)
 	assert.Equal(t, randomTask, *extractedTask)
@@ -87,17 +183,19 @@ func TestGetTask(t *testing.T) {
 
 func TestFileUpload(t *testing.T) {
 	projectName := "myproject"
-	ctx := context.Background()
 	ctx = metadata.NewIncomingContext(ctx, metadata.MD{MdKeyProjectName: []string{projectName}})
 	taskServer, _, err := GenerateTaskServer(ctx, amev1alpha1.Task{})
 	assert.NoError(t, err)
 
-	taskServer.fileStorage.ClearStorage(ctx)
+	err = taskServer.fileStorage.ClearStorage(ctx)
+	if err != nil {
+		t.Error(err)
+	}
 	err = taskServer.fileStorage.PrepareStorage(ctx)
 	assert.NoError(t, err)
 
 	fileChan := make(chan []byte)
-	uploadSt := UploadStatus{}
+	uploadSt := task_service.UploadStatus{}
 	mockStream := NewMockFileUploadStream(ctx, fileChan, &uploadSt)
 	go func() {
 		err := taskServer.FileUpload(&mockStream)
@@ -114,7 +212,13 @@ func TestFileUpload(t *testing.T) {
 	}
 
 	tempDir, err := dirtools.MkAndPopulateDirTemp("mydir", files)
+	if err != nil {
+		t.Fatal(err)
+	}
 	data, err := filescanner.TarDirectory(tempDir, []string{})
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	nChunks := 0
 	for {
@@ -135,7 +239,7 @@ func TestFileUpload(t *testing.T) {
 
 	close(fileChan)
 	assert.Eventually(t, func() bool {
-		return uploadSt.GetStatus() == UploadStatus_SUCCESS
+		return uploadSt.GetStatus() == task_service.UploadStatus_SUCCESS
 	}, time.Second, 10*time.Millisecond)
 	uploadedFiles, err := taskServer.fileStorage.DownloadFiles(ctx, projectName)
 	if err != nil {
@@ -151,25 +255,25 @@ func TestFileUpload(t *testing.T) {
 type MockFileUploadStream struct {
 	ctx      context.Context
 	fileChan chan []byte
-	uploadSt *UploadStatus
+	uploadSt *task_service.UploadStatus
 }
 
-func NewMockFileUploadStream(ctx context.Context, fileChan chan []byte, uploadSt *UploadStatus) MockFileUploadStream {
+func NewMockFileUploadStream(ctx context.Context, fileChan chan []byte, uploadSt *task_service.UploadStatus) MockFileUploadStream {
 	return MockFileUploadStream{ctx, fileChan, uploadSt}
 }
 
-func (s *MockFileUploadStream) Recv() (*Chunk, error) {
+func (s *MockFileUploadStream) Recv() (*task_service.Chunk, error) {
 	chunk, chanOpen := <-s.fileChan
 	if !chanOpen {
 		return nil, io.EOF
 	}
 
-	return &Chunk{
+	return &task_service.Chunk{
 		Contents: chunk,
 	}, nil
 }
 
-func (s *MockFileUploadStream) SendAndClose(uploadSt *UploadStatus) error {
+func (s *MockFileUploadStream) SendAndClose(uploadSt *task_service.UploadStatus) error {
 	*s.uploadSt = *uploadSt
 	return nil
 }

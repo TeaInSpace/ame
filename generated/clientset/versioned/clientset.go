@@ -20,8 +20,8 @@ package versioned
 
 import (
 	"fmt"
-	amev1alpha1 "teainspace.com/ame/generated/clientset/versioned/typed/ame/v1alpha1"
 	"net/http"
+	amev1alpha1 "teainspace.com/ame/generated/clientset/versioned/typed/ame/v1alpha1"
 
 	discovery "k8s.io/client-go/discovery"
 	rest "k8s.io/client-go/rest"

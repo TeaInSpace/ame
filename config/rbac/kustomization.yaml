@@ -16,3 +16,9 @@ resources:
 - auth_proxy_role.yaml
 - auth_proxy_role_binding.yaml
 - auth_proxy_client_clusterrole.yaml
+
+# The pod reader role is only relevant for the ame server.
+# Once it get's a separate service account, these roles should
+# no longer be applied to the controller-manager service account.
+- pod_reader_role.yaml
+- pod_reader_role_binding.yaml

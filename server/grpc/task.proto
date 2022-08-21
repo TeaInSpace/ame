@@ -29,8 +29,24 @@ message UploadStatus {
   Status status = 1;
 }
 
+message LogEntry {
+  string content = 1;
+}
+
+message GetLogsRequest {
+ teainspace.com.ame.pkg.apis.ame.v1alpha1.Task task = 1;
+ bool follow = 2;
+ bool getAllLogs = 3;
+}
+
+message ArtifactGetRequest {
+  string taskName = 1;
+}
+
 service TaskService {
   rpc GetTask(TaskGetRequest) returns (teainspace.com.ame.pkg.apis.ame.v1alpha1.Task);
   rpc CreateTask(TaskCreateRequest) returns (teainspace.com.ame.pkg.apis.ame.v1alpha1.Task);
   rpc FileUpload(stream Chunk) returns (UploadStatus);
+  rpc GetLogs(GetLogsRequest) returns (stream LogEntry);
+  rpc GetArtifacts(ArtifactGetRequest) returns (stream Chunk);
 }

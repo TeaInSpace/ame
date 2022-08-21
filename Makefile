@@ -1,6 +1,7 @@
 
 # Image URL to use all building/pushing image targets
-IMG ?= controller:latest
+IMG ?= ame-controller:local
+SERVER_IMG ?= ame-server:local
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.24.1
 
@@ -60,9 +61,14 @@ fmt: ## Run go fmt against code.
 vet: ## Run go vet against code.
 	go vet ./...
 
+generate_test_env:
+	./hack/generate_test_env.sh
+
 .PHONY: test
-test: manifests vet fmt envtest # Run tests.
-	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test ./... -coverprofile cover.out
+test: vet fmt envtest generate_test_env # Run tests.
+	# Note that the argument "-p 1" ensures that tests for multiple packages are not run asynchronously.
+	# This is important as tests are operating on the same cluster and can therefore interfere with each other.
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test ./... -coverprofile cover.out -p 1 -timeout 15m
 
 ##@ Build
 
@@ -71,7 +77,7 @@ build: generate fmt vet ## Build manager binary.
 	go build -o bin/manager main.go
 
 .PHONY: run
-run: manifests generate fmt vet ## Run a controller from your host.
+run: fmt vet ## Run a controller from your host.
 	go run ./main.go
 
 .PHONY: docker-build
@@ -88,22 +94,25 @@ docker-build-server: ## Builder docker image for the server.
 ##@ Deployment
 
 ifndef ignore-not-found
-  ignore-not-found = false
+  ignore-not-found = true
 endif
 
 .PHONY: install
-install: manifests kustomize ## Install CRDs into the K8s cluster specified in ~/.kube/config.
+install: ## Install CRDs into the K8s cluster specified in ~/.kube/config.
 	$(KUSTOMIZE) build config/crd | kubectl apply -f -
 
 .PHONY: uninstall
-uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
+uninstall: kustomize ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
 	$(KUSTOMIZE) build config/crd | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
 
 .PHONY: deploy
-deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
+deploy: kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
 	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
 	cd config/server && $(KUSTOMIZE) edit set image ame-server=${SERVER_IMG}
 	$(KUSTOMIZE) build config/default | kubectl apply -f -
+	sleep 1
+	kubectl wait pods -n ame-system -l app=ame-server --for condition=Ready --timeout=90s
+	kubectl wait pods -n ame-system -l control-plane=controller-manager --for condition=Ready --timeout=90s
 
 
 .PHONY: undeploy
@@ -152,7 +161,9 @@ goimports:
 kind:
 	go install sigs.k8s.io/kind@v0.14.0 
 
-deploy_local_cluster: create_local_cluster prepare_local_cluster load_local_images install deploy
+tools: kind goimports gogo-protobuf go-to-protobuf client-gen kustomize
+
+deploy_local_cluster: manifests create_local_cluster prepare_local_cluster load_local_images install deploy
 
 create_local_cluster:
 	kind create cluster
@@ -163,35 +174,29 @@ prepare_local_cluster:
 	sleep 20
 	kubectl wait pods -n metallb-system -l app=metallb --for condition=Ready --timeout=90s
 	kubectl apply -f ./metallb_config.yaml
-	kubectl create ns ame-system
+	kubectl create ns ame-system --dry-run=client -o yaml | kubectl apply -f -
 	kubectl apply -n ame-system -f https://raw.githubusercontent.com/argoproj/argo-workflows/master/manifests/quick-start-postgres.yaml
-	kubectl apply -n ame-system -f ./config/minio/deployment.yaml
-	kubectl apply -n ame-system -f ./config/minio/minio-pvc.yaml
-	kubectl apply -n ame-system -f ./config/minio/service.yaml
+	kubectl apply -n ame-system -f ./config/minio/
+	kubectl apply -n ame-system -f ./config/argo/ame_executor_template.yaml
 
 
-load_local_images:
+load_local_images: load_executor
 	docker buildx build . --target ame-server -t ame-server:local
 	docker buildx build . --target task-controller -t ame-controller:local
 	kind load docker-image ame-server:local
 	kind load docker-image ame-controller:local
+	kubectl delete pod -l app=ame-server -n ame-system
+	kubectl delete pod -l control-plane=controller-manager -n ame-system
+
+load_executor:
+	docker build ./executor/ -t ame-executor:local
+	kind load docker-image ame-executor:local
+
+update_wf_template:
+	kubectl apply -n ame-system -f ./config/argo/ame_executor_template.yaml
+
 
 refresh_deployment: undeploy prepare_local_cluster  load_local_images deploy
 
 delete_local_cluster:
 	kind delete cluster
-
-start_minio:
-	docker run \
-  -p 9000:9000 \
-  -p 9001:9001 \
-  --name minio1 \
-  -e "MINIO_ROOT_USER=minio" \
-  -e "MINIO_ROOT_PASSWORD=minio123" \
-  -v /mnt/data:/data \
-	--detach \
-  quay.io/minio/minio server /data --console-address ":9001"
-
-stop_minio:
-	docker stop minio1
-	docker rm minio1

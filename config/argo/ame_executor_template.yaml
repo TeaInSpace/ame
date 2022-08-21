@@ -1,0 +1,50 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: ame-task-execution
+spec:
+  templates:
+    - name: steps
+      steps:
+      - - name: execute-step
+          template: main 
+
+    - name: main
+      inputs:
+        parameters:
+          - name: memory-limit
+            value: "3Gi"
+      script:
+        name: 'ame-executor'
+        env:
+          - name: AWS_ACCESS_KEY_ID
+            value: minio
+          - name: AWS_SECRET_ACCESS_KEY
+            value: minio123
+          - name: MINIO_URL
+            value: http://ame-minio.ame-system.svc.cluster.local:9000
+          - name: PIPENV_YES
+            value: "1"
+        image: 'ame-executor:local'
+        command:
+          - bash
+        resources: {}
+        source: >
+          export TASK_DIRECTORY=ameprojectstorage/{{workflow.parameters.project-id}}
+
+          s3cmd --no-ssl --region us-east-1 --host=$MINIO_URL --host-bucket=$MINIO_URL get --recursive s3://$TASK_DIRECTORY ./
+
+          cd "./{{workflow.parameters.project-id}}" 
+
+          set -e # It is important that the workflow exits with an error code if execute or save_artifacts fails, so AME can take action based on that information.
+
+          execute "{{workflow.parameters.run-command}}" 
+          
+          save_artifacts "ameprojectstorage/{{workflow.parameters.task-id}}/artifacts/"
+
+          echo "0" >> exit.status
+      podSpecPatch: >-
+        {"containers":[{"name":"main", "resources":{"limits":{
+        "memory": "{{inputs.parameters.memory-limit}}"   }}}]}
+  entrypoint: steps
+  arguments: {}
