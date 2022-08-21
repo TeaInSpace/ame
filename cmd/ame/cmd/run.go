@@ -3,20 +3,18 @@ package commands
 import (
 	"context"
 	"fmt"
-	"io"
 	"log"
 	"os"
-	"path/filepath"
 
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/grpc/metadata"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"teainspace.com/ame/api/v1alpha1"
-	"teainspace.com/ame/cmd/ame/filescanner"
+	"teainspace.com/ame/internal/ameproject"
+	"teainspace.com/ame/internal/auth"
 	"teainspace.com/ame/internal/config"
-	task "teainspace.com/ame/server/cmd"
+	"teainspace.com/ame/internal/dirtools"
+	task "teainspace.com/ame/server/grpc"
 )
 
 func attachRun(rootCmd *cobra.Command) *cobra.Command {
@@ -30,77 +28,70 @@ func attachRun(rootCmd *cobra.Command) *cobra.Command {
 	return rootCmd
 }
 
-const chunkSize = 64 * 1024
+// TODO: current have to pass run command in quotes "python train.py"
+// TODO: handle errors gracefully in the CLI
 
 func runTask(cmd *cobra.Command, args []string) {
 	ctx := context.Background()
 	cfg, err := config.GenCliConfig()
+	// TODO: handle missing configuration gracefully
 	if err != nil {
-		panic(err)
+		log.Fatalln("It looks like no CLI configuration is present, got error: ", err)
 	}
 
 	fmt.Println("Your task will be executed!", args[0])
 
+	// TODO: move grpc setup to a library package.
 	var opts []grpc.DialOption
 	opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 
 	conn, err := grpc.Dial(cfg.AmeEndpoint, opts...)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
-	taskClient := task.NewTaskServiceClient(conn)
 
 	wd, err := os.Getwd()
 	if err != nil {
-		log.Fatalln(err)
+		log.Fatal(wd)
 	}
-	currentDir := filepath.Base(wd)
 
-	t, err := filescanner.TarDirectory("./", []string{})
+	taskClient := task.NewTaskServiceClient(conn)
+	p := ameproject.NewProjectForDir(wd, taskClient)
+
+	// TODO: handle authtorization the context elegantly.
+	ctx = auth.AuthorarizeCtx(ctx, cfg.AuthToken)
+
+	projectTask, err := p.UploadAndRun(ctx, v1alpha1.NewTask(args[0], p.Name))
 	if err != nil {
-		log.Fatalln("Could not tar directory", err)
+		log.Fatal(err)
 	}
 
-	grpcCtx := metadata.AppendToOutgoingContext(ctx, task.MdKeyProjectName, currentDir, "authorization", "Bearer "+cfg.AuthToken)
+	err = p.ProcessTaskLogs(ctx, projectTask, func(le *task.LogEntry) error {
+		fmt.Println(le.Content)
+		return nil
+	})
 
-	uploadClient, err := taskClient.FileUpload(grpcCtx)
 	if err != nil {
-		log.Fatalln(err)
+		log.Fatal(err)
 	}
 
-	for {
-		nextChunk := make([]byte, chunkSize)
-		_, err := t.Read(nextChunk)
-		if err == io.EOF {
-			_, err := uploadClient.CloseAndRecv()
-			if err != nil && err != io.EOF {
-				log.Fatalln(err)
-			}
+	log.Println("Fetching artifacts produced during task execution.")
 
-			break
-		}
-
-		if err != nil {
-			log.Fatalln(err)
-		}
-
-		uploadClient.Send(&task.Chunk{
-			Contents: nextChunk,
-		})
-	}
-
-	_, err = taskClient.CreateTask(ctx,
-		&task.TaskCreateRequest{
-			Namespace: "ame-system",
-			Task: &v1alpha1.Task{
-				ObjectMeta: metav1.ObjectMeta{Name: currentDir},
-				Spec: v1alpha1.TaskSpec{
-					RunCommand: args[0],
-					ProjectId:  currentDir,
-				},
-			},
-		})
+	artifacts, err := ameproject.GetArtifacts(ctx, taskClient, projectTask.GetName())
 	if err != nil {
-		panic(err)
+		log.Default().Fatal(err)
 	}
+
+	artifactPaths := ""
+	for _, ar := range artifacts {
+		artifactPaths = fmt.Sprintf("%s, %s", artifactPaths, ar.Path)
+	}
+	log.Println("Writing artifacts to disk.", artifactPaths)
+
+	err = dirtools.PopulateDir(wd, artifacts)
+	if err != nil {
+		log.Default().Fatalf("failed to save artifacts due to error: %v", err)
+	}
+
+	log.Println("Artifacts successfully saved")
 }

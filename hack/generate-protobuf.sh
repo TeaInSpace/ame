@@ -56,9 +56,9 @@ rm -r pkg
 # Here we again import from GOPATH/src as this is where all of the protobuf definitions were placed by 
 # go-to-protobuf.
 echo "Generating gRPC server"
-protoc -I=. -I=$GOPATH/src --gofast_out=plugins=grpc:. ./server/cmd/task.proto
-protoc -I=. -I=$GOPATH/src --gofast_out=plugins=grpc:. ./server/cmd/health.proto
+protoc -I=. -I=$GOPATH/src --gofast_out=plugins=grpc:. ./server/grpc/task.proto
+protoc -I=. -I=$GOPATH/src --gofast_out=plugins=grpc:. ./server/grpc/health.proto
 
 # Correct import path errors caused by the directory structure of this project differing from what go-to-protobuf expects.
-sed -i -e 's/api\/v1alpha1/teainspace.com\/ame\/api\/v1alpha1/g' server/cmd/task.pb.go
-sed -i -e 's/grpc_health_v1/task/g' server/cmd/health.pb.go
+sed -i -e 's/api\/v1alpha1/teainspace.com\/ame\/api\/v1alpha1/g' server/grpc/task.pb.go
+sed -i -e 's/grpc_health_v1/task/g' server/grpc/health.pb.go

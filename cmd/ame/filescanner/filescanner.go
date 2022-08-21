@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"teainspace.com/ame/server/storage"
 )
 
 func isFiltered(input string, filters []string) (bool, error) {
@@ -37,7 +39,15 @@ func validateDirEntry(filePath string, filers []string) (bool, error) {
 func TarDirectory(dir string, filters []string) (*bytes.Buffer, error) {
 	var buf bytes.Buffer
 	tw := tar.NewWriter(&buf)
-	err := filepath.WalkDir(dir, func(walkPath string, d fs.DirEntry, _ error) error {
+	err := filepath.WalkDir(dir, func(walkPath string, d fs.DirEntry, err error) error {
+		// The err parameter indidcates that something whent wrong the walking
+		// the directory, as we don't know how to handle that case at the moment
+		// the error is returned and the directory walk will stop.
+		// see the fs.WalkFunc documentation for further details.
+		if err != nil {
+			return err
+		}
+
 		if d == nil || d.IsDir() {
 			return nil
 		}
@@ -49,7 +59,7 @@ func TarDirectory(dir string, filters []string) (*bytes.Buffer, error) {
 		}
 
 		if valid {
-			writeToTar(tw, walkPath, relativePath, d)
+			writePathToTar(tw, walkPath, relativePath, d)
 		}
 
 		return nil
@@ -66,30 +76,56 @@ func TarDirectory(dir string, filters []string) (*bytes.Buffer, error) {
 	return &buf, err
 }
 
-func writeToTar(tw *tar.Writer, path string, relativePath string, d fs.DirEntry) error {
-	fInfo, err := d.Info()
-	if err != nil {
-		return err
-	}
-	hdr := tar.Header{
-		Name: relativePath,
-		Mode: int64(fInfo.Mode()),
-		Size: fInfo.Size(),
-	}
-	err = tw.WriteHeader(&hdr)
-	if err != nil {
-		return err
-	}
-
+func writePathToTar(tw *tar.Writer, path string, relativePath string, d fs.DirEntry) error {
 	contents, err := os.ReadFile(path)
 	if err != nil {
 		return err
 	}
+
+	fInfo, err := d.Info()
+	if err != nil {
+		return err
+	}
+
+	return writeToTar(tw, contents, relativePath, int64(fInfo.Mode()), fInfo.Size())
+}
+
+func writeToTar(tw *tar.Writer, contents []byte, relativePath string, fileMode int64, fileSize int64) error {
+	hdr := tar.Header{
+		Name: relativePath,
+		Mode: fileMode,
+		Size: fileSize,
+	}
+	err := tw.WriteHeader(&hdr)
+	if err != nil {
+		return err
+	}
+
 	_, err = tw.Write(contents)
 	if err != nil {
 		return err
 	}
 	return nil
+}
+
+func writeFileToTar(tw *tar.Writer, f storage.ProjectFile) error {
+	return writeToTar(tw, f.Data, f.Path, 0o777, int64(len(f.Data)))
+}
+
+// TarFiles archives the files in the files parameter as a tar file and returns
+// a pointer to the buffer containing the archive.
+func TarFiles(files []storage.ProjectFile) (*bytes.Buffer, error) {
+	var buf bytes.Buffer
+	tw := tar.NewWriter(&buf)
+
+	for _, f := range files {
+		err := writeFileToTar(tw, f)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return &buf, nil
 }
 
 type TarWalk func(*tar.Header, []byte) error

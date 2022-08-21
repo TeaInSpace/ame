@@ -65,6 +65,8 @@ spec:
             value: minio
           - name: TASK_SERVER_OBJECT_STORAGE_ENDPOINT_ACCESS_SECRET
             value: minio123
+          - name: TASK_SERVER_TARGET_NAMESPACE
+            value: ame-system
           - name: AME_AUTH_TOKEN
             value: mytoken
       serviceAccountName: controller-manager

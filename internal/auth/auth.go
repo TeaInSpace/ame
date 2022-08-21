@@ -7,6 +7,7 @@ import (
 
 	grpc_auth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
 
@@ -37,4 +38,11 @@ func EnvAuthenticator() (grpc_auth.AuthFunc, error) {
 
 		return ctx, nil
 	}, nil
+}
+
+// AuthorarizeCtx appends the token to the ctx for use as an authorized outgoing context.
+// The token parameter is expected to only contain the token and not the "Bearer " prefix.
+// The new context is returned.
+func AuthorarizeCtx(ctx context.Context, token string) context.Context {
+	return metadata.AppendToOutgoingContext(ctx, "authorization", "Bearer "+token)
 }

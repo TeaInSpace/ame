@@ -55,15 +55,15 @@ var _ = Describe("Task execution", func() {
 
 		// Ensure that a Workflow for the Task does not already exist
 		// before creating it.
-		err := getArgoWorkflow(ctx, k8sClient, test, &argo.Workflow{})
-		Expect(err).To(MatchError(newWorkflowNotFoundError(test)))
+		err := GetArgoWorkflow(ctx, k8sClient, test, &argo.Workflow{})
+		Expect(err).To(MatchError(NewWorkflowNotFoundError(test)))
 
 		err = k8sClient.Create(ctx, &test)
 		Expect(err).ToNot(HaveOccurred())
 
 		Eventually(func() (argo.Workflow, error) {
 			wf := argo.Workflow{}
-			err := getArgoWorkflow(ctx, k8sClient, test, &wf)
+			err := GetArgoWorkflow(ctx, k8sClient, test, &wf)
 			return wf, err
 		}, "500ms").Should(gstruct.MatchFields(gstruct.IgnoreExtras, gstruct.Fields{
 			"ObjectMeta": gstruct.MatchFields(gstruct.IgnoreExtras, gstruct.Fields{
@@ -75,7 +75,7 @@ var _ = Describe("Task execution", func() {
 
 	It("Does recreate an argo workflow if the existing workflow is deleted", func() {
 		ctx := context.Background()
-		test := genTask(gofakeit.Noun(), testNamespace)
+		test := genTask(strings.ReplaceAll(gofakeit.Noun(), " ", ""), testNamespace)
 
 		err := k8sClient.Create(ctx, &test)
 		Expect(err).ToNot(HaveOccurred())
@@ -83,7 +83,7 @@ var _ = Describe("Task execution", func() {
 		// Ensure that the workflow exists before deleting it.
 		expectedWorkflow := argo.Workflow{}
 		Eventually(func() error {
-			err = getArgoWorkflow(ctx, k8sClient, test, &expectedWorkflow)
+			err = GetArgoWorkflow(ctx, k8sClient, test, &expectedWorkflow)
 			return err
 		}, "100ms").Should(Not(HaveOccurred()))
 
@@ -96,7 +96,7 @@ var _ = Describe("Task execution", func() {
 		Expect(expectedWorkflow.UID).ToNot(BeEmpty())
 		Eventually(func() (argo.Workflow, error) {
 			wf := argo.Workflow{}
-			err = getArgoWorkflow(ctx, k8sClient, test, &wf)
+			err = GetArgoWorkflow(ctx, k8sClient, test, &wf)
 			return wf, err
 		}, "1s").Should(gstruct.MatchFields(gstruct.IgnoreExtras, gstruct.Fields{
 			"ObjectMeta": gstruct.MatchFields(gstruct.IgnoreExtras, gstruct.Fields{
@@ -110,7 +110,7 @@ var _ = Describe("Task execution", func() {
 		test := genTask(gofakeit.Noun(), testNamespace)
 		test.Spec.ProjectId = gofakeit.UUID()
 
-		correctParams := genParameters(test.Spec)
+		correctParams := genParameters(test)
 
 		err := k8sClient.Create(ctx, &test)
 		Expect(err).ToNot(HaveOccurred())
@@ -133,7 +133,7 @@ var _ = Describe("Task execution", func() {
 					Name:  "run-command",
 					Value: argo.AnyStringPtr("wrong-value"),
 				},
-				getParameterByName(correctParams, "project-id"),
+				getParameterByName(correctParams, "task-id"),
 			},
 
 			// Tests that parameters with an incorrect name but a correct value are replaced.
@@ -141,7 +141,7 @@ var _ = Describe("Task execution", func() {
 				getParameterByName(correctParams, "run-command"),
 				{
 					Name:  "wrong-name2",
-					Value: argo.AnyStringPtr(getParameterByName(correctParams, "project-id").Value),
+					Value: argo.AnyStringPtr(getParameterByName(correctParams, "task-id").Value),
 				},
 			},
 
@@ -170,7 +170,7 @@ var _ = Describe("Task execution", func() {
 			// Ensure that the workflow configuration is correct before changing it.
 			wf := argo.Workflow{}
 			Eventually(func() (argo.Workflow, error) {
-				err := getArgoWorkflow(ctx, k8sClient, test, &wf)
+				err := GetArgoWorkflow(ctx, k8sClient, test, &wf)
 				return wf, err
 			}).Should(gstruct.MatchFields(gstruct.IgnoreExtras, gstruct.Fields{
 				"Spec": gstruct.MatchFields(gstruct.IgnoreExtras, gstruct.Fields{
@@ -199,7 +199,7 @@ var _ = Describe("Task execution", func() {
 
 			// Ensure the Workflow configuration is corrected.
 			Eventually(func() (argo.Workflow, error) {
-				err := getArgoWorkflow(ctx, k8sClient, test, &wf)
+				err := GetArgoWorkflow(ctx, k8sClient, test, &wf)
 				return wf, err
 			}).Should(gstruct.MatchFields(gstruct.IgnoreExtras, gstruct.Fields{
 				"Spec": gstruct.MatchFields(gstruct.IgnoreExtras, gstruct.Fields{

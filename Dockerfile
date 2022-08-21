@@ -16,6 +16,7 @@ COPY controllers/ controllers/
 COPY generated/ generated/
 COPY server/ server/
 COPY cmd/ cmd/
+COPY internal/ internal/
 
 
 # Builder the ame controller.

@@ -5,6 +5,7 @@ go 1.18
 require (
 	github.com/ActiveState/vt10x v1.3.1
 	github.com/AlecAivazis/survey/v2 v2.3.5
+	github.com/Netflix/go-env v0.0.0-20220526054621-78278af1949d
 	github.com/Netflix/go-expect v0.0.0-20220104043353-73e0943537d2
 	github.com/argoproj/argo-workflows/v3 v3.3.8
 	github.com/aws/aws-sdk-go-v2 v1.16.7
@@ -25,6 +26,8 @@ require (
 	github.com/stretchr/testify v1.7.0
 	golang.org/x/sync v0.0.0-20220601150217-0de741cfad7f
 	google.golang.org/grpc v1.48.0
+	gopkg.in/yaml.v3 v3.0.1
+	k8s.io/api v0.24.3
 	k8s.io/apimachinery v0.24.3
 	k8s.io/client-go v0.24.3
 	sigs.k8s.io/controller-runtime v0.12.3
@@ -119,8 +122,6 @@ require (
 	gopkg.in/ini.v1 v1.66.3 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
-	k8s.io/api v0.24.3 // indirect
 	k8s.io/apiextensions-apiserver v0.24.3 // indirect
 	k8s.io/component-base v0.24.3 // indirect
 	k8s.io/klog/v2 v2.70.1 // indirect

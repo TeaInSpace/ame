@@ -62,11 +62,11 @@ func (r *TaskReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	}
 
 	var wf argo.Workflow
-	err = getArgoWorkflow(ctx, r.Client, task, &wf)
+	err = GetArgoWorkflow(ctx, r.Client, task, &wf)
 	if err == nil {
 		log.Info("Workflow already present for task")
 
-		newSpec, update := correctWorkflowSpec(task.Spec, wf)
+		newSpec, update := correctWorkflowSpec(task, wf)
 		if update {
 			log.Info("Workflow was misconfigured attempting to correct")
 			wf.Spec = newSpec
