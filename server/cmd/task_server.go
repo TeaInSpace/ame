@@ -13,7 +13,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_auth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
+	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
 	_ "github.com/joho/godotenv/autoload"
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -118,6 +120,11 @@ func (s *TaskServer) InitStorage(ctx context.Context) error {
 }
 
 func Run(ctx context.Context, cfg *rest.Config, port string) (net.Listener, func() error, error) {
+	logger, err := zap.NewProduction()
+	if err != nil {
+		return nil, nil, err
+	}
+
 	listener, err := net.Listen("tcp", fmt.Sprintf(":%s", port))
 	if err != nil {
 		return listener, func() error { return nil }, err
@@ -127,7 +134,14 @@ func Run(ctx context.Context, cfg *rest.Config, port string) (net.Listener, func
 	if err != nil {
 		return listener, func() error { return nil }, err
 	}
-	grpcServer := grpc.NewServer(grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(grpc_auth.StreamServerInterceptor(authenticator))))
+	grpcServer := grpc.NewServer(grpc.StreamInterceptor(
+		grpc_middleware.ChainStreamServer(grpc_auth.StreamServerInterceptor(authenticator),
+			grpc_zap.StreamServerInterceptor(logger),
+		)),
+		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(
+			grpc_zap.UnaryServerInterceptor(logger),
+		)),
+	)
 	taskServerConfig, err := TaskServerConfigFromEnv()
 	if err != nil {
 		return listener, func() error { return nil }, err

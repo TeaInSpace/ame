@@ -1,5 +1,7 @@
 package main
 
+// TODO: This file is too large it needs to be split up.
+
 import (
 	"bytes"
 	"context"
@@ -16,6 +18,7 @@ import (
 	argoWf "github.com/argoproj/argo-workflows/v3/pkg/apis/workflow/v1alpha1"
 	argo "github.com/argoproj/argo-workflows/v3/pkg/client/clientset/versioned/typed/workflow/v1alpha1"
 	"github.com/google/go-cmp/cmp"
+	"golang.org/x/sync/errgroup"
 
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -44,6 +47,18 @@ var (
 	ctx       context.Context
 	testCfg   testcfg.TestEnvConfig
 )
+
+// rmProjectFile Removes the project file if it is present.
+// If a project file is not present, the function does nothing.
+// If a project file exists and an error occurs when attempting to remove it,
+// that error is considered fatal, and the method will fail the current test, using t.
+func rmProjectFile(t *testing.T) {
+	err := os.Remove(ameproject.AmeProjectFileName)
+	// The project file not existing is not considered an error.
+	if err != nil && !os.IsNotExist(err) {
+		t.Fatal(err)
+	}
+}
 
 func waitForWorkflowStatus(ctx context.Context, wfName string, timeout time.Duration, targetPhase argoWf.WorkflowPhase) error {
 	deadline := time.Now().Add(timeout)
@@ -202,6 +217,88 @@ func matchBuf(buf *bytes.Buffer, pattern string, timeout time.Duration) (bool, e
 	}
 }
 
+func startConsole(c *expect.Console) {
+	_, err := c.ExpectEOF()
+	if err != nil {
+		log.Fatalln(err)
+	}
+}
+
+type behaviors []struct {
+	Input     string
+	ExpOutput string
+}
+
+func generateCreateTaskBehavior(projectName string, taskName string, command string) behaviors {
+	return behaviors{
+		{
+			Input:     projectName,
+			ExpOutput: ".*Project name*.",
+		},
+		{
+			Input:     taskName,
+			ExpOutput: ".*Task name*.",
+		},
+		{
+			Input:     command,
+			ExpOutput: ".*Command*.",
+		},
+	}
+}
+
+func validateCliBehaviorWithCmd(bs behaviors, cmd *exec.Cmd) (string, error) {
+	buf := bytes.Buffer{}
+	console, err := virtualConsole(cmd, &buf)
+	if err != nil {
+		return "", err
+	}
+
+	defer console.Close()
+	go startConsole(console)
+
+	eGroup := validateConsoleBehavior(bs, &buf, console)
+
+	err = waitForCmd(cmd, eGroup)
+
+	// Note that the output is still returned in the case of the
+	// command producing an error. That is because the output my
+	// still be useful in the test being run.
+	return buf.String(), err
+}
+
+func validateCliBehavior(bs behaviors, cmdArgs ...string) (string, error) {
+	cmd, err := genCliCmd(cmdArgs...)
+	if err != nil {
+		return "", err
+	}
+
+	return validateCliBehaviorWithCmd(bs, cmd)
+}
+
+func validateConsoleBehavior(bs behaviors, buf *bytes.Buffer, c *expect.Console) *errgroup.Group {
+	egroup := new(errgroup.Group)
+	egroup.Go(func() error {
+		for _, b := range bs {
+			matched, err := matchBuf(buf, b.ExpOutput, time.Millisecond*100)
+			if err != nil {
+				return err
+			}
+
+			if !matched {
+				return fmt.Errorf("dit not find %s in output \n%s", b.ExpOutput, buf.String())
+			}
+
+			c.SendLine(b.Input)
+		}
+
+		c.SendLine("")
+
+		return nil
+	})
+
+	return egroup
+}
+
 // virtualConsole Creates an expect.Console which duplicates it's output to buf, configures
 // cmd to run within the Console, and returns that Console. The Console acts as a simulated
 // TTY allowing for testing TTY applications by writing to Console's stdin and reading from buf.
@@ -219,10 +316,15 @@ func virtualConsole(cmd *exec.Cmd, buf *bytes.Buffer) (*expect.Console, error) {
 	return c, nil
 }
 
+// TODO: this test has grown far too large, look at how to minimize and split it up.
+
 func TestRun(t *testing.T) {
-	err := testenv.ClearTasksInCluster(ctx, tasks)
+	rmProjectFile(t)
+	defer rmProjectFile(t)
+
+	store, err := testenv.SetupCluster(ctx, testCfg)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	err = testenv.LoadCliConfigToEnv(testCfg)
@@ -230,11 +332,6 @@ func TestRun(t *testing.T) {
 		t.Error(err)
 	}
 	defer config.ClearCliCfgFromEnv()
-
-	store, err := storage.SetupStoreage(ctx, testCfg.BucketName, testCfg.ObjectStorageEndpoint)
-	if err != nil {
-		t.Error(err)
-	}
 
 	files := []storage.ProjectFile{
 		{
@@ -253,27 +350,28 @@ func TestRun(t *testing.T) {
 	// Hence why exctracting the directory name is necessary.
 	projectName := path.Base(testDir)
 
-	testTask := amev1alpha1.Task{
-		ObjectMeta: v1.ObjectMeta{
-			Name: projectName,
-		}, Spec: amev1alpha1.TaskSpec{
-			RunCommand: "python test.py",
-			ProjectId:  projectName,
-		},
-	}
+	testTask := amev1alpha1.NewTask("python test.py", projectName)
 
 	cliCmd, err := genCliCmd("run", testTask.Spec.RunCommand)
 	if err != nil {
 		t.Fatal(err)
 	}
 	cliCmd.Dir = testDir // The CLI expects to be executed from the project directory.
-	out, err := cliCmd.CombinedOutput()
-	// TODO: this err seems to be flaky
-	// TODO: got error container "main" in pod "myproject2981967464dc4dl-wfzktqh-main-2714426353" is waiting to start: PodInitializing FAIL
-	if err != nil {
-		t.Fatalf("got err: %v, with output: %s", err, out)
+
+	taskName := "trainmodel"
+	bs := behaviors{
+		{
+			Input:     "Y",
+			ExpOutput: ".*setup a project*",
+		},
 	}
 
+	bs = append(bs, generateCreateTaskBehavior(projectName, taskName, testTask.Spec.RunCommand)...)
+	out, err := validateCliBehaviorWithCmd(bs, cliCmd)
+	if err != nil {
+		t.Error(err)
+	}
+	time.Sleep(time.Second * 1)
 	// Validate the specification of the task generated by the CLI.
 	taskList, err := tasks.List(ctx, v1.ListOptions{})
 	if err != nil {
@@ -293,6 +391,7 @@ func TestRun(t *testing.T) {
 			string(out))
 	}
 
+	// TODO: this sleep needs to be replaced with propper polling.
 	time.Sleep(time.Second * 1)
 
 	// Validate that a Workflow was actually created based on the task.
@@ -309,6 +408,7 @@ func TestRun(t *testing.T) {
 	wfRunCmd := controllers.ExtractRunCommand(&wf)
 	wfProjectID := controllers.ExtractProjectID(&wf)
 
+	// TODO: We can probably use cmp.Diff to compare the task specifications.
 	if testTask.Spec.RunCommand != wfRunCmd {
 		t.Errorf("Workflow has run command: %s, but expected: %s, got cli output: %s",
 			wfRunCmd,
@@ -331,6 +431,25 @@ func TestRun(t *testing.T) {
 	if len(diffs) > 0 {
 		t.Errorf("The CLI uploaded %+v, expected %+v for project %s, diffs: %v\n stdout: %s", storedFiles, files, projectName, diffs, out)
 	}
+
+	// TODO: the code for validating a project file can probably be shared among tests.
+	cfg, err := ameproject.ReadProjectFile(cliCmd.Dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if cfg.ProjectName != projectName {
+		t.Errorf("expected the saved project name to be: %s, but got %s", cfg.ProjectName, projectName)
+	}
+
+	if len(cfg.Specs) != 1 {
+		t.Errorf("expected the project config to only have 1 task, but got %v", len(cfg.Specs))
+	}
+
+	diff := cmp.Diff(cfg.Specs[ameproject.TaskSpecName(taskName)], &testTask.Spec)
+	if diff != "" {
+		t.Errorf("expected the saved task spec to match the run arguments but got diff: %s", diff)
+	}
 }
 
 func TestCliSetup(t *testing.T) {
@@ -351,9 +470,7 @@ func TestCliSetup(t *testing.T) {
 	}
 
 	defer c.Close()
-	go func() {
-		c.ExpectEOF()
-	}()
+	go startConsole(c)
 
 	correctCfg := config.CliConfig{AuthToken: "mytoken", AmeEndpoint: "https://myendpoint.com"}
 
@@ -605,5 +722,125 @@ func TestCanDownloadArtifacts(t *testing.T) {
 	diff := cmp.Diff(string(contents), expectedContents)
 	if diff != "" {
 		t.Errorf("expected artifact contents %s does not equal actual contents %s, diff: %s ", expectedContents, string(contents), diff)
+	}
+
+	fmt.Println(string(output))
+}
+
+func TestCreateTaskConfig(t *testing.T) {
+	rmProjectFile(t)
+	defer rmProjectFile(t)
+
+	taskName := "mytask"
+	correctProjectFileCfg := &ameproject.ProjectFileCfg{
+		ProjectName: "myproject",
+		Specs: ameproject.TaskSpecs{
+			ameproject.TaskSpecName(taskName): &amev1alpha1.TaskSpec{
+				RunCommand: "python train.py",
+				ProjectId:  "myproject",
+			},
+		},
+	}
+
+	bs := generateCreateTaskBehavior(correctProjectFileCfg.ProjectName, taskName, correctProjectFileCfg.Specs[ameproject.TaskSpecName(taskName)].RunCommand)
+
+	_, err := validateCliBehavior(bs, "create")
+	if err != nil {
+		t.Error(err)
+	}
+
+	time.Sleep(time.Second * 2)
+
+	projectFileCfg, err := ameproject.ReadProjectFile(".")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	diff := cmp.Diff(projectFileCfg, correctProjectFileCfg)
+	if diff != "" {
+		t.Errorf("expected diff between project file configs to be empty but got diffL %s", diff)
+	}
+}
+
+func waitForCmd(cmd *exec.Cmd, egroup *errgroup.Group) error {
+	// It is important that the command is started in a none blocking
+	// fashion so we can exit if the error group encounters an error while the command
+	// is running.
+	// This avoids the command waiting until the test times if something goes wrong and it
+	// doesn't get any input.
+	err := cmd.Start()
+	if err != nil {
+		return err
+	}
+
+	// This ensures that cmd is always cleaned up by wait.
+	defer func() {
+		err := cmd.Wait()
+		if err != nil {
+			fmt.Println(err)
+		}
+	}()
+
+	err = egroup.Wait()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func TestCanAddTaskToExistingConfig(t *testing.T) {
+	rmProjectFile(t)
+	defer rmProjectFile(t)
+
+	taska := amev1alpha1.NewTask("python train.py", "myproject")
+	taskb := amev1alpha1.NewTask("python preprocess.py", "myproject")
+
+	cfg := ameproject.NewProjectFileBuilder().AddTaskSpecs(ameproject.TaskSpecs{"taska": &taska.Spec}).SetProjectName(taska.Spec.ProjectId).Build()
+	err := ameproject.WriteToProjectFile(".", cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	taskbName := "taskb"
+	bs := behaviors{
+		{
+			Input:     taskbName,
+			ExpOutput: ".*Task name*.",
+		},
+		{
+			Input:     taskb.Spec.RunCommand,
+			ExpOutput: ".*Command*.",
+		},
+	}
+
+	_, err = validateCliBehavior(bs, "create")
+	if err != nil {
+		t.Error(err)
+	}
+
+	newCfg, err := ameproject.ReadProjectFile(".")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if newCfg.ProjectName != cfg.ProjectName {
+		t.Errorf("expected project name to not have been altered, but it was changed from %s to %s", cfg.ProjectName, newCfg.ProjectName)
+	}
+
+	if len(newCfg.Specs) != 2 {
+		t.Errorf("expected len(newCfg.Specs)=2, but got %v instead", len(newCfg.Specs))
+	}
+
+	taskAName := "taska"
+	taskADiff := cmp.Diff(cfg.Specs[ameproject.TaskSpecName(taskAName)], newCfg.Specs[ameproject.TaskSpecName(taskAName)])
+	if taskADiff != "" {
+		t.Errorf("expected task: %s to not have changed, but got diff: %s", taskAName, taskADiff)
+	}
+
+	taskBDiff := cmp.Diff(newCfg.Specs[ameproject.TaskSpecName(taskbName)], &taskb.Spec)
+
+	if taskBDiff != "" {
+		t.Errorf("expected the saved spec for taskb to be correct, but got diff: %s", taskBDiff)
 	}
 }
