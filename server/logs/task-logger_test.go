@@ -154,6 +154,7 @@ func TestLogStreamFailsAfterTimeout(t *testing.T) {
 	}
 }
 
+// TODO: This test is flaky, we might be running out of memory, as both tasks will request 3GB of ram.
 func TestCanStreamLogForMultipleTasksAtOnce(t *testing.T) {
 	_, err := testenv.SetupCluster(ctx, testCfg)
 	if err != nil {

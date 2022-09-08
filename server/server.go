@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"fmt"
+	"log"
 	"os"
 
 	"k8s.io/client-go/rest"
@@ -33,8 +35,13 @@ func main() {
 		panic(err)
 	}
 
+	log.Println("serving")
+
 	err = serve()
 	if err != nil {
-		panic(err)
+		fmt.Println("Got error")
+		log.Fatalln(err)
 	}
+
+	log.Println("Finished serving")
 }

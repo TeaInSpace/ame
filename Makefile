@@ -1,9 +1,12 @@
-
 # Image URL to use all building/pushing image targets
 IMG ?= ame-controller:local
 SERVER_IMG ?= ame-server:local
+
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.24.1
+
+# Namespace used for AME.
+NAMESPACE = ame-system
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -111,8 +114,8 @@ deploy: kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/c
 	cd config/server && $(KUSTOMIZE) edit set image ame-server=${SERVER_IMG}
 	$(KUSTOMIZE) build config/default | kubectl apply -f -
 	sleep 1
-	kubectl wait pods -n ame-system -l app=ame-server --for condition=Ready --timeout=90s
-	kubectl wait pods -n ame-system -l control-plane=controller-manager --for condition=Ready --timeout=90s
+	kubectl wait pods -n ${NAMESPACE} -l app=ame-server --for condition=Ready --timeout=90s
+	kubectl wait pods -n ${NAMESPACE} -l control-plane=controller-manager --for condition=Ready --timeout=90s
 
 
 .PHONY: undeploy
@@ -174,10 +177,10 @@ prepare_local_cluster:
 	sleep 20
 	kubectl wait pods -n metallb-system -l app=metallb --for condition=Ready --timeout=90s
 	kubectl apply -f ./metallb_config.yaml
-	kubectl create ns ame-system --dry-run=client -o yaml | kubectl apply -f -
-	kubectl apply -n ame-system -f https://raw.githubusercontent.com/argoproj/argo-workflows/master/manifests/quick-start-postgres.yaml
-	kubectl apply -n ame-system -f ./config/minio/
-	kubectl apply -n ame-system -f ./config/argo/ame_executor_template.yaml
+	kubectl create ns ${NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
+	kubectl apply -n ${NAMESPACE} -f https://raw.githubusercontent.com/argoproj/argo-workflows/master/manifests/quick-start-postgres.yaml
+	kubectl apply -n ${NAMESPACE} -f ./config/minio/
+	kubectl apply -n ${NAMESPACE} -f ./config/argo/ame_executor_template.yaml
 
 
 load_local_images: load_executor
@@ -185,18 +188,19 @@ load_local_images: load_executor
 	docker buildx build . --target task-controller -t ame-controller:local
 	kind load docker-image ame-server:local
 	kind load docker-image ame-controller:local
-	kubectl delete pod -l app=ame-server -n ame-system
-	kubectl delete pod -l control-plane=controller-manager -n ame-system
 
 load_executor:
 	docker build ./executor/ -t ame-executor:local
 	kind load docker-image ame-executor:local
 
 update_wf_template:
-	kubectl apply -n ame-system -f ./config/argo/ame_executor_template.yaml
+	kubectl apply -n ${NAMESPACE} -f ./config/argo/ame_executor_template.yaml
 
 
 refresh_deployment: undeploy prepare_local_cluster  load_local_images deploy
 
 delete_local_cluster:
 	kind delete cluster
+
+watch_server_logs:
+	kubectl logs -n ${NAMESPACE} -l app=ame-server -f

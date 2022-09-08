@@ -71,7 +71,8 @@ func (p *Project) UploadTaskForProject(ctx context.Context, t *v1alpha1.Task) (*
 }
 
 func (p *Project) UploadProject(ctx context.Context) error {
-	t, err := filescanner.TarDirectory(p.Directory, []string{})
+	// There is no need to upload the ame project file, so it is filtered out.
+	t, err := filescanner.TarDirectory(p.Directory, []string{AmeProjectFileName})
 	if err != nil {
 		return err
 	}
