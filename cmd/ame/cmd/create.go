@@ -45,12 +45,37 @@ func createProjectFile(cmd *cobra.Command, args []string) {
 		log.Fatal(err)
 	}
 
+	var envVars []v1alpha1.TaskEnvVar
+	var addEnvironmentVar bool
+	for {
+		err = survey.AskOne(&survey.Confirm{
+			Message: "Would you like to add an environment variable?",
+			Default: false,
+		}, &addEnvironmentVar)
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		if !addEnvironmentVar {
+			break
+		}
+
+		envVar, err := askForEnvVar()
+		if err != nil {
+			log.Fatalln(err)
+		}
+
+		envVars = append(envVars, envVar)
+	}
+
 	fBuilder := ameproject.NewProjectFileBuilder()
 	fBuilder.SetProjectName(cfg.ProjectName)
 	fBuilder.AddTaskSpecs(ameproject.TaskSpecs{
 		ameproject.TaskSpecName(cfg.TaskName): &v1alpha1.TaskSpec{
 			RunCommand: cfg.Command,
 			ProjectId:  cfg.ProjectName,
+			Env:        envVars,
 		},
 	})
 
@@ -97,4 +122,32 @@ func genQuestions(args []string) ([]*survey.Question, error) {
 		qs[2].Prompt = &survey.Input{Message: "Command:", Default: args[0]}
 	}
 	return qs, nil
+}
+
+func askForEnvVar() (v1alpha1.TaskEnvVar, error) {
+	qs := []*survey.Question{
+		{
+			Name: "Name",
+			Prompt: &survey.Input{
+				Message: "Variable name:",
+			},
+			Validate: survey.Required,
+		},
+
+		{
+			Name: "Value",
+			Prompt: &survey.Input{
+				Message: "Variable value:",
+			},
+			Validate: survey.Required,
+		},
+	}
+
+	var envVar v1alpha1.TaskEnvVar
+	err := survey.Ask(qs, &envVar)
+	if err != nil {
+		return v1alpha1.TaskEnvVar{}, err
+	}
+
+	return envVar, nil
 }

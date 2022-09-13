@@ -4,6 +4,7 @@ import (
 	"context"
 
 	argo "github.com/argoproj/argo-workflows/v3/pkg/apis/workflow/v1alpha1"
+	apiv1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	amev1alpha1 "teainspace.com/ame/api/v1alpha1"
@@ -67,11 +68,81 @@ func genWorkflowSpec(task amev1alpha1.Task) argo.WorkflowSpec {
 				"ame-task": task.GetName(),
 			},
 		},
-		WorkflowTemplateRef: &argo.WorkflowTemplateRef{
-			ClusterScope: false,
-			Name:         "ame-task-execution",
+
+		Templates: []argo.Template{
+			{
+				Name: "main",
+				Inputs: argo.Inputs{
+					Parameters: []argo.Parameter{
+						{
+							Name:  "memory-limit",
+							Value: argo.AnyStringPtr("3Gi"),
+						},
+					},
+				},
+
+				Script: &argo.ScriptTemplate{
+					Source: `
+
+          export TASK_DIRECTORY=ameprojectstorage/{{workflow.parameters.project-id}}
+
+          s3cmd --no-ssl --region us-east-1 --host=$MINIO_URL --host-bucket=$MINIO_URL get --recursive s3://$TASK_DIRECTORY ./
+
+          cd "./{{workflow.parameters.project-id}}" 
+
+          set -e # It is important that the workflow exits with an error code if execute or save_artifacts fails, so AME can take action based on that information.
+
+          execute "{{workflow.parameters.run-command}}" 
+          
+          save_artifacts "ameprojectstorage/{{workflow.parameters.task-id}}/artifacts/"
+
+          echo "0" >> exit.status
+					`,
+					Container: apiv1.Container{
+						Name:  "ame-executor",
+						Image: "ame-executor:local",
+						Command: []string{
+							"bash",
+						},
+						Env: append([]apiv1.EnvVar{
+							{
+								Name:  "AWS_ACCESS_KEY_ID",
+								Value: "minio",
+							},
+							{
+								Name:  "AWS_SECRET_ACCESS_KEY",
+								Value: "minio123",
+							},
+							{
+								Name:  "MINIO_URL",
+								Value: "http://ame-minio.ame-system.svc.cluster.local:9000",
+							},
+							{
+								Name:  "PIPENV_YES",
+								Value: "1",
+							},
+						}, taskEnvToContainerEnv(task.Spec.Env)...),
+					},
+				},
+
+				PodSpecPatch: `{"containers":[{"name":"main", "resources":{"limits":{
+        "memory": "{{inputs.parameters.memory-limit}}"   }}}]}`,
+			},
 		},
+		Entrypoint: "main",
 	}
+}
+
+func taskEnvToContainerEnv(env []amev1alpha1.TaskEnvVar) []apiv1.EnvVar {
+	var v1env []apiv1.EnvVar
+	for _, e := range env {
+		v1env = append(v1env, apiv1.EnvVar{
+			Name:  e.Name,
+			Value: e.Value,
+		})
+	}
+
+	return v1env
 }
 
 // genParameters generates Workflow parameters from a Task specification.

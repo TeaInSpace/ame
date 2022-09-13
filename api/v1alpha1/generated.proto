@@ -34,6 +34,14 @@ message Task {
   optional TaskStatus status = 3;
 }
 
+// A TaskEnvVar represents an environment variable
+// made available to a task during execution.
+message TaskEnvVar {
+  optional string name = 1;
+
+  optional string value = 2;
+}
+
 // TaskList contains a list of Task
 message TaskList {
   optional k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
@@ -51,6 +59,9 @@ message TaskSpec {
   // A unique identifier for the project wich the Task will
   // be running based on.
   optional string projectid = 2;
+
+  // A map of keys and values to be injected into the Task's environment.
+  repeated TaskEnvVar env = 3;
 }
 
 // TaskStatus defines the observed state of Task

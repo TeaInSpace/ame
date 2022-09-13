@@ -42,6 +42,16 @@ type TaskSpec struct {
 	// A unique identifier for the project wich the Task will
 	// be running based on.
 	ProjectId string `json:"projectid,omitempty"`
+
+	// A map of keys and values to be injected into the Task's environment.
+	Env []TaskEnvVar `json:"env,omitempty"`
+}
+
+// A TaskEnvVar represents an environment variable
+// made available to a task during execution.
+type TaskEnvVar struct {
+	Name  string `json:"name"`
+	Value string `json:"value"`
 }
 
 // TaskStatus defines the observed state of Task
@@ -146,6 +156,7 @@ func NewTask(runCmd string, projectId string) *Task {
 		Spec: TaskSpec{
 			RunCommand: runCmd,
 			ProjectId:  projectId,
+			Env:        []TaskEnvVar{},
 		},
 	}
 }

@@ -102,7 +102,22 @@ func runTask(cmd *cobra.Command, args []string) {
 	s.Suffix = " Uploading project: " + p.Name
 	s.Start()
 
-	projectTask, err := p.UploadAndRun(ctx, v1alpha1.NewTask(args[0], p.Name))
+	// TODO: we need to sort out how the user is supposed to execute a task from the project file
+	// vs adhoc tasks.
+	t := v1alpha1.NewTask(args[0], p.Name)
+	if ok {
+		projectCfg, err := ameproject.ReadProjectFile(".")
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		for k := range projectCfg.Specs {
+			t.Spec.Env = projectCfg.Specs[k].Env
+		}
+
+	}
+
+	projectTask, err := p.UploadAndRun(ctx, t)
 	if err != nil {
 		log.Fatal(err)
 	}
