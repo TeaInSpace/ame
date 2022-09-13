@@ -35,6 +35,22 @@ spec:
           spec:
             description: TaskSpec defines the desired state of Task
             properties:
+              env:
+                description: A map of keys and values to be injected into the Task's
+                  environment.
+                items:
+                  description: A TaskEnvVar represents an environment variable made
+                    available to a task during execution.
+                  properties:
+                    name:
+                      type: string
+                    value:
+                      type: string
+                  required:
+                  - name
+                  - value
+                  type: object
+                type: array
               projectid:
                 description: A unique identifier for the project wich the Task will
                   be running based on.

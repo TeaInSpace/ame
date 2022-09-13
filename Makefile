@@ -180,7 +180,6 @@ prepare_local_cluster:
 	kubectl create ns ${NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
 	kubectl apply -n ${NAMESPACE} -f https://raw.githubusercontent.com/argoproj/argo-workflows/master/manifests/quick-start-postgres.yaml
 	kubectl apply -n ${NAMESPACE} -f ./config/minio/
-	kubectl apply -n ${NAMESPACE} -f ./config/argo/ame_executor_template.yaml
 
 
 load_local_images: load_executor
@@ -192,10 +191,6 @@ load_local_images: load_executor
 load_executor:
 	docker build ./executor/ -t ame-executor:local
 	kind load docker-image ame-executor:local
-
-update_wf_template:
-	kubectl apply -n ${NAMESPACE} -f ./config/argo/ame_executor_template.yaml
-
 
 refresh_deployment: undeploy prepare_local_cluster  load_local_images deploy
 

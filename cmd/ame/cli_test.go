@@ -229,6 +229,11 @@ type behaviors []struct {
 	ExpOutput string
 }
 
+func genTaskBehavior(ta *amev1alpha1.Task, taskName string) behaviors {
+	bs := generateCreateTaskBehavior(ta.Spec.ProjectId, taskName, ta.Spec.RunCommand)
+	return append(bs, generateEnvVarInputBehavior(ta.Spec.Env)...)
+}
+
 func generateCreateTaskBehavior(projectName string, taskName string, command string) behaviors {
 	return behaviors{
 		{
@@ -246,6 +251,37 @@ func generateCreateTaskBehavior(projectName string, taskName string, command str
 	}
 }
 
+func generateEnvVarInputBehavior(vars []amev1alpha1.TaskEnvVar) behaviors {
+	var bs behaviors
+	for _, v := range vars {
+		bs = append(bs, behaviors{
+			{
+				Input:     "Y",
+				ExpOutput: ".*environment*.",
+			},
+
+			{
+				Input:     v.Name,
+				ExpOutput: ".*name*.",
+			},
+			{
+				Input:     v.Value,
+				ExpOutput: ".*value*.",
+			},
+		}...)
+	}
+
+	bs = append(bs, struct {
+		Input     string
+		ExpOutput string
+	}{
+		Input:     "N",
+		ExpOutput: ".*environment*.",
+	})
+
+	return bs
+}
+
 func validateCliBehaviorWithCmd(bs behaviors, cmd *exec.Cmd) (string, error) {
 	buf := bytes.Buffer{}
 	console, err := virtualConsole(cmd, &buf)
@@ -259,6 +295,7 @@ func validateCliBehaviorWithCmd(bs behaviors, cmd *exec.Cmd) (string, error) {
 	eGroup := validateConsoleBehavior(bs, &buf, console)
 
 	err = waitForCmd(cmd, eGroup)
+	fmt.Println("e group returned")
 
 	// Note that the output is still returned in the case of the
 	// command producing an error. That is because the output my
@@ -285,6 +322,7 @@ func validateConsoleBehavior(bs behaviors, buf *bytes.Buffer, c *expect.Console)
 			}
 
 			if !matched {
+				fmt.Println("failed to match: ")
 				return fmt.Errorf("dit not find %s in output \n%s", b.ExpOutput, buf.String())
 			}
 
@@ -351,6 +389,16 @@ func TestRun(t *testing.T) {
 	projectName := path.Base(testDir)
 
 	testTask := amev1alpha1.NewTask("python test.py", projectName)
+	testTask.Spec.Env = []amev1alpha1.TaskEnvVar{
+		{
+			Name:  "VAR_ONE",
+			Value: "valone",
+		},
+		{
+			Name:  "VAR_TWO",
+			Value: "valtwo",
+		},
+	}
 
 	cliCmd, err := genCliCmd("run", testTask.Spec.RunCommand)
 	if err != nil {
@@ -367,6 +415,7 @@ func TestRun(t *testing.T) {
 	}
 
 	bs = append(bs, generateCreateTaskBehavior(projectName, taskName, testTask.Spec.RunCommand)...)
+	bs = append(bs, generateEnvVarInputBehavior(testTask.Spec.Env)...)
 	out, err := validateCliBehaviorWithCmd(bs, cliCmd)
 	if err != nil {
 		t.Error(err)
@@ -389,6 +438,11 @@ func TestRun(t *testing.T) {
 			inclusterTask.Spec.RunCommand,
 			testTask.Spec.RunCommand,
 			string(out))
+	}
+
+	envDiff := cmp.Diff(inclusterTask.Spec.Env, testTask.Spec.Env)
+	if envDiff != "" {
+		t.Errorf("expected in cluser task to have the corrent env, but got diff: %s, and output: \n%s\n", envDiff, out)
 	}
 
 	// TODO: this sleep needs to be replaced with propper polling.
@@ -738,11 +792,18 @@ func TestCreateTaskConfig(t *testing.T) {
 			ameproject.TaskSpecName(taskName): &amev1alpha1.TaskSpec{
 				RunCommand: "python train.py",
 				ProjectId:  "myproject",
+				Env: []amev1alpha1.TaskEnvVar{
+					{
+						Name:  "env1",
+						Value: "val1",
+					},
+				},
 			},
 		},
 	}
 
 	bs := generateCreateTaskBehavior(correctProjectFileCfg.ProjectName, taskName, correctProjectFileCfg.Specs[ameproject.TaskSpecName(taskName)].RunCommand)
+	bs = append(bs, generateEnvVarInputBehavior(correctProjectFileCfg.Specs[ameproject.TaskSpecName(taskName)].Env)...)
 
 	_, err := validateCliBehavior(bs, "create")
 	if err != nil {
@@ -773,17 +834,18 @@ func waitForCmd(cmd *exec.Cmd, egroup *errgroup.Group) error {
 		return err
 	}
 
-	// This ensures that cmd is always cleaned up by wait.
-	defer func() {
-		err := cmd.Wait()
-		if err != nil {
-			fmt.Println(err)
-		}
-	}()
-
 	err = egroup.Wait()
 	if err != nil {
+		// TODO: Is this the correct way to force stop the cli process?
+		cmd.Process.Kill()
+		cmd.Process.Release()
 		return err
+	}
+
+	// TODO: how do we avoid this hanging on CLI errors?
+	err = cmd.Wait()
+	if err != nil {
+		log.Println("got error while waiting for command to finish: ", err)
 	}
 
 	return nil
@@ -811,6 +873,10 @@ func TestCanAddTaskToExistingConfig(t *testing.T) {
 		{
 			Input:     taskb.Spec.RunCommand,
 			ExpOutput: ".*Command*.",
+		},
+		{
+			Input:     "N",
+			ExpOutput: ".*environment*.",
 		},
 	}
 
@@ -842,5 +908,70 @@ func TestCanAddTaskToExistingConfig(t *testing.T) {
 
 	if taskBDiff != "" {
 		t.Errorf("expected the saved spec for taskb to be correct, but got diff: %s", taskBDiff)
+	}
+}
+
+func TestCanUseEnvironmentVariables(t *testing.T) {
+	_, err := testenv.SetupCluster(ctx, testCfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = testenv.LoadCliConfigToEnv(testCfg)
+	if err != nil {
+		t.Error(err)
+	}
+	defer config.ClearCliCfgFromEnv()
+
+	env := []amev1alpha1.TaskEnvVar{
+		{
+			Name:  "VAR1",
+			Value: "VAL1",
+		},
+		{
+			Name:  "VAR2",
+			Value: "VAL2",
+		},
+	}
+
+	runCmd := "python env.py"
+	for _, e := range env {
+		runCmd = fmt.Sprintf("%s %s=%s", runCmd, e.Name, e.Value)
+	}
+
+	envTask := amev1alpha1.NewTask(runCmd, "env")
+	envTask.Spec.Env = env
+	taskName := "validateenv"
+
+	bs := behaviors{
+		{
+			Input:     "Y",
+			ExpOutput: ".*setup a project*",
+		},
+	}
+
+	bs = append(bs, genTaskBehavior(envTask, taskName)...)
+
+	cmd, err := genCliCmd("run", envTask.Spec.RunCommand)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	envProjectPath := "../../test_data/test_projects/env"
+	os.Remove(envProjectPath)
+	cmd.Dir = envProjectPath
+	out, err := validateCliBehaviorWithCmd(bs, cmd)
+	if err != nil {
+		t.Fatalf("got err: %v, with out \n%s\n", err, out)
+	}
+
+	wf, err := getWorkflowForProject(ctx, envTask.Spec.ProjectId, time.Second*10)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = waitForWorkflowStatus(ctx, wf.Name, time.Second*10, argoWf.WorkflowSucceeded)
+	if err != nil {
+		t.Error(err)
 	}
 }
