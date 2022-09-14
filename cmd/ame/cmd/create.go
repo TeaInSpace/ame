@@ -69,6 +69,31 @@ func createProjectFile(cmd *cobra.Command, args []string) {
 		envVars = append(envVars, envVar)
 	}
 
+	var secrets []v1alpha1.TaskSecret
+	var addSecret bool
+	for {
+
+		err = survey.AskOne(&survey.Confirm{
+			Message: "Would you like to add a secret?",
+			Default: false,
+		}, &addSecret)
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		if !addSecret {
+			break
+		}
+
+		secret, err := askForSecret()
+		if err != nil {
+			log.Fatalln(err)
+		}
+
+		secrets = append(secrets, secret)
+	}
+
 	fBuilder := ameproject.NewProjectFileBuilder()
 	fBuilder.SetProjectName(cfg.ProjectName)
 	fBuilder.AddTaskSpecs(ameproject.TaskSpecs{
@@ -76,6 +101,7 @@ func createProjectFile(cmd *cobra.Command, args []string) {
 			RunCommand: cfg.Command,
 			ProjectId:  cfg.ProjectName,
 			Env:        envVars,
+			Secrets:    secrets,
 		},
 	})
 
@@ -147,6 +173,34 @@ func askForEnvVar() (v1alpha1.TaskEnvVar, error) {
 	err := survey.Ask(qs, &envVar)
 	if err != nil {
 		return v1alpha1.TaskEnvVar{}, err
+	}
+
+	return envVar, nil
+}
+
+func askForSecret() (v1alpha1.TaskSecret, error) {
+	qs := []*survey.Question{
+		{
+			Name: "Name",
+			Prompt: &survey.Input{
+				Message: "Secret name:",
+			},
+			Validate: survey.Required,
+		},
+
+		{
+			Name: "EnvKey",
+			Prompt: &survey.Input{
+				Message: "Environment key:",
+			},
+			Validate: survey.Required,
+		},
+	}
+
+	var envVar v1alpha1.TaskSecret
+	err := survey.Ask(qs, &envVar)
+	if err != nil {
+		return v1alpha1.TaskSecret{}, err
 	}
 
 	return envVar, nil

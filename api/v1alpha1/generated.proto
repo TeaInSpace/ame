@@ -49,6 +49,15 @@ message TaskList {
   repeated Task items = 2;
 }
 
+// A TaskSecret represnts a secret identified by the Name which
+// will be injected into the Task's execution as an environment
+// variable with EnvKey as the key.
+message TaskSecret {
+  optional string namw = 1;
+
+  optional string envkey = 2;
+}
+
 // TaskSpec defines the desired state of Task
 message TaskSpec {
   // The command AME will use to execute the Task.
@@ -60,8 +69,11 @@ message TaskSpec {
   // be running based on.
   optional string projectid = 2;
 
-  // A map of keys and values to be injected into the Task's environment.
+  // Environment variables that will be made avaialbe to the Task during execution.
   repeated TaskEnvVar env = 3;
+
+  // Secrets that will be made available to the task during execution.
+  repeated TaskSecret secrets = 4;
 }
 
 // TaskStatus defines the observed state of Task

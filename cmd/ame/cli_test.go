@@ -35,6 +35,8 @@ import (
 
 	"teainspace.com/ame/internal/clients"
 	"teainspace.com/ame/internal/config"
+
+	corev1 "k8s.io/api/core/v1"
 )
 
 const (
@@ -53,7 +55,11 @@ var (
 // If a project file exists and an error occurs when attempting to remove it,
 // that error is considered fatal, and the method will fail the current test, using t.
 func rmProjectFile(t *testing.T) {
-	err := os.Remove(ameproject.AmeProjectFileName)
+	rmProjectFileInDir(".", t)
+}
+
+func rmProjectFileInDir(dir string, t *testing.T) {
+	err := os.Remove(path.Join(dir, ameproject.AmeProjectFileName))
 	// The project file not existing is not considered an error.
 	if err != nil && !os.IsNotExist(err) {
 		t.Fatal(err)
@@ -231,7 +237,8 @@ type behaviors []struct {
 
 func genTaskBehavior(ta *amev1alpha1.Task, taskName string) behaviors {
 	bs := generateCreateTaskBehavior(ta.Spec.ProjectId, taskName, ta.Spec.RunCommand)
-	return append(bs, generateEnvVarInputBehavior(ta.Spec.Env)...)
+	bs = append(bs, generateEnvVarInputBehavior(ta.Spec.Env)...)
+	return append(bs, generateSecretInputBehavior(ta.Spec.Secrets)...)
 }
 
 func generateCreateTaskBehavior(projectName string, taskName string, command string) behaviors {
@@ -282,6 +289,36 @@ func generateEnvVarInputBehavior(vars []amev1alpha1.TaskEnvVar) behaviors {
 	return bs
 }
 
+func generateSecretInputBehavior(secrets []amev1alpha1.TaskSecret) behaviors {
+	var bs behaviors
+	for _, s := range secrets {
+		bs = append(bs, behaviors{
+			{
+				Input:     "Y",
+				ExpOutput: ".*secret*.",
+			},
+			{
+				Input:     s.Name,
+				ExpOutput: ".*name*",
+			},
+			{
+				Input:     s.EnvKey,
+				ExpOutput: ".*key*.",
+			},
+		}...)
+	}
+
+	bs = append(bs, struct {
+		Input     string
+		ExpOutput string
+	}{
+		Input:     "N",
+		ExpOutput: ".*secret*.",
+	})
+
+	return bs
+}
+
 func validateCliBehaviorWithCmd(bs behaviors, cmd *exec.Cmd) (string, error) {
 	buf := bytes.Buffer{}
 	console, err := virtualConsole(cmd, &buf)
@@ -295,7 +332,6 @@ func validateCliBehaviorWithCmd(bs behaviors, cmd *exec.Cmd) (string, error) {
 	eGroup := validateConsoleBehavior(bs, &buf, console)
 
 	err = waitForCmd(cmd, eGroup)
-	fmt.Println("e group returned")
 
 	// Note that the output is still returned in the case of the
 	// command producing an error. That is because the output my
@@ -322,7 +358,6 @@ func validateConsoleBehavior(bs behaviors, buf *bytes.Buffer, c *expect.Console)
 			}
 
 			if !matched {
-				fmt.Println("failed to match: ")
 				return fmt.Errorf("dit not find %s in output \n%s", b.ExpOutput, buf.String())
 			}
 
@@ -414,8 +449,7 @@ func TestRun(t *testing.T) {
 		},
 	}
 
-	bs = append(bs, generateCreateTaskBehavior(projectName, taskName, testTask.Spec.RunCommand)...)
-	bs = append(bs, generateEnvVarInputBehavior(testTask.Spec.Env)...)
+	bs = append(bs, genTaskBehavior(testTask, taskName)...)
 	out, err := validateCliBehaviorWithCmd(bs, cliCmd)
 	if err != nil {
 		t.Error(err)
@@ -777,8 +811,6 @@ func TestCanDownloadArtifacts(t *testing.T) {
 	if diff != "" {
 		t.Errorf("expected artifact contents %s does not equal actual contents %s, diff: %s ", expectedContents, string(contents), diff)
 	}
-
-	fmt.Println(string(output))
 }
 
 func TestCreateTaskConfig(t *testing.T) {
@@ -798,12 +830,14 @@ func TestCreateTaskConfig(t *testing.T) {
 						Value: "val1",
 					},
 				},
+				Secrets: []amev1alpha1.TaskSecret{},
 			},
 		},
 	}
 
 	bs := generateCreateTaskBehavior(correctProjectFileCfg.ProjectName, taskName, correctProjectFileCfg.Specs[ameproject.TaskSpecName(taskName)].RunCommand)
 	bs = append(bs, generateEnvVarInputBehavior(correctProjectFileCfg.Specs[ameproject.TaskSpecName(taskName)].Env)...)
+	bs = append(bs, generateSecretInputBehavior([]amev1alpha1.TaskSecret{})...)
 
 	_, err := validateCliBehavior(bs, "create")
 	if err != nil {
@@ -878,6 +912,10 @@ func TestCanAddTaskToExistingConfig(t *testing.T) {
 			Input:     "N",
 			ExpOutput: ".*environment*.",
 		},
+		{
+			Input:     "N",
+			ExpOutput: ".*secret*.",
+		},
 	}
 
 	_, err = validateCliBehavior(bs, "create")
@@ -912,6 +950,9 @@ func TestCanAddTaskToExistingConfig(t *testing.T) {
 }
 
 func TestCanUseEnvironmentVariables(t *testing.T) {
+	rmProjectFileInDir(testenv.EnvProjectDir, t)
+	defer rmProjectFileInDir(testenv.EnvProjectDir, t)
+
 	_, err := testenv.SetupCluster(ctx, testCfg)
 	if err != nil {
 		t.Fatal(err)
@@ -957,9 +998,7 @@ func TestCanUseEnvironmentVariables(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	envProjectPath := "../../test_data/test_projects/env"
-	os.Remove(envProjectPath)
-	cmd.Dir = envProjectPath
+	cmd.Dir = testenv.EnvProjectDir
 	out, err := validateCliBehaviorWithCmd(bs, cmd)
 	if err != nil {
 		t.Fatalf("got err: %v, with out \n%s\n", err, out)
@@ -970,8 +1009,94 @@ func TestCanUseEnvironmentVariables(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = waitForWorkflowStatus(ctx, wf.Name, time.Second*10, argoWf.WorkflowSucceeded)
+	err = waitForWorkflowStatus(ctx, wf.Name, time.Second*15, argoWf.WorkflowSucceeded)
 	if err != nil {
 		t.Error(err)
+	}
+}
+
+func TestCanUseSecret(t *testing.T) {
+	rmProjectFileInDir(testenv.EnvProjectDir, t)
+	defer rmProjectFileInDir(testenv.EnvProjectDir, t)
+
+	_, err := testenv.SetupCluster(ctx, testCfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = testenv.LoadCliConfigToEnv(testCfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer config.ClearCliCfgFromEnv()
+
+	kubeCfg, err := clients.KubeClientFromConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	secrets := clients.SecretsClientFromConfig(kubeCfg, testCfg.Namespace)
+	testSecret := &corev1.Secret{
+		ObjectMeta: v1.ObjectMeta{
+			Name: "mysecret",
+		},
+		StringData: map[string]string{
+			"secret": "mysecretval",
+		},
+	}
+	_, err = secrets.Create(ctx, testSecret.DeepCopy(), v1.CreateOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	defer func() {
+		err = secrets.Delete(ctx, testSecret.GetName(), v1.DeleteOptions{})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}()
+
+	taskSecrets := []amev1alpha1.TaskSecret{
+		{
+			Name:   "mysecret",
+			EnvKey: "VAR1",
+		},
+	}
+
+	projectName := "env"
+	testTask := amev1alpha1.NewTask(fmt.Sprintf("python env.py VAR1=%s", testSecret.StringData["secret"]), projectName)
+	testTask.Spec.Secrets = taskSecrets
+
+	taskName := "testSecrets"
+	bs := behaviors{
+		{
+			Input:     "Y",
+			ExpOutput: ".*setup a project*",
+		},
+	}
+
+	bs = append(bs, genTaskBehavior(testTask, taskName)...)
+
+	cmd, err := genCliCmd("run", testTask.Spec.RunCommand)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cmd.Dir = testenv.EnvProjectDir
+	output, err := validateCliBehaviorWithCmd(bs, cmd)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wf, err := getWorkflowForProject(ctx, testTask.Spec.ProjectId, time.Second*20)
+	if err != nil {
+		fmt.Println("Terminal output:")
+		fmt.Println(output)
+		t.Fatalf("got error: %v", err)
+	}
+
+	err = waitForWorkflowStatus(ctx, wf.GetName(), time.Second*15, argoWf.WorkflowSucceeded)
+	if err != nil {
+		t.Errorf("got error: %v, with cli output: \n%s", err, output)
 	}
 }
