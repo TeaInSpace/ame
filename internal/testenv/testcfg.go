@@ -13,6 +13,7 @@ import (
 
 const (
 	EchoProjectDir = "../../test_data/test_projects/echo"
+	EnvProjectDir  = "../../test_data/test_projects/env"
 )
 
 func SetupCluster(ctx context.Context, cfg testcfg.TestEnvConfig) (storage.Storage, error) {

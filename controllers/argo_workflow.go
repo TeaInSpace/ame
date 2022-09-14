@@ -121,7 +121,7 @@ func genWorkflowSpec(task amev1alpha1.Task) argo.WorkflowSpec {
 								Name:  "PIPENV_YES",
 								Value: "1",
 							},
-						}, taskEnvToContainerEnv(task.Spec.Env)...),
+						}, taskEnvToContainerEnv(task.Spec)...),
 					},
 				},
 
@@ -133,12 +133,26 @@ func genWorkflowSpec(task amev1alpha1.Task) argo.WorkflowSpec {
 	}
 }
 
-func taskEnvToContainerEnv(env []amev1alpha1.TaskEnvVar) []apiv1.EnvVar {
+func taskEnvToContainerEnv(t amev1alpha1.TaskSpec) []apiv1.EnvVar {
 	var v1env []apiv1.EnvVar
-	for _, e := range env {
+	for _, e := range t.Env {
 		v1env = append(v1env, apiv1.EnvVar{
 			Name:  e.Name,
 			Value: e.Value,
+		})
+	}
+
+	for _, s := range t.Secrets {
+		v1env = append(v1env, apiv1.EnvVar{
+			Name: s.EnvKey,
+			ValueFrom: &apiv1.EnvVarSource{
+				SecretKeyRef: &apiv1.SecretKeySelector{
+					Key: "secret",
+					LocalObjectReference: apiv1.LocalObjectReference{
+						Name: s.Name,
+					},
+				},
+			},
 		})
 	}
 

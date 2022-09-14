@@ -113,6 +113,7 @@ func runTask(cmd *cobra.Command, args []string) {
 
 		for k := range projectCfg.Specs {
 			t.Spec.Env = projectCfg.Specs[k].Env
+			t.Spec.Secrets = projectCfg.Specs[k].Secrets
 		}
 
 	}

@@ -32,3 +32,7 @@ func TasksClientFromConfig(cfg *rest.Config, ns string) v1alpha1.TaskInterface {
 func PodClientFromConfig(cfg *rest.Config, ns string) v1.PodInterface {
 	return kubernetes.NewForConfigOrDie(cfg).CoreV1().Pods(ns)
 }
+
+func SecretsClientFromConfig(cfg *rest.Config, ns string) v1.SecretInterface {
+	return kubernetes.NewForConfigOrDie(cfg).CoreV1().Secrets(ns)
+}

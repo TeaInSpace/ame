@@ -36,8 +36,8 @@ spec:
             description: TaskSpec defines the desired state of Task
             properties:
               env:
-                description: A map of keys and values to be injected into the Task's
-                  environment.
+                description: Environment variables that will be made avaialbe to the
+                  Task during execution.
                 items:
                   description: A TaskEnvVar represents an environment variable made
                     available to a task during execution.
@@ -60,6 +60,23 @@ spec:
                   must be runnable from a bash shell. TODO: define propper requirements
                   for the run command.'
                 type: string
+              secrets:
+                description: Secrets that will be made available to the task during
+                  execution.
+                items:
+                  description: A TaskSecret represnts a secret identified by the Name
+                    which will be injected into the Task's execution as an environment
+                    variable with EnvKey as the key.
+                  properties:
+                    envkey:
+                      type: string
+                    namw:
+                      type: string
+                  required:
+                  - envkey
+                  - namw
+                  type: object
+                type: array
             type: object
           status:
             description: TaskStatus defines the observed state of Task

@@ -43,8 +43,11 @@ type TaskSpec struct {
 	// be running based on.
 	ProjectId string `json:"projectid,omitempty"`
 
-	// A map of keys and values to be injected into the Task's environment.
+	// Environment variables that will be made avaialbe to the Task during execution.
 	Env []TaskEnvVar `json:"env,omitempty"`
+
+	// Secrets that will be made available to the task during execution.
+	Secrets []TaskSecret `json:"secrets,omitempty"`
 }
 
 // A TaskEnvVar represents an environment variable
@@ -52,6 +55,14 @@ type TaskSpec struct {
 type TaskEnvVar struct {
 	Name  string `json:"name"`
 	Value string `json:"value"`
+}
+
+// A TaskSecret represnts a secret identified by the Name which
+// will be injected into the Task's execution as an environment
+// variable with EnvKey as the key.
+type TaskSecret struct {
+	Name   string `json:"namw"`
+	EnvKey string `json:"envkey"`
 }
 
 // TaskStatus defines the observed state of Task
@@ -157,6 +168,7 @@ func NewTask(runCmd string, projectId string) *Task {
 			RunCommand: runCmd,
 			ProjectId:  projectId,
 			Env:        []TaskEnvVar{},
+			Secrets:    []TaskSecret{},
 		},
 	}
 }
