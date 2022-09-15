@@ -36,7 +36,7 @@ import (
 	"teainspace.com/ame/internal/clients"
 	"teainspace.com/ame/internal/config"
 
-	corev1 "k8s.io/api/core/v1"
+	"teainspace.com/ame/internal/secrets"
 )
 
 const (
@@ -44,10 +44,11 @@ const (
 )
 
 var (
-	tasks     v1alpha1.TaskInterface
-	workflows argo.WorkflowInterface
-	ctx       context.Context
-	testCfg   testcfg.TestEnvConfig
+	tasks       v1alpha1.TaskInterface
+	workflows   argo.WorkflowInterface
+	ctx         context.Context
+	testCfg     testcfg.TestEnvConfig
+	secretStore secrets.SecretStore
 )
 
 // rmProjectFile Removes the project file if it is present.
@@ -168,6 +169,8 @@ func TestMain(m *testing.M) {
 	workflows = clients.WorkflowsClientFromConfig(kubeCfg, testCfg.Namespace)
 	tasks = clients.TasksClientFromConfig(kubeCfg, testCfg.Namespace)
 
+	secretStore = secrets.NewSecretStore(clients.SecretsClientFromConfig(kubeCfg, testCfg.Namespace))
+
 	cmd := exec.Command("go", "build", ".")
 	err = cmd.Run()
 	if err != nil {
@@ -183,7 +186,7 @@ func TestMain(m *testing.M) {
 // genCliCmd returns a new *exec.Cmd with the path to the
 // AME CLI binary built for this test run and with the cmd arguments
 // set to cmdArgs.
-func genCliCmd(cmdArgs ...string) (*exec.Cmd, error) {
+func genCliCmd(workingDir string, cmdArgs ...string) (*exec.Cmd, error) {
 	wd, err := os.Getwd()
 	if err != nil {
 		return nil, err
@@ -191,6 +194,7 @@ func genCliCmd(cmdArgs ...string) (*exec.Cmd, error) {
 
 	cmd := exec.Command(path.Join(wd, cliName))
 	cmd.Args = append([]string{""}, cmdArgs...)
+	cmd.Dir = workingDir
 
 	return cmd, nil
 }
@@ -340,7 +344,7 @@ func validateCliBehaviorWithCmd(bs behaviors, cmd *exec.Cmd) (string, error) {
 }
 
 func validateCliBehavior(bs behaviors, cmdArgs ...string) (string, error) {
-	cmd, err := genCliCmd(cmdArgs...)
+	cmd, err := genCliCmd(".", cmdArgs...)
 	if err != nil {
 		return "", err
 	}
@@ -435,11 +439,10 @@ func TestRun(t *testing.T) {
 		},
 	}
 
-	cliCmd, err := genCliCmd("run", testTask.Spec.RunCommand)
+	cliCmd, err := genCliCmd(testDir, "run", testTask.Spec.RunCommand)
 	if err != nil {
 		t.Fatal(err)
 	}
-	cliCmd.Dir = testDir // The CLI expects to be executed from the project directory.
 
 	taskName := "trainmodel"
 	bs := behaviors{
@@ -546,20 +549,6 @@ func TestCliSetup(t *testing.T) {
 		t.Error(err)
 	}
 
-	cliCmd, err := genCliCmd("setup")
-	if err != nil {
-		t.Error(err)
-	}
-
-	buf := &bytes.Buffer{}
-	c, err := virtualConsole(cliCmd, buf)
-	if err != nil {
-		t.Error(err)
-	}
-
-	defer c.Close()
-	go startConsole(c)
-
 	correctCfg := config.CliConfig{AuthToken: "mytoken", AmeEndpoint: "https://myendpoint.com"}
 
 	behavior := []struct {
@@ -575,34 +564,14 @@ func TestCliSetup(t *testing.T) {
 			ExpOutput: ".*Endpoint*.",
 		},
 	}
-
-	go func() {
-		for _, b := range behavior {
-			matched, err := matchBuf(buf, b.ExpOutput, time.Millisecond*100)
-			if err != nil {
-				t.Error(err)
-			}
-
-			if !matched {
-				t.Errorf("buf.String()=%s, expected output to to match regex %s", buf.String(), b.ExpOutput)
-			}
-
-			c.SendLine(b.Input)
-		}
-
-		c.SendLine("")
-	}()
-
-	err = cliCmd.Run()
+	output, err := validateCliBehavior(behavior, "setup")
 	if err != nil {
 		t.Error(err)
 	}
 
-	time.Sleep(time.Second * 2)
-
 	cfg, err := config.GenCliConfig()
 	if err != nil {
-		t.Errorf("Got error from config generation %v, with cli output: \n%s", err, buf.String())
+		t.Errorf("Got error from config generation %v, with cli output: \n%s", err, output)
 	}
 
 	diff := cmp.Diff(cfg, correctCfg)
@@ -646,16 +615,10 @@ func TestCanRunPipenvBasedProject(t *testing.T) {
 		}
 
 		t.Run(tc.name, func(t *testing.T) {
-			cliCmd, err := genCliCmd("run", tc.command)
+			cliCmd, err := genCliCmd(testenv.EchoProjectDir, "run", tc.command)
 			if err != nil {
 				t.Fatal(err)
 			}
-
-			wd, err := os.Getwd()
-			if err != nil {
-				t.Fatal(err)
-			}
-			cliCmd.Dir = path.Join(wd, "../../test_data/test_projects/echo/")
 
 			output, err := cliCmd.CombinedOutput()
 			if err != nil {
@@ -698,16 +661,10 @@ func TestCanRunHandleTaskFailure(t *testing.T) {
 	}
 	defer config.ClearCliCfgFromEnv()
 
-	cliCmd, err := genCliCmd("run", "python sdfd.py echo")
+	cliCmd, err := genCliCmd(testenv.EchoProjectDir, "run", "python sdfd.py echo")
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	wd, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
-	cliCmd.Dir = path.Join(wd, "../../test_data/test_projects/echo/")
 
 	output, err := cliCmd.CombinedOutput()
 	if err != nil {
@@ -742,26 +699,18 @@ func TestCanDownloadArtifacts(t *testing.T) {
 	}
 
 	expectedContents := "artifactContents"
-	cliCmd, err := genCliCmd("run", "python artifact.py "+expectedContents)
+	cliCmd, err := genCliCmd(testenv.ArtifactProjectDir, "run", "python artifact.py "+expectedContents)
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	wd, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	pathToProject := path.Join(wd, "../../test_data/test_projects/artifacts/")
-	cliCmd.Dir = path.Join(pathToProject)
 
 	artifactPath := "generated/myartifact.txt"
-	err = os.Remove(path.Join(pathToProject, artifactPath))
+	err = os.Remove(path.Join(testenv.ArtifactProjectDir, artifactPath))
 	if err != nil && !os.IsNotExist(err) {
 		t.Fatal(err)
 	}
 
-	originalDirSnapshot, err := dirtools.SnapDir(pathToProject)
+	originalDirSnapshot, err := dirtools.SnapDir(testenv.ArtifactProjectDir)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -787,7 +736,7 @@ func TestCanDownloadArtifacts(t *testing.T) {
 		t.Fatalf("got error while waiting for workflow to succeed: %v, with output: %s, wfs: %+v", err, string(output), wfs)
 	}
 
-	dirSnapshot, err := dirtools.SnapDir(pathToProject)
+	dirSnapshot, err := dirtools.SnapDir(testenv.ArtifactProjectDir)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -802,7 +751,7 @@ func TestCanDownloadArtifacts(t *testing.T) {
 		t.Errorf("expected new file to be at the artifact path: %s, but was at path: %s", artifactPath, snapDiff[0].RelativePath)
 	}
 
-	contents, err := os.ReadFile(path.Join(pathToProject, "generated/myartifact.txt"))
+	contents, err := os.ReadFile(path.Join(testenv.ArtifactProjectDir, "generated/myartifact.txt"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -830,7 +779,8 @@ func TestCreateTaskConfig(t *testing.T) {
 						Value: "val1",
 					},
 				},
-				Secrets: []amev1alpha1.TaskSecret{},
+				Secrets:  []amev1alpha1.TaskSecret{},
+				Pipeline: []amev1alpha1.PipelineStep{},
 			},
 		},
 	}
@@ -993,12 +943,11 @@ func TestCanUseEnvironmentVariables(t *testing.T) {
 
 	bs = append(bs, genTaskBehavior(envTask, taskName)...)
 
-	cmd, err := genCliCmd("run", envTask.Spec.RunCommand)
+	cmd, err := genCliCmd(testenv.EnvProjectDir, "run", envTask.Spec.RunCommand)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	cmd.Dir = testenv.EnvProjectDir
 	out, err := validateCliBehaviorWithCmd(bs, cmd)
 	if err != nil {
 		t.Fatalf("got err: %v, with out \n%s\n", err, out)
@@ -1030,31 +979,16 @@ func TestCanUseSecret(t *testing.T) {
 	}
 	defer config.ClearCliCfgFromEnv()
 
-	kubeCfg, err := clients.KubeClientFromConfig()
+	testSecret := secrets.AmeSecret{
+		Name:  "mysecret",
+		Value: "mysecretval",
+	}
+
+	err = secretStore.ForceCreate(ctx, testSecret)
+	defer secretStore.Delete(ctx, testSecret.Name)
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	secrets := clients.SecretsClientFromConfig(kubeCfg, testCfg.Namespace)
-	testSecret := &corev1.Secret{
-		ObjectMeta: v1.ObjectMeta{
-			Name: "mysecret",
-		},
-		StringData: map[string]string{
-			"secret": "mysecretval",
-		},
-	}
-	_, err = secrets.Create(ctx, testSecret.DeepCopy(), v1.CreateOptions{})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	defer func() {
-		err = secrets.Delete(ctx, testSecret.GetName(), v1.DeleteOptions{})
-		if err != nil {
-			t.Fatal(err)
-		}
-	}()
 
 	taskSecrets := []amev1alpha1.TaskSecret{
 		{
@@ -1064,7 +998,7 @@ func TestCanUseSecret(t *testing.T) {
 	}
 
 	projectName := "env"
-	testTask := amev1alpha1.NewTask(fmt.Sprintf("python env.py VAR1=%s", testSecret.StringData["secret"]), projectName)
+	testTask := amev1alpha1.NewTask(fmt.Sprintf("python env.py VAR1=%s", testSecret.Value), projectName)
 	testTask.Spec.Secrets = taskSecrets
 
 	taskName := "testSecrets"
@@ -1077,12 +1011,11 @@ func TestCanUseSecret(t *testing.T) {
 
 	bs = append(bs, genTaskBehavior(testTask, taskName)...)
 
-	cmd, err := genCliCmd("run", testTask.Spec.RunCommand)
+	cmd, err := genCliCmd(testenv.EnvProjectDir, "run", testTask.Spec.RunCommand)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	cmd.Dir = testenv.EnvProjectDir
 	output, err := validateCliBehaviorWithCmd(bs, cmd)
 	if err != nil {
 		t.Fatal(err)
@@ -1098,5 +1031,58 @@ func TestCanUseSecret(t *testing.T) {
 	err = waitForWorkflowStatus(ctx, wf.GetName(), time.Second*15, argoWf.WorkflowSucceeded)
 	if err != nil {
 		t.Errorf("got error: %v, with cli output: \n%s", err, output)
+	}
+}
+
+func TestPipelineExecution(t *testing.T) {
+	err := testenv.LoadCliConfigToEnv(testCfg)
+	defer config.ClearCliCfgFromEnv()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = testenv.SetupCluster(ctx, testCfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// The secret name and value are set based on the values used in the pipeline test project.
+	// check the projectfile for that project to see how the secret is used.
+	testSecret := secrets.AmeSecret{
+		Name:  "s3secret",
+		Value: "sometoken",
+	}
+
+	err = secretStore.ForceCreate(ctx, testSecret)
+	defer secretStore.Delete(ctx, testSecret.Name)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cliCmd, err := genCliCmd(testenv.PipelineProjectDir, "exec", "main")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	output, err := cliCmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("got error from cli: %v, with output: \n%s", err, string(output))
+	}
+
+	if strings.Contains(string(output), "Error:") {
+		t.Fatalf("got error from cli output: \n%s", output)
+	}
+
+	// The project name is set in the project file for the pipeline project.
+	// It is important to use the same value here.
+	projectName := "pipeline"
+	wf, err := getWorkflowForProject(ctx, projectName, time.Second*15)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = waitForWorkflowStatus(ctx, wf.GetName(), time.Second*80, argoWf.WorkflowSucceeded)
+	if err != nil {
+		t.Error(err)
 	}
 }

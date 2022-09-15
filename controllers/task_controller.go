@@ -87,7 +87,11 @@ func (r *TaskReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		return ctrl.Result{}, err
 	}
 
-	wf = genArgoWorkflow(task, ownerRef)
+	wf, err = genArgoWorkflow(task, ownerRef)
+	if err != nil {
+		log.Error(err, "unable to create argo workflow")
+	}
+
 	err = r.Create(ctx, &wf)
 	// TODO: Should error messages have punctuation?
 	if err != nil {

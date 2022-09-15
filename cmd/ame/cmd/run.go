@@ -10,12 +10,8 @@ import (
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/briandowns/spinner"
 	"github.com/spf13/cobra"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 	"teainspace.com/ame/api/v1alpha1"
 	"teainspace.com/ame/internal/ameproject"
-	"teainspace.com/ame/internal/auth"
-	"teainspace.com/ame/internal/config"
 	"teainspace.com/ame/internal/dirtools"
 	task "teainspace.com/ame/server/grpc"
 )
@@ -62,12 +58,6 @@ func shouldAProjectBeCreated() (bool, error) {
 
 func runTask(cmd *cobra.Command, args []string) {
 	ctx := context.Background()
-	cfg, err := config.GenCliConfig()
-	// TODO: handle missing configuration gracefully
-	if err != nil {
-		log.Fatalln("It looks like no CLI configuration is present, got error: ", err)
-	}
-
 	ok, err := shouldAProjectBeCreated()
 	if err != nil {
 		// TODO: determine how to check for survey EOF so we don't break TestCanDownloadArtifacts when failing on this error.
@@ -78,25 +68,12 @@ func runTask(cmd *cobra.Command, args []string) {
 		createProjectFile(cmd, args)
 	}
 
-	// TODO: move grpc setup to a library package.
-	var opts []grpc.DialOption
-	opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
-
-	conn, err := grpc.Dial(cfg.AmeEndpoint, opts...)
+	p, err := ameproject.ProjectFromWd(cmd.Context())
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	wd, err := os.Getwd()
-	if err != nil {
-		log.Fatal(wd)
-	}
-
-	taskClient := task.NewTaskServiceClient(conn)
-	p := ameproject.NewProjectForDir(wd, taskClient)
-
 	// TODO: handle authtorization the context elegantly.
-	ctx = auth.AuthorarizeCtx(ctx, cfg.AuthToken)
 	s := spinner.New(spinner.CharSets[14], 100*time.Millisecond, spinner.WithWriter(os.Stderr))
 	fmt.Println()
 	s.Suffix = " Uploading project: " + p.Name
@@ -114,6 +91,7 @@ func runTask(cmd *cobra.Command, args []string) {
 		for k := range projectCfg.Specs {
 			t.Spec.Env = projectCfg.Specs[k].Env
 			t.Spec.Secrets = projectCfg.Specs[k].Secrets
+			t.Spec.Pipeline = projectCfg.Specs[k].Pipeline
 		}
 
 	}
@@ -141,7 +119,7 @@ func runTask(cmd *cobra.Command, args []string) {
 
 	log.Println("Fetching artifacts produced during task execution.")
 
-	artifacts, err := ameproject.GetArtifacts(ctx, taskClient, projectTask.GetName())
+	artifacts, err := p.GetArtifacts(ctx, projectTask.GetName())
 	if err != nil {
 		log.Default().Fatal(err)
 	}
@@ -152,7 +130,7 @@ func runTask(cmd *cobra.Command, args []string) {
 	}
 	log.Println("Writing artifacts to disk.", artifactPaths)
 
-	err = dirtools.PopulateDir(wd, artifacts)
+	err = dirtools.PopulateDir(".", artifacts)
 	if err != nil {
 		log.Default().Fatalf("failed to save artifacts due to error: %v", err)
 	}

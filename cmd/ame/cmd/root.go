@@ -12,7 +12,7 @@ func newRootCmdWithSubCmds() *cobra.Command {
 }
 
 func attachSubCommands(rootCmd *cobra.Command) *cobra.Command {
-	return attachCreate(attachSetup(attachRun(rootCmd)))
+	return attachExec(attachCreate(attachSetup(attachRun(rootCmd))))
 }
 
 func Execute() {

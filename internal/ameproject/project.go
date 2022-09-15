@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"path/filepath"
 
@@ -12,6 +13,7 @@ import (
 	"teainspace.com/ame/api/v1alpha1"
 	"teainspace.com/ame/cmd/ame/filescanner"
 	genv1alpha "teainspace.com/ame/generated/clientset/versioned/typed/ame/v1alpha1"
+	"teainspace.com/ame/internal/auth"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	task_service "teainspace.com/ame/server/grpc"
@@ -26,8 +28,10 @@ func ProjectNameFromDir(dir string) string {
 }
 
 type ProjectConfig struct {
-	Name      string
-	Directory string
+	Name        string
+	Directory   string
+	AuthToken   string
+	ProjectFile *ProjectFileCfg
 }
 
 type Project struct {
@@ -42,17 +46,32 @@ func NewProject(cfg ProjectConfig, taskClient task_service.TaskServiceClient) Pr
 	}
 }
 
-func NewProjectForDir(dir string, taskClient task_service.TaskServiceClient) Project {
-	return NewProject(ProjectConfig{
-		Name:      ProjectNameFromDir(dir),
-		Directory: dir,
-	}, taskClient)
+func (p *Project) GetTaskSpec(name string) (*v1alpha1.TaskSpec, error) {
+	for n := range p.ProjectFile.Specs {
+		if TaskSpecName(name) == n {
+			return p.ProjectFile.Specs[n], nil
+		}
+	}
+
+	return nil, fmt.Errorf("could not find task specification for %s", name)
+}
+
+func (p *Project) UploadAndRunSpec(ctx context.Context, name string) (*v1alpha1.Task, error) {
+	spec, err := p.GetTaskSpec(name)
+	if err != nil {
+		return nil, err
+	}
+
+	task := v1alpha1.NewTaskFromSpec(spec, name)
+
+	return p.UploadAndRun(ctx, task)
 }
 
 func (p *Project) UploadAndRun(ctx context.Context, t *v1alpha1.Task) (*v1alpha1.Task, error) {
+	ctx = auth.AuthorarizeCtx(ctx, p.AuthToken)
 	err := p.UploadProject(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("got error while attempting to upload project: %v", err)
 	}
 
 	taskInCluster, err := p.UploadTaskForProject(ctx, t)
@@ -74,7 +93,7 @@ func (p *Project) UploadProject(ctx context.Context) error {
 	// There is no need to upload the ame project file, so it is filtered out.
 	t, err := filescanner.TarDirectory(p.Directory, []string{AmeProjectFileName})
 	if err != nil {
-		return err
+		return fmt.Errorf("got error while attempting to upload project: %v", err)
 	}
 
 	ctx = metadata.AppendToOutgoingContext(ctx, MdKeyProjectName, p.Name)
@@ -92,7 +111,7 @@ func (p *Project) UploadProject(ctx context.Context) error {
 
 	err = task_service.ProcessInChunks(t, send, task_service.ChunkSize)
 	if err != nil {
-		return err
+		return fmt.Errorf("got error while transferring chunsk: %v", err)
 	}
 
 	_, err = uploadClient.CloseAndRecv()
@@ -102,6 +121,7 @@ func (p *Project) UploadProject(ctx context.Context) error {
 type LogProcessor func(*task_service.LogEntry) error
 
 func (p *Project) ProcessTaskLogs(ctx context.Context, targetTask *v1alpha1.Task, logProcessor LogProcessor) error {
+	ctx = auth.AuthorarizeCtx(ctx, p.AuthToken)
 	logsClient, err := p.taskClient.GetLogs(ctx, &task_service.GetLogsRequest{
 		Task:       targetTask,
 		Follow:     true,
@@ -129,6 +149,11 @@ func (p *Project) ProcessTaskLogs(ctx context.Context, targetTask *v1alpha1.Task
 	}
 
 	return nil
+}
+
+func (p *Project) GetArtifacts(ctx context.Context, taskName string) ([]storage.ProjectFile, error) {
+	ctx = auth.AuthorarizeCtx(ctx, p.AuthToken)
+	return GetArtifacts(ctx, p.taskClient, taskName)
 }
 
 // TODO: GetArtifacts loads all of the artifacts into memory at once, this will not work for large artifacts.

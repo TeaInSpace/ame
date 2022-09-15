@@ -1,0 +1,24 @@
+projectname: pipeline
+tasks:
+    main:
+        pipeline: 
+            - taskname: data
+              runcommand: python preparedata.py
+              env:
+                  - name: S3_BUCKET
+                    value: mybucket
+                  - name: MODE
+                    value: dataprep
+              secrets:
+                  - name: s3secret
+                    envkey: STORAGE_S3_SECRET
+            - taskname: train
+              runcommand: python train.py
+              env:
+                  - name: MODE
+                    value: training
+            - taskname: save
+              runcommand: python save.py
+              env:
+                  - name: MODE
+                    value: save

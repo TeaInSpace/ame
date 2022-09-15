@@ -12,7 +12,6 @@ import (
 	"golang.org/x/sync/errgroup"
 	"teainspace.com/ame/api/v1alpha1"
 	"teainspace.com/ame/internal/ameproject"
-	"teainspace.com/ame/internal/auth"
 	"teainspace.com/ame/internal/clients"
 	"teainspace.com/ame/internal/testcfg"
 	testenv "teainspace.com/ame/internal/testenv"
@@ -32,7 +31,6 @@ var (
 func TestMain(m *testing.M) {
 	testCfg = testcfg.TestEnv()
 	ctx = context.Background()
-	ctx = auth.AuthorarizeCtx(ctx, testCfg.AuthToken)
 
 	var err error
 	taskServiceClient, err = task.PrepareTaskClient(testCfg.AmeServerEndpoint)
@@ -49,7 +47,13 @@ func TestMain(m *testing.M) {
 }
 
 func echoTask(ctx context.Context, messages []string) (*v1alpha1.Task, error) {
-	p := ameproject.NewProjectForDir(testenv.EchoProjectDir, taskServiceClient)
+	pCfg := ameproject.ProjectConfig{
+		AuthToken:   testCfg.AuthToken,
+		Name:        "echo",
+		Directory:   testenv.EchoProjectDir,
+		ProjectFile: nil,
+	}
+	p := ameproject.NewProject(pCfg, taskServiceClient)
 	echoTask := v1alpha1.NewTask(fmt.Sprintf("python echo.py %s", strings.Join(messages, " ")), p.Name)
 	return p.UploadAndRun(ctx, echoTask)
 }
