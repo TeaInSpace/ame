@@ -1,0 +1,6 @@
+projectname: pipenvnn
+tasks:
+    train:
+        runcommand: python nn.py
+        projectid: pipenvnn
+        env: []

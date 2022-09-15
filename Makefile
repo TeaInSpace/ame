@@ -182,20 +182,30 @@ prepare_local_cluster:
 	kubectl apply -n ${NAMESPACE} -f ./config/minio/
 
 
-load_local_images: load_executor
+load_local_images: refresh_task_controller load_executor
 	docker buildx build . --target ame-server -t ame-server:local
-	docker buildx build . --target task-controller -t ame-controller:local
 	kind load docker-image ame-server:local
-	kind load docker-image ame-controller:local
 
 load_executor:
 	docker build ./executor/ -t ame-executor:local
 	kind load docker-image ame-executor:local
 
-refresh_deployment: undeploy prepare_local_cluster  load_local_images deploy
+refresh_deployment: manifests install undeploy prepare_local_cluster load_local_images deploy
 
 delete_local_cluster:
 	kind delete cluster
 
 watch_server_logs:
 	kubectl logs -n ${NAMESPACE} -l app=ame-server -f
+
+watch_task_contoller_logs:
+	kubectl logs -n ${NAMESPACE} -l control-plane=controller-manager -f
+
+refresh_task_controller:
+	docker buildx build . --target task-controller -t ame-controller:local
+	kind load docker-image ame-controller:local
+	kubectl delete pod -l control-plane=controller-manager -n ${NAMESPACE}
+
+delete_controller_and_server_pods:
+	kubectl delete pod -l app=ame-server -n ${NAMESPACE}
+	kubectl delete pod -l control-plane=controller-manager -n ${NAMESPACE}

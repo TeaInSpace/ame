@@ -114,6 +114,10 @@ func WriteToProjectFile(dir string, cfg *ProjectFileCfg) error {
 // If an error is encountered a nil pointer is returned a long with the error.
 func ReadProjectFile(dir string) (*ProjectFileCfg, error) {
 	data, err := os.ReadFile(path.Join(dir, AmeProjectFileName))
+	if os.IsNotExist(err) {
+		return nil, err
+	}
+
 	if err != nil {
 		return nil, err
 	}

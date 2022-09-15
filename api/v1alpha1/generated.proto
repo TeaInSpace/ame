@@ -25,6 +25,24 @@ import "k8s.io/apimachinery/pkg/apis/meta/v1/generated.proto";
 // Package-wide variables from generator "generated".
 option go_package = "v1alpha1";
 
+// A PipelineStep is essentially a duplicated of the TaskSpec, which represents each step in a pipeline.
+// Due to limitations with the current tooling used for generated manifests from the types in this file,
+// we can't have recursive types and therefore we need this duplicated for now. See issue 43.
+message PipelineStep {
+  // TaskName is the name of the task represented by this step.
+  optional string taskname = 1;
+
+  // The command AME will use to execute the Task.
+  // The command must be runnable from a bash shell.
+  optional string runcommand = 2;
+
+  // Environment variables that will be made avaialbe to the Task during execution.
+  repeated TaskEnvVar env = 3;
+
+  // Secrets that will be made available to the Task during execution.
+  repeated TaskSecret secrets = 4;
+}
+
 // Task is the Schema for the tasks API
 message Task {
   optional k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
@@ -53,7 +71,7 @@ message TaskList {
 // will be injected into the Task's execution as an environment
 // variable with EnvKey as the key.
 message TaskSecret {
-  optional string namw = 1;
+  optional string name = 1;
 
   optional string envkey = 2;
 }
@@ -72,8 +90,13 @@ message TaskSpec {
   // Environment variables that will be made avaialbe to the Task during execution.
   repeated TaskEnvVar env = 3;
 
-  // Secrets that will be made available to the task during execution.
+  // Secrets that will be made available to the Task during execution.
   repeated TaskSecret secrets = 4;
+
+  // Pipeline defines a sequence of tasks to execute.
+  // If a pipeline is specified the rest of the fields in this
+  // specification are ignored.
+  repeated PipelineStep pipeline = 5;
 }
 
 // TaskStatus defines the observed state of Task

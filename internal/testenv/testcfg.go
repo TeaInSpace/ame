@@ -12,8 +12,10 @@ import (
 )
 
 const (
-	EchoProjectDir = "../../test_data/test_projects/echo"
-	EnvProjectDir  = "../../test_data/test_projects/env"
+	EchoProjectDir     = "../../test_data/test_projects/echo"
+	EnvProjectDir      = "../../test_data/test_projects/env"
+	ArtifactProjectDir = "../../test_data/test_projects/artifacts"
+	PipelineProjectDir = "../../test_data/test_projects/pipeline"
 )
 
 func SetupCluster(ctx context.Context, cfg testcfg.TestEnvConfig) (storage.Storage, error) {

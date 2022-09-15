@@ -22,7 +22,6 @@ jobs:
           make deploy_local_cluster
       - name: Validate commit
         run: |
-          kubectl port-forward deployment/minio-deployment 9000 -n ame-system > /dev/null &
           make test
       - name: Build
         run: |

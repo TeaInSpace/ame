@@ -51,6 +51,60 @@ spec:
                   - value
                   type: object
                 type: array
+              pipeline:
+                description: Pipeline defines a sequence of tasks to execute. If a
+                  pipeline is specified the rest of the fields in this specification
+                  are ignored.
+                items:
+                  description: A PipelineStep is essentially a duplicated of the TaskSpec,
+                    which represents each step in a pipeline. Due to limitations with
+                    the current tooling used for generated manifests from the types
+                    in this file, we can't have recursive types and therefore we need
+                    this duplicated for now. See issue 43.
+                  properties:
+                    env:
+                      description: Environment variables that will be made avaialbe
+                        to the Task during execution.
+                      items:
+                        description: A TaskEnvVar represents an environment variable
+                          made available to a task during execution.
+                        properties:
+                          name:
+                            type: string
+                          value:
+                            type: string
+                        required:
+                        - name
+                        - value
+                        type: object
+                      type: array
+                    runcommand:
+                      description: The command AME will use to execute the Task. The
+                        command must be runnable from a bash shell.
+                      type: string
+                    secrets:
+                      description: Secrets that will be made available to the Task
+                        during execution.
+                      items:
+                        description: A TaskSecret represnts a secret identified by
+                          the Name which will be injected into the Task's execution
+                          as an environment variable with EnvKey as the key.
+                        properties:
+                          envkey:
+                            type: string
+                          name:
+                            type: string
+                        required:
+                        - envkey
+                        - name
+                        type: object
+                      type: array
+                    taskname:
+                      description: TaskName is the name of the task represented by
+                        this step.
+                      type: string
+                  type: object
+                type: array
               projectid:
                 description: A unique identifier for the project wich the Task will
                   be running based on.
@@ -61,7 +115,7 @@ spec:
                   for the run command.'
                 type: string
               secrets:
-                description: Secrets that will be made available to the task during
+                description: Secrets that will be made available to the Task during
                   execution.
                 items:
                   description: A TaskSecret represnts a secret identified by the Name
@@ -70,11 +124,11 @@ spec:
                   properties:
                     envkey:
                       type: string
-                    namw:
+                    name:
                       type: string
                   required:
                   - envkey
-                  - namw
+                  - name
                   type: object
                 type: array
             type: object

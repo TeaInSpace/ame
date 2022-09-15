@@ -4,7 +4,6 @@
 package task
 
 import (
-	v1alpha1 "teainspace.com/ame/api/v1alpha1"
 	context "context"
 	fmt "fmt"
 	proto "github.com/golang/protobuf/proto"
@@ -15,6 +14,7 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	math "math"
 	math_bits "math/bits"
+	v1alpha1 "teainspace.com/ame/api/v1alpha1"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
