@@ -29,6 +29,10 @@ type FakeAmeV1alpha1 struct {
 	*testing.Fake
 }
 
+func (c *FakeAmeV1alpha1) ReccurringTasks(namespace string) v1alpha1.ReccurringTaskInterface {
+	return &FakeReccurringTasks{c, namespace}
+}
+
 func (c *FakeAmeV1alpha1) Tasks(namespace string) v1alpha1.TaskInterface {
 	return &FakeTasks{c, namespace}
 }

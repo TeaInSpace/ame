@@ -1,6 +1,10 @@
 projectname: pipenvnn
 tasks:
-    train:
+    training:
         runcommand: python nn.py
         projectid: pipenvnn
-        env: []
+        env:
+            - name: ENV
+              value: test
+        secrets: []
+        pipeline: []

@@ -14,6 +14,7 @@ import (
 	"k8s.io/client-go/rest"
 	amev1alpha1 "teainspace.com/ame/api/v1alpha1"
 	"teainspace.com/ame/internal/clients"
+	"teainspace.com/ame/internal/common"
 )
 
 type (
@@ -59,13 +60,20 @@ func StreamTaskLogs(ctx context.Context, streamCfg StreamConfig, restCfg *rest.C
 		return err
 	}
 
+	// It is important to wait for the Pod to start before streaming any logs,
+	// so the log streaming loop does not exit immediately.
+	err = common.WaitForPodPhase(ctx, pods, taskPod, v1.PodRunning)
+	if err != nil {
+		return err
+	}
+
 	// Note that main container is selected here for logging, as that is the container where
 	// Argo runs the workflow within the Pod.
 	req := pods.GetLogs(taskPod.GetName(), &v1.PodLogOptions{
 		Container:  "main",
 		Follow:     streamCfg.Follow,
 		SinceTime:  &taskPod.CreationTimestamp,
-		Timestamps: true,
+		Timestamps: false,
 	})
 
 	// TODO: How can we test that this loop times out correctly?
@@ -98,10 +106,7 @@ func StreamTaskLogs(ctx context.Context, streamCfg StreamConfig, restCfg *rest.C
 			return err
 		}
 
-		newContent := scanner.Scan()
-		if !newContent {
-			return nil
-		}
+		scanner.Scan()
 
 		err = streamCfg.Sender(TaskLogEntry(scanner.Bytes()))
 		if err != nil {

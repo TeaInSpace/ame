@@ -121,23 +121,14 @@ func init() {
 }
 
 // TaskOwnerRef returns an OwnerReference referencing the given Task.
-func TaskOwnerRef(scheme *runtime.Scheme, task Task) (metav1.OwnerReference, error) {
-	gvks, _, err := scheme.ObjectKinds(&task)
-	if err != nil {
-		return metav1.OwnerReference{}, err
-	}
-
+func TaskOwnerRef(scheme *runtime.Scheme, task *Task) (metav1.OwnerReference, error) {
+	gvks, err := GenGvks(scheme, task)
 	if len(gvks) == 0 {
 		return metav1.OwnerReference{}, errors.Errorf("Could not find a GroupVersionKind for task: %s", task.GetName())
 	}
 	// TODO: Add support for multiple GroupVersionKinds.
 
-	return metav1.OwnerReference{
-		APIVersion: gvks[0].GroupVersion().String(), // TODO: is there a better method for getting the APIVersion string?
-		Kind:       gvks[0].Kind,
-		Name:       task.GetName(),
-		UID:        task.GetUID(),
-	}, err
+	return GenOwnRef(task.ObjectMeta, gvks), err
 }
 
 // GetTaskPod finds the Pod executing a Task based on the label ame-task being set to the Task name.

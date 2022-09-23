@@ -495,23 +495,7 @@ func TestRun(t *testing.T) {
 		t.Errorf("Got %d workflows after 1 second, expected %d , \n with CLI output: %s", len(wfList.Items), 1, string(out))
 	}
 
-	wf := wfList.Items[0]
-	wfRunCmd := controllers.ExtractRunCommand(&wf)
-	wfProjectID := controllers.ExtractProjectID(&wf)
-
-	// TODO: We can probably use cmp.Diff to compare the task specifications.
-	if testTask.Spec.RunCommand != wfRunCmd {
-		t.Errorf("Workflow has run command: %s, but expected: %s, got cli output: %s",
-			wfRunCmd,
-			testTask.Spec.RunCommand,
-			out)
-	}
-
-	if testTask.Spec.ProjectId != wfProjectID {
-		t.Errorf("Workflow has project ID: %s, but expected: %s",
-			wfProjectID,
-			testTask.Spec.ProjectId)
-	}
+	// TODO: How should we validate the created Workflow?
 
 	storedFiles, err := store.DownloadFiles(ctx, projectName)
 	if err != nil {

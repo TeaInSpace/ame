@@ -43,6 +43,35 @@ message PipelineStep {
   repeated TaskSecret secrets = 4;
 }
 
+// ReccurringTask is the Schema for the reccurringtasks API
+message ReccurringTask {
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
+
+  optional ReccurringTaskSpec spec = 2;
+
+  optional ReccurringTaskStatus status = 3;
+}
+
+// ReccurringTaskList contains a list of ReccurringTask
+message ReccurringTaskList {
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
+
+  repeated ReccurringTask items = 2;
+}
+
+// ReccurringTaskSpec defines the desired state of ReccurringTask
+message ReccurringTaskSpec {
+  // TaskRef references a Task by name.
+  optional TaskSpec taskSpec = 1;
+
+  // Cron schedule used for scheduling Task execution.
+  optional string schedule = 2;
+}
+
+// ReccurringTaskStatus defines the observed state of ReccurringTask
+message ReccurringTaskStatus {
+}
+
 // Task is the Schema for the tasks API
 message Task {
   optional k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;

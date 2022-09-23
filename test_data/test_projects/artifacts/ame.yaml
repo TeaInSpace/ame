@@ -1,1 +1,8 @@
 projectname: artifacts
+tasks:
+    train:
+        runcommand: python artifacts.py
+        projectid: artifacts
+        env: []
+        secrets: []
+        pipeline: []

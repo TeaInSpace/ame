@@ -73,6 +73,9 @@ test: vet fmt envtest generate_test_env # Run tests.
 	# This is important as tests are operating on the same cluster and can therefore interfere with each other.
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test ./... -coverprofile cover.out -p 1 -timeout 15m
 
+test_controllers: envtest
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test ./controllers/
+
 ##@ Build
 
 .PHONY: build
@@ -166,7 +169,7 @@ kind:
 
 tools: kind goimports gogo-protobuf go-to-protobuf client-gen kustomize
 
-deploy_local_cluster: manifests create_local_cluster prepare_local_cluster load_local_images install deploy
+deploy_local_cluster: create_local_cluster prepare_local_cluster load_local_images install deploy
 
 create_local_cluster:
 	kind create cluster
@@ -174,6 +177,10 @@ create_local_cluster:
 prepare_local_cluster:
 	kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.12.1/manifests/namespace.yaml
 	kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.12.1/manifests/metallb.yaml
+	# Argo Workflows now requires cert manager, see: https://github.com/argoproj/argo-workflows#quickstart
+	kubectl get ns cert-manager || kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.9.1/cert-manager.yaml
+	sleep 10
+	kubectl wait --for=condition=Ready pods --all --namespace cert-manager
 	sleep 20
 	kubectl wait pods -n metallb-system -l app=metallb --for condition=Ready --timeout=90s
 	kubectl apply -f ./metallb_config.yaml
@@ -182,15 +189,13 @@ prepare_local_cluster:
 	kubectl apply -n ${NAMESPACE} -f ./config/minio/
 
 
-load_local_images: refresh_task_controller load_executor
-	docker buildx build . --target ame-server -t ame-server:local
-	kind load docker-image ame-server:local
+load_local_images: refresh_task_controller load_executor refresh_server
 
 load_executor:
 	docker build ./executor/ -t ame-executor:local
 	kind load docker-image ame-executor:local
 
-refresh_deployment: manifests install undeploy prepare_local_cluster load_local_images deploy
+refresh_deployment: install undeploy prepare_local_cluster load_local_images deploy
 
 delete_local_cluster:
 	kind delete cluster
@@ -205,6 +210,11 @@ refresh_task_controller:
 	docker buildx build . --target task-controller -t ame-controller:local
 	kind load docker-image ame-controller:local
 	kubectl delete pod -l control-plane=controller-manager -n ${NAMESPACE}
+	
+refresh_server:
+	docker buildx build . --target ame-server -t ame-server:local
+	kind load docker-image ame-server:local
+	kubectl delete pod -l app=ame-server -n ${NAMESPACE}
 
 delete_controller_and_server_pods:
 	kubectl delete pod -l app=ame-server -n ${NAMESPACE}

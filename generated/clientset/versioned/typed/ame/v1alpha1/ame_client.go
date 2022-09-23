@@ -28,12 +28,17 @@ import (
 
 type AmeV1alpha1Interface interface {
 	RESTClient() rest.Interface
+	ReccurringTasksGetter
 	TasksGetter
 }
 
 // AmeV1alpha1Client is used to interact with features provided by the ame group.
 type AmeV1alpha1Client struct {
 	restClient rest.Interface
+}
+
+func (c *AmeV1alpha1Client) ReccurringTasks(namespace string) ReccurringTaskInterface {
+	return newReccurringTasks(c, namespace)
 }
 
 func (c *AmeV1alpha1Client) Tasks(namespace string) TaskInterface {
