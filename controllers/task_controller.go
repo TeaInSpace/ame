@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 
 	argo "github.com/argoproj/argo-workflows/v3/pkg/apis/workflow/v1alpha1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -68,6 +69,7 @@ func (r *TaskReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 
 		newSpec, update := correctWorkflowSpec(task, wf)
 		if update {
+			fmt.Println("attempting to reconfigure")
 			log.Info("Workflow was misconfigured attempting to correct")
 			wf.Spec = newSpec
 			err = r.Update(ctx, &wf)
@@ -81,19 +83,18 @@ func (r *TaskReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		return ctrl.Result{}, nil
 	}
 
-	ownerRef, err := amev1alpha1.TaskOwnerRef(r.Scheme, task)
+	ownerRef, err := amev1alpha1.TaskOwnerRef(r.Scheme, &task)
 	if err != nil {
 		log.Error(err, "Unable to generate OwnerReference for Task")
 		return ctrl.Result{}, err
 	}
 
-	wf, err = genArgoWorkflow(task, ownerRef)
+	wf, err = GenArgoWorkflow(task, ownerRef)
 	if err != nil {
 		log.Error(err, "unable to create argo workflow")
 	}
 
 	err = r.Create(ctx, &wf)
-	// TODO: Should error messages have punctuation?
 	if err != nil {
 		log.Error(err, "Unable able to create argo workflow")
 		return ctrl.Result{}, err

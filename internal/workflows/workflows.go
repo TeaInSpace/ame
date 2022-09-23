@@ -4,15 +4,42 @@
 package workflows
 
 import (
+	"context"
 	"fmt"
+	"time"
 
 	argo "github.com/argoproj/argo-workflows/v3/pkg/apis/workflow/v1alpha1"
+	argoClients "github.com/argoproj/argo-workflows/v3/pkg/client/clientset/versioned/typed/workflow/v1alpha1"
 	apiv1 "k8s.io/api/core/v1"
 	v1resources "k8s.io/apimachinery/pkg/api/resource"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"teainspace.com/ame/api/v1alpha1"
 	"teainspace.com/ame/internal/secrets"
 )
+
+const taskLabelKey = "ame-task"
+
+// genWorkflowSpec generates a Workflow specficiation from a Task specification.
+func GenWorkflowSpec(task v1alpha1.Task) (argo.WorkflowSpec, error) {
+	if len(task.Spec.Pipeline) > 0 {
+		spec, err := GenPipelineWf(&task)
+		if err != nil {
+			return argo.WorkflowSpec{}, err
+		}
+
+		return *spec, nil
+	}
+
+	wfTemplates := []argo.Template{genWfTemplate("main", &task, taskVolName(&task))}
+	pvClaims, err := genPvcs(&task)
+	if err != nil {
+		return argo.WorkflowSpec{}, err
+	}
+
+	wfSpec := *GenWfSpec(task.GetName(), pvClaims, wfTemplates)
+	return wfSpec, nil
+}
 
 // GenPipelineWf constructs a WorkflowSpec for a Task containing a pipeline.
 // Note all other fields in the TaskSpec within the Task are ignored, as it is expected to only contain a pipeline.
@@ -32,12 +59,24 @@ func GenPipelineWf(t *v1alpha1.Task) (*argo.WorkflowSpec, error) {
 		})
 	}
 
+	pvcs, err := genPvcs(t)
+	if err != nil {
+		return nil, err
+	}
+
+	return GenWfSpec(t.GetName(), pvcs, []argo.Template{{
+		Steps: wfSteps,
+		Name:  "main",
+	}}), nil
+}
+
+func genPvcs(t *v1alpha1.Task) ([]apiv1.PersistentVolumeClaim, error) {
 	volStoreageReq, err := v1resources.ParseQuantity("5Gi")
 	if err != nil {
 		return nil, err
 	}
 
-	pvcs := []apiv1.PersistentVolumeClaim{
+	return []apiv1.PersistentVolumeClaim{
 		{
 			ObjectMeta: v1.ObjectMeta{
 				Name: taskVolName(t),
@@ -53,12 +92,7 @@ func GenPipelineWf(t *v1alpha1.Task) (*argo.WorkflowSpec, error) {
 				},
 			},
 		},
-	}
-
-	return GenWfSpec(t.GetName(), pvcs, []argo.Template{{
-		Steps: wfSteps,
-		Name:  "main",
-	}}), nil
+	}, nil
 }
 
 // GenWfSpec constructs a WorkflowSpec.
@@ -162,4 +196,46 @@ func TaskEnvToContainerEnv(t v1alpha1.TaskSpec) []apiv1.EnvVar {
 	}
 
 	return v1env
+}
+
+func WaitForTaskWorkflow(ctx context.Context, workflows argoClients.WorkflowInterface, name string, timeout time.Duration) (*argo.Workflow, error) {
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	deadline, _ := ctx.Deadline()
+
+	for {
+		wf, err := TaskWf(ctx, workflows, name)
+		if err != nil && time.Now().Before(deadline) {
+			continue
+		}
+
+		if err != nil {
+			return nil, err
+		}
+
+		return wf, nil
+	}
+}
+
+func TaskWf(ctx context.Context, workflows argoClients.WorkflowInterface, name string) (*argo.Workflow, error) {
+	selector, err := labels.Parse(fmt.Sprintf("%s=%s", taskLabelKey, name))
+	if err != nil {
+		return nil, err
+	}
+
+	wfs, err := workflows.List(ctx, v1.ListOptions{LabelSelector: selector.String()})
+	if err != nil {
+		return nil, err
+	}
+
+	if len(wfs.Items) == 0 {
+		return nil, fmt.Errorf("found no Workflows for the task %s", name)
+	}
+
+	if len(wfs.Items) > 1 {
+		return nil, fmt.Errorf("expected recurring task controller to only create 1 Workflow but got %d instead", len(wfs.Items))
+	}
+
+	return &wfs.Items[0], nil
 }

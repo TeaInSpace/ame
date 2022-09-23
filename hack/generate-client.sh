@@ -21,22 +21,28 @@ cp -r $API_DIR/* $PACKAGE_DIR
 # The following sed invocations replace import path errors caused by the fact that the client-gen tool expects a different
 # directory structure to the one used in this project.
 sed -i -e 's@\.\./ame/pkg/apis/ame/@teainspace\.com/ame/api/@g' generated/clientset/versioned/typed/ame/v1alpha1/fake/fake_task.go
+sed -i -e 's@\.\./ame/pkg/apis/ame/@teainspace\.com/ame/api/@g' generated/clientset/versioned/typed/ame/v1alpha1/fake/fake_reccurringtask.go
 sed -i -e 's@\.\./ame/pkg/apis/ame/@teainspace\.com/ame/api/@g' generated/clientset/versioned/fake/register.go
 sed -i -e 's@\.\./ame/pkg/apis/ame/@teainspace\.com/ame/api/@g' generated/clientset/versioned/scheme/register.go
 sed -i -e 's@\.\./ame/pkg/apis/ame/@teainspace\.com/ame/api/@g' generated/clientset/versioned/typed/ame/v1alpha1/ame_client.go
+sed -i -e 's@\.\./ame/pkg/apis/ame/@teainspace\.com/ame/api/@g' generated/clientset/versioned/typed/ame/v1alpha1/reccurringtask.go
 sed -i -e 's@\.\./ame/pkg/apis/ame/@teainspace\.com/ame/api/@g' generated/clientset/versioned/typed/ame/v1alpha1/task.go
 
 sed -i -e 's@generated/clientset/versioned@teainspace.com/ame/generated/clientset/versioned@g' generated/clientset/versioned/typed/ame/v1alpha1/fake/fake_task.go
+sed -i -e 's@generated/clientset/versioned@teainspace.com/ame/generated/clientset/versioned@g' generated/clientset/versioned/typed/ame/v1alpha1/fake/fake_reccurringtask.go
 sed -i -e 's@generated/clientset/versioned@teainspace.com/ame/generated/clientset/versioned@g' generated/clientset/versioned/typed/ame/v1alpha1/fake/fake_ame_client.go
 sed -i -e 's@generated/clientset/versioned@teainspace.com/ame/generated/clientset/versioned@g' generated/clientset/versioned/fake/clientset_generated.go
 sed -i -e 's@generated/clientset/versioned@teainspace.com/ame/generated/clientset/versioned@g' generated/clientset/versioned/clientset.go
 sed -i -e 's@generated/clientset/versioned@teainspace.com/ame/generated/clientset/versioned@g' generated/clientset/versioned/typed/ame/v1alpha1/ame_client.go
 sed -i -e 's@generated/clientset/versioned@teainspace.com/ame/generated/clientset/versioned@g' generated/clientset/versioned/typed/ame/v1alpha1/task.go
+sed -i -e 's@generated/clientset/versioned@teainspace.com/ame/generated/clientset/versioned@g' generated/clientset/versioned/typed/ame/v1alpha1/reccurringtask.go
 
 # The following sed invocation corrects an error in the groupversionreource assumed by the client-gen tool. This is probably due 
 # to the directory/project structure not being what client-gen expects.
 sed -i -e 's@schema.GroupVersionResource{Group: "ame@schema.GroupVersionResource{Group: "ame.teainspace.com@g' generated/clientset/versioned/typed/ame/v1alpha1/fake/fake_task.go
+sed -i -e 's@schema.GroupVersionResource{Group: "ame@schema.GroupVersionResource{Group: "ame.teainspace.com@g' generated/clientset/versioned/typed/ame/v1alpha1/fake/fake_reccurringtask.go
 sed -i -e 's@schema.GroupVersionKind{Group: "ame@schema.GroupVersionKind{Group: "ame.teainspace.com@g' generated/clientset/versioned/typed/ame/v1alpha1/fake/fake_task.go
+sed -i -e 's@schema.GroupVersionKind{Group: "ame@schema.GroupVersionKind{Group: "ame.teainspace.com@g' generated/clientset/versioned/typed/ame/v1alpha1/fake/fake_reccurringtask.go
 
 # This removed the temporary pkg directory created to appease client-gen.
 rm -r pkg

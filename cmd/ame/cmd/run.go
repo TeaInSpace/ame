@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/AlecAivazis/survey/v2"
@@ -104,12 +105,10 @@ func runTask(cmd *cobra.Command, args []string) {
 	s.Suffix = " Preparing execution environment"
 
 	err = p.ProcessTaskLogs(ctx, projectTask, func(le *task.LogEntry) error {
-		if s.Active() {
-			s.Stop()
-			fmt.Println("Your task will be executed!", args[0])
+		s.Stop()
+		if !strings.Contains(le.Content, "s3") {
+			fmt.Print(le.Content)
 		}
-
-		fmt.Println(le.Content)
 		return nil
 	})
 

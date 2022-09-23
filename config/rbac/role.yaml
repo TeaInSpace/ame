@@ -8,6 +8,32 @@ rules:
 - apiGroups:
   - ame.teainspace.com
   resources:
+  - reccurringtasks
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ame.teainspace.com
+  resources:
+  - reccurringtasks/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - ame.teainspace.com
+  resources:
+  - reccurringtasks/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - ame.teainspace.com
+  resources:
   - tasks
   verbs:
   - create
@@ -31,6 +57,18 @@ rules:
   - get
   - patch
   - update
+- apiGroups:
+  - argoproj.io
+  resources:
+  - cronworkflows
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
 - apiGroups:
   - argoproj.io
   resources:
