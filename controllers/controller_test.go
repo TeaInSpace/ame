@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -14,7 +15,9 @@ import (
 	"github.com/onsi/gomega/gstruct"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"teainspace.com/ame/api/v1alpha1"
 	amev1alpha1 "teainspace.com/ame/api/v1alpha1"
+	"teainspace.com/ame/internal/common"
 	"teainspace.com/ame/internal/workflows"
 )
 
@@ -130,7 +133,7 @@ func TestCorrectsMisconfiguredWf(t *testing.T) {
 	}
 
 	badWf := originalWf.DeepCopy()
-	badWf.Spec.Templates[0].Script.Source = "bad script"
+	badWf.Spec.Templates[0].Steps[0].Steps[0].Inline.Script.Source = "bad script"
 	_, err = workflowClient.Update(ctx, badWf, v1.UpdateOptions{})
 	if err != nil {
 		t.Fatal(err)
@@ -153,5 +156,91 @@ func TestCorrectsMisconfiguredWf(t *testing.T) {
 	diff := cmp.Diff(correctedWf.Spec, originalWf.Spec)
 	if diff != "" {
 		t.Errorf("expected correctedWf=cronWf, but got diff: %s", diff)
+	}
+}
+
+func TestTaskPhaseMatchesWorkflowPhase(t *testing.T) {
+	testTask, err := createTestTask(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wf, err := workflows.WaitForTaskWorkflow(ctx, workflowClient, testTask.GetName(), time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testTask, err = taskGenClient.Cli.Get(ctx, testTask.GetName(), v1.GetOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tcs := []struct {
+		taskPhase     v1alpha1.TaskPhase
+		workflowPhase argo.WorkflowPhase
+	}{
+		{
+			taskPhase:     v1alpha1.TaskRunning,
+			workflowPhase: argo.WorkflowRunning,
+		},
+		{
+			taskPhase:     v1alpha1.TaskPending,
+			workflowPhase: argo.WorkflowPending,
+		},
+		{
+			taskPhase:     v1alpha1.TaskFailed,
+			workflowPhase: argo.WorkflowFailed,
+		},
+		{
+			taskPhase:     v1alpha1.TaskFailed,
+			workflowPhase: argo.WorkflowError,
+		},
+		{
+			taskPhase:     v1alpha1.TaskSucceeded,
+			workflowPhase: argo.WorkflowSucceeded,
+		},
+	}
+
+	// TODO: The test cases currently interefere with each other, as the state is not reset.
+	// TODO: Use events to verify that the object was actually chanaged.
+	for _, tc := range tcs {
+		t.Run(fmt.Sprintf("taskPhase: %s, workflowPhase: %s", tc.taskPhase, tc.workflowPhase), func(t *testing.T) {
+			wf.Status.Phase = tc.workflowPhase
+			wf, err = workflowGenClient.Cli.Update(ctx, wf, v1.UpdateOptions{})
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			err = taskGenClient.WaitForCondWithTimout(ctx, testTask.GetName(), common.GenTaskPhaseValidator(tc.taskPhase), time.Second)
+			if err != nil {
+				t.Error(err)
+			}
+		})
+	}
+}
+
+func TestHandleGitSourceCorrectly(t *testing.T) {
+	source := v1alpha1.NewGitSrc("myrepo", "myref")
+	task := v1alpha1.NewTaskWithSrc("mycmd", "myproject", source)
+	task, err := tasks.Create(ctx, task, v1.CreateOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wf, err := workflows.WaitForTaskWorkflow(ctx, workflowClient, task.GetName(), time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wfSetupScript := wf.Spec.Templates[0].Steps[0].Steps[0].Inline.Script.Source
+	expectedCloneCmd := "git clone " + source.GitRepository
+	expectedCheckoutCmd := "git checkout " + source.GitReference
+
+	if !strings.Contains(wfSetupScript, expectedCloneCmd) {
+		t.Errorf("expected setup script to contain %s, but got %s instead", expectedCloneCmd, wfSetupScript)
+	}
+
+	if !strings.Contains(wfSetupScript, expectedCheckoutCmd) {
+		t.Errorf("expected setup script to contain %s, but got %s instead", expectedCheckoutCmd, wfSetupScript)
 	}
 }

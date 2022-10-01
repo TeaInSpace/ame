@@ -14,7 +14,7 @@ ARTIFACT_STORAGE_PATH=$1
 # The dry run flag is used to generate a list of files that are not present in the project files
 # in object storage. This is a hack to avoid implementation file diffing for the prototype.
 # grep is used to filter the output from the dryrun to get a list of file paths.
-ARTIFACTS=$(s3cmd --no-ssl --region us-east-1 --host=$MINIO_URL --host-bucket=$MINIO_URL sync --dry-run ./ s3://$TASK_DIRECTORY/ | grep -oP \'.*?\' | grep -v s3)
+ARTIFACTS=$(s3cmd --no-ssl --region us-east-1 --host=$MINIO_URL --host-bucket=$MINIO_URL sync --dry-run ./ s3://$TASK_DIRECTORY/ | grep -oP \'.*?\' | grep -v s3 | grep -v git)
 
 echo "Uploading artifacts: $ARTIFACTS"
           

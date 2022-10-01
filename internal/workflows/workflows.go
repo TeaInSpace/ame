@@ -31,7 +31,32 @@ func GenWorkflowSpec(task v1alpha1.Task) (argo.WorkflowSpec, error) {
 		return *spec, nil
 	}
 
-	wfTemplates := []argo.Template{genWfTemplate("main", &task, taskVolName(&task))}
+	setupWfTemplate := genWfSetupTemplate("setup", &task, taskVolName(&task))
+	mainWfTemplate := genWfTemplate("main", &task, taskVolName(&task))
+
+	wfSteps := []argo.ParallelSteps{
+		{
+			Steps: []argo.WorkflowStep{
+				{
+					Inline: &setupWfTemplate,
+					Name:   "setup",
+				},
+			},
+		},
+		{
+			Steps: []argo.WorkflowStep{
+				{
+					Inline: &mainWfTemplate,
+					Name:   "main",
+				},
+			},
+		},
+	}
+	wfTemplates := []argo.Template{{
+		Name:  "main",
+		Steps: wfSteps,
+	}}
+
 	pvClaims, err := genPvcs(&task)
 	if err != nil {
 		return argo.WorkflowSpec{}, err
@@ -45,7 +70,17 @@ func GenWorkflowSpec(task v1alpha1.Task) (argo.WorkflowSpec, error) {
 // Note all other fields in the TaskSpec within the Task are ignored, as it is expected to only contain a pipeline.
 // A pointer to the WorkflowSpec is returned, if any errors are encountered they are returned alog with a nil pointer.
 func GenPipelineWf(t *v1alpha1.Task) (*argo.WorkflowSpec, error) {
-	var wfSteps []argo.ParallelSteps
+	setupWfTemplate := genWfSetupTemplate("setup", t, taskVolName(t))
+
+	wfSteps := []argo.ParallelSteps{{
+		Steps: []argo.WorkflowStep{
+			{
+				Inline: &setupWfTemplate,
+				Name:   "setup",
+			},
+		},
+	}}
+
 	for _, s := range t.Spec.Pipeline {
 		tSpec := v1alpha1.WfSpecFromPipelineStep(t, s)
 		wfTemplate := genWfTemplate(s.TaskName, v1alpha1.NewTaskFromSpec(tSpec, t.GetName()+s.TaskName), taskVolName(t))
@@ -126,8 +161,6 @@ func genWfTemplate(templateName string, t *v1alpha1.Task, volName string) argo.T
 			Source: fmt.Sprintf(`
 
           export TASK_DIRECTORY=ameprojectstorage/%s
-
-          s3cmd --no-ssl --region us-east-1 --host=$MINIO_URL --host-bucket=$MINIO_URL get --recursive s3://$TASK_DIRECTORY ./
 
           cd "./%s" 
 
@@ -238,4 +271,57 @@ func TaskWf(ctx context.Context, workflows argoClients.WorkflowInterface, name s
 	}
 
 	return &wfs.Items[0], nil
+}
+
+func minioEnv(t *v1alpha1.Task) []apiv1.EnvVar {
+	return []apiv1.EnvVar{
+		{
+			Name:  "AWS_ACCESS_KEY_ID",
+			Value: "minio",
+		},
+		{
+			Name:  "AWS_SECRET_ACCESS_KEY",
+			Value: "minio123",
+		},
+		{
+			Name:  "MINIO_URL",
+			Value: "http://ame-minio.ame-system.svc.cluster.local:9000",
+		},
+		{
+			Name:  "TASK_DIRECTORY",
+			Value: "ameprojectstorage/" + t.Spec.ProjectId,
+		},
+	}
+}
+
+func genWfSetupTemplate(templateName string, t *v1alpha1.Task, volName string) argo.Template {
+	projectPullCmd := "s3cmd --no-ssl --region us-east-1 --host=$MINIO_URL --host-bucket=$MINIO_URL get --recursive s3://$TASK_DIRECTORY ./"
+	// TODO: when will we validate the source config?
+	if t.Spec.Source.GitRepository != "" && t.Spec.Source.GitReference != "" {
+		projectPullCmd = fmt.Sprintf("git clone %s %s\n cd %s && git checkout %s", t.Spec.Source.GitRepository, t.Spec.ProjectId, t.Spec.ProjectId, t.Spec.Source.GitReference)
+	}
+
+	return argo.Template{
+		Name: "setup",
+		Script: &argo.ScriptTemplate{
+			Source: fmt.Sprintf(`
+          %s
+
+          echo "0" >> exit.status
+					`, projectPullCmd),
+			Container: apiv1.Container{
+				Image: "ame-executor:local",
+				Command: []string{
+					"bash",
+				},
+				Env: minioEnv(t),
+				VolumeMounts: []apiv1.VolumeMount{
+					{
+						Name:      volName,
+						MountPath: "/project",
+					},
+				},
+			},
+		},
+	}
 }

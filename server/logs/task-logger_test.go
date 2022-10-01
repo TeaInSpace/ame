@@ -68,7 +68,7 @@ func matchLogs(t *v1alpha1.Task, expectedLogs []string) error {
 			actualLogs = append(actualLogs, tle)
 			return nil
 		},
-		Timeout: time.Second * 60,
+		Timeout: time.Second * 20,
 	}
 
 	err := StreamTaskLogs(ctx, streamCfg, restCfg)

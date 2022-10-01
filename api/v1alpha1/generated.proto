@@ -43,6 +43,22 @@ message PipelineStep {
   repeated TaskSecret secrets = 4;
 }
 
+// A ProjectSource describes where AME will fetch the project from.
+// This can either be a Git repository + reference or a path within
+// AME's object storage.
+// Note that if the Git related fields are non empty then the AmeStoreagePath should
+// not be used and vice versa.
+message ProjectSource {
+  // GitRepository should point to the git repo containing the Task's project.
+  optional string gitRepository = 1;
+
+  // GitReference contains the reference which will be checked out from within the Git repository.
+  optional string gitReference = 2;
+
+  // AmeStoragePath defines the path within AME's object storage where the Project should be copied from.
+  optional string ameStoragePath = 3;
+}
+
 // ReccurringTask is the Schema for the reccurringtasks API
 message ReccurringTask {
   optional k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
@@ -126,9 +142,16 @@ message TaskSpec {
   // If a pipeline is specified the rest of the fields in this
   // specification are ignored.
   repeated PipelineStep pipeline = 5;
+
+  // source defines where AME will pull the project from.
+  // This can either be AME's own object storage or a git repository.
+  optional ProjectSource source = 6;
 }
 
 // TaskStatus defines the observed state of Task
 message TaskStatus {
+  // INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
+  // Important: Run "make" to regenerate code after modifying this file
+  optional string phase = 1;
 }
 
