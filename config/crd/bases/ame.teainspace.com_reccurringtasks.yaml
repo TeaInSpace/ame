@@ -137,6 +137,27 @@ spec:
                       - name
                       type: object
                     type: array
+                  source:
+                    description: source defines where AME will pull the project from.
+                      This can either be AME's own object storage or a git repository.
+                    properties:
+                      ameStoragePath:
+                        description: AmeStoragePath defines the path within AME's
+                          object storage where the Project should be copied from.
+                        type: string
+                      gitReference:
+                        description: GitReference contains the reference which will
+                          be checked out from within the Git repository.
+                        type: string
+                      gitRepository:
+                        description: GitRepository should point to the git repo containing
+                          the Task's project.
+                        type: string
+                    required:
+                    - ameStoragePath
+                    - gitReference
+                    - gitRepository
+                    type: object
                 type: object
             required:
             - schedule

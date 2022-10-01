@@ -18,7 +18,6 @@ package controllers
 
 import (
 	"context"
-	"fmt"
 
 	argo "github.com/argoproj/argo-workflows/v3/pkg/apis/workflow/v1alpha1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -41,6 +40,7 @@ type TaskReconciler struct {
 //+kubebuilder:rbac:groups=ame.teainspace.com,resources=tasks/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=ame.teainspace.com,resources=tasks/finalizers,verbs=update
 //+kubebuilder:rbac:groups=argoproj.io,resources=workflows,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=argoproj.io,resources=workflows/status,verbs=get;list;watch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -69,7 +69,6 @@ func (r *TaskReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 
 		newSpec, update := correctWorkflowSpec(task, wf)
 		if update {
-			fmt.Println("attempting to reconfigure")
 			log.Info("Workflow was misconfigured attempting to correct")
 			wf.Spec = newSpec
 			err = r.Update(ctx, &wf)
@@ -77,6 +76,17 @@ func (r *TaskReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 				return ctrl.Result{}, err
 			}
 			log.Info("Workflow was configuration was corrected")
+		}
+
+		newPhase, update := updateTaskPhase(wf.Status.Phase, task.Status.Phase)
+
+		if update {
+			task.Status.Phase = newPhase
+			err = r.Status().Update(ctx, &task)
+			if err != nil {
+				log.Error(err, "unable to update task status")
+				return ctrl.Result{}, err
+			}
 		}
 
 		log.Info("Workflow was correctly configured, nothing to reconcile")
@@ -100,6 +110,13 @@ func (r *TaskReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		return ctrl.Result{}, err
 	}
 
+	task.Status.Phase = amev1alpha1.TaskPending
+	err = r.Status().Update(ctx, &task)
+	if err != nil {
+		log.Error(err, "Unable to set task status")
+		return ctrl.Result{}, err
+	}
+
 	log.Info("Workflow created for task " + task.GetName())
 
 	return ctrl.Result{}, nil
@@ -119,4 +136,21 @@ func (r *TaskReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			},
 		).
 		Complete(r)
+}
+
+func updateTaskPhase(wfPhase argo.WorkflowPhase, currentTaskPhase amev1alpha1.TaskPhase) (amev1alpha1.TaskPhase, bool) {
+	newPhase := currentTaskPhase
+
+	switch wfPhase {
+	case argo.WorkflowRunning:
+		newPhase = amev1alpha1.TaskRunning
+	case argo.WorkflowError, argo.WorkflowFailed:
+		newPhase = amev1alpha1.TaskFailed
+	case argo.WorkflowPending:
+		newPhase = amev1alpha1.TaskPending
+	case argo.WorkflowSucceeded:
+		newPhase = amev1alpha1.TaskSucceeded
+	}
+
+	return newPhase, newPhase != currentTaskPhase
 }

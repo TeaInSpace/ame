@@ -53,6 +53,26 @@ type TaskSpec struct {
 	// If a pipeline is specified the rest of the fields in this
 	// specification are ignored.
 	Pipeline []PipelineStep `json:"pipeline,omitempty"`
+
+	// source defines where AME will pull the project from.
+	// This can either be AME's own object storage or a git repository.
+	Source ProjectSource `json:"source,omitempty"`
+}
+
+// A ProjectSource describes where AME will fetch the project from.
+// This can either be a Git repository + reference or a path within
+// AME's object storage.
+// Note that if the Git related fields are non empty then the AmeStoreagePath should
+// not be used and vice versa.
+type ProjectSource struct {
+	// GitRepository should point to the git repo containing the Task's project.
+	GitRepository string `json:"gitRepository"`
+
+	// GitReference contains the reference which will be checked out from within the Git repository.
+	GitReference string `json:"gitReference"`
+
+	// AmeStoragePath defines the path within AME's object storage where the Project should be copied from.
+	AmeStoragePath string `json:"ameStoragePath"`
 }
 
 // A PipelineStep is essentially a duplicated of the TaskSpec, which represents each step in a pipeline.
@@ -92,7 +112,18 @@ type TaskSecret struct {
 type TaskStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+	Phase TaskPhase `json:"phase"`
 }
+
+type TaskPhase string
+
+// TODO: Do we need an error phase here?
+const (
+	TaskRunning   = "Running"
+	TaskPending   = "Pending"
+	TaskFailed    = "Failed"
+	TaskSucceeded = "Succeeded"
+)
 
 //+genclient
 //+kubebuilder:object:root=true
@@ -152,7 +183,7 @@ func GetTaskPod(ctx context.Context, pods clientv1.PodInterface, task *Task) (*v
 			LabelSelector: selector.String(),
 		})
 		if err != nil {
-			return nil, fmt.Errorf("from getTaskPodWithinTimeout, could not find pod for task %s, with selector: %v, got err: %v", task.GetName(), selector, err)
+			return nil, fmt.Errorf("from getTaskPod, could not find pod for task %s, with selector: %v, got err: %v", task.GetName(), selector, err)
 		}
 
 		// There is only every be a single pod per Task, if muliple Pods are encountered
@@ -209,4 +240,17 @@ func WfSpecFromPipelineStep(parentTask *Task, step PipelineStep) *TaskSpec {
 	spec.Env = step.Env
 	spec.Secrets = step.Secrets
 	return spec
+}
+
+func NewTaskWithSrc(runCmd string, projectId string, source ProjectSource) *Task {
+	t := NewTask(runCmd, projectId)
+	t.Spec.Source = source
+	return t
+}
+
+func NewGitSrc(repo string, ref string) ProjectSource {
+	return ProjectSource{
+		GitRepository: repo,
+		GitReference:  ref,
+	}
 }

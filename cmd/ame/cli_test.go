@@ -1065,7 +1065,7 @@ func TestPipelineExecution(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = waitForWorkflowStatus(ctx, wf.GetName(), time.Second*80, argoWf.WorkflowSucceeded)
+	err = waitForWorkflowStatus(ctx, wf.GetName(), time.Second*100, argoWf.WorkflowSucceeded)
 	if err != nil {
 		t.Error(err)
 	}

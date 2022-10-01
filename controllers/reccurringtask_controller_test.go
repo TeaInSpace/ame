@@ -20,16 +20,19 @@ import (
 	"teainspace.com/ame/api/v1alpha1"
 	ameClients "teainspace.com/ame/generated/clientset/versioned/typed/ame/v1alpha1"
 	"teainspace.com/ame/internal/clients"
+	"teainspace.com/ame/internal/common"
 	"teainspace.com/ame/internal/workflows"
 )
 
 var (
-	envTest        *envtest.Environment
-	recTasks       ameClients.ReccurringTaskInterface
-	tasks          ameClients.TaskInterface
-	cronWorkflows  argoClients.CronWorkflowInterface
-	workflowClient argoClients.WorkflowInterface
-	k8sManager     ctrl.Manager
+	envTest           *envtest.Environment
+	recTasks          ameClients.ReccurringTaskInterface
+	tasks             ameClients.TaskInterface
+	cronWorkflows     argoClients.CronWorkflowInterface
+	workflowClient    argoClients.WorkflowInterface
+	k8sManager        ctrl.Manager
+	taskGenClient     common.AmeGenClient[*v1alpha1.Task]
+	workflowGenClient common.AmeGenClient[*argo.Workflow]
 )
 
 func TestMain(m *testing.M) {
@@ -73,8 +76,10 @@ func TestMain(m *testing.M) {
 
 	recTasks = clients.RecTasksClientFromConfig(cfg, testNamespace)
 	tasks = clients.TasksClientFromConfig(cfg, testNamespace)
+	taskGenClient = common.NewAmeGenClient[*v1alpha1.Task](tasks)
 	cronWorkflows = clients.CronWorkflowsClientFromConfig(cfg, testNamespace)
 	workflowClient = clients.WorkflowsClientFromConfig(cfg, testNamespace)
+	workflowGenClient = common.NewAmeGenClient[*argo.Workflow](workflowClient)
 
 	err = (&ReccurringTaskReconciler{
 		k8sClient,

@@ -19,12 +19,12 @@ limitations under the License.
 package fake
 
 import (
+	amev1alpha1 "teainspace.com/ame/api/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	serializer "k8s.io/apimachinery/pkg/runtime/serializer"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	amev1alpha1 "teainspace.com/ame/api/v1alpha1"
 )
 
 var scheme = runtime.NewScheme()

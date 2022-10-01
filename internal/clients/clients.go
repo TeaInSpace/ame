@@ -5,7 +5,9 @@ import (
 	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	amev1alpha1 "teainspace.com/ame/api/v1alpha1"
 	"teainspace.com/ame/generated/clientset/versioned/typed/ame/v1alpha1"
+	"teainspace.com/ame/internal/common"
 
 	argo "github.com/argoproj/argo-workflows/v3/pkg/client/clientset/versioned/typed/workflow/v1alpha1"
 )
@@ -45,4 +47,8 @@ func SecretsClientFromConfig(cfg *rest.Config, ns string) v1.SecretInterface {
 
 func RecTasksClientFromConfig(cfg *rest.Config, ns string) v1alpha1.ReccurringTaskInterface {
 	return v1alpha1.NewForConfigOrDie(cfg).ReccurringTasks(ns)
+}
+
+func GenericTaskClientFromConfig(cfg *rest.Config, ns string) common.AmeGenClient[*amev1alpha1.Task] {
+	return common.NewAmeGenClient[*amev1alpha1.Task](TasksClientFromConfig(cfg, ns))
 }

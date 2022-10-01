@@ -81,3 +81,11 @@ rules:
   - patch
   - update
   - watch
+- apiGroups:
+  - argoproj.io
+  resources:
+  - workflows/status
+  verbs:
+  - get
+  - list
+  - watch
