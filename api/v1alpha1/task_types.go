@@ -57,6 +57,9 @@ type TaskSpec struct {
 	// source defines where AME will pull the project from.
 	// This can either be AME's own object storage or a git repository.
 	Source ProjectSource `json:"source,omitempty"`
+
+	// Resources define what resources this Task requires.
+	Resources v1.ResourceList `json:"resources,omitempty"`
 }
 
 // A ProjectSource describes where AME will fetch the project from.
@@ -215,6 +218,7 @@ func NewTask(runCmd string, projectId string) *Task {
 			Env:        []TaskEnvVar{},
 			Secrets:    []TaskSecret{},
 			Pipeline:   []PipelineStep{},
+			Resources:  v1.ResourceList{},
 		},
 	}
 }

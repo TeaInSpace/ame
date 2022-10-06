@@ -19,11 +19,11 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"teainspace.com/ame/generated/clientset/versioned/scheme"
 	"net/http"
+	"teainspace.com/ame/generated/clientset/versioned/scheme"
 
-	v1alpha1 "teainspace.com/ame/api/v1alpha1"
 	rest "k8s.io/client-go/rest"
+	v1alpha1 "teainspace.com/ame/api/v1alpha1"
 )
 
 type AmeV1alpha1Interface interface {

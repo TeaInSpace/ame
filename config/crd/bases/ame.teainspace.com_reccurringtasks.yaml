@@ -115,6 +115,15 @@ spec:
                     description: A unique identifier for the project wich the Task
                       will be running based on.
                     type: string
+                  resources:
+                    additionalProperties:
+                      anyOf:
+                      - type: integer
+                      - type: string
+                      pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                      x-kubernetes-int-or-string: true
+                    description: Resource define what resources this Task requires.
+                    type: object
                   runcommand:
                     description: 'The command AME will use to execute the Task. The
                       command must be runnable from a bash shell. TODO: define propper
