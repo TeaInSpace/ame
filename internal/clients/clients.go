@@ -10,6 +10,7 @@ import (
 	"teainspace.com/ame/internal/common"
 
 	argo "github.com/argoproj/argo-workflows/v3/pkg/client/clientset/versioned/typed/workflow/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
 )
 
 // TODO: should we handle errors when creating clients instead of dying?
@@ -51,4 +52,8 @@ func RecTasksClientFromConfig(cfg *rest.Config, ns string) v1alpha1.ReccurringTa
 
 func GenericTaskClientFromConfig(cfg *rest.Config, ns string) common.AmeGenClient[*amev1alpha1.Task] {
 	return common.NewAmeGenClient[*amev1alpha1.Task](TasksClientFromConfig(cfg, ns))
+}
+
+func GenericPodClientFromConfig(cfg *rest.Config, ns string) common.AmeGenClient[*corev1.Pod] {
+	return common.NewAmeGenClient[*corev1.Pod](PodClientFromConfig(cfg, ns))
 }

@@ -20,6 +20,7 @@ syntax = "proto2";
 
 package teainspace.com.ame.pkg.apis.ame.v1alpha1;
 
+import "k8s.io/apimachinery/pkg/api/resource/generated.proto";
 import "k8s.io/apimachinery/pkg/apis/meta/v1/generated.proto";
 
 // Package-wide variables from generator "generated".
@@ -146,6 +147,9 @@ message TaskSpec {
   // source defines where AME will pull the project from.
   // This can either be AME's own object storage or a git repository.
   optional ProjectSource source = 6;
+
+  // Resource define what resources this Task requires.
+  map<string, k8s.io.apimachinery.pkg.api.resource.Quantity> resources = 7;
 }
 
 // TaskStatus defines the observed state of Task

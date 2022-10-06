@@ -5,6 +5,7 @@ package workflows
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -32,7 +33,10 @@ func GenWorkflowSpec(task v1alpha1.Task) (argo.WorkflowSpec, error) {
 	}
 
 	setupWfTemplate := genWfSetupTemplate("setup", &task, taskVolName(&task))
-	mainWfTemplate := genWfTemplate("main", &task, taskVolName(&task))
+	mainWfTemplate, err := genWfTemplate("main", &task, taskVolName(&task))
+	if err != nil {
+		return argo.WorkflowSpec{}, err
+	}
 
 	wfSteps := []argo.ParallelSteps{
 		{
@@ -83,7 +87,11 @@ func GenPipelineWf(t *v1alpha1.Task) (*argo.WorkflowSpec, error) {
 
 	for _, s := range t.Spec.Pipeline {
 		tSpec := v1alpha1.WfSpecFromPipelineStep(t, s)
-		wfTemplate := genWfTemplate(s.TaskName, v1alpha1.NewTaskFromSpec(tSpec, t.GetName()+s.TaskName), taskVolName(t))
+		wfTemplate, err := genWfTemplate(s.TaskName, v1alpha1.NewTaskFromSpec(tSpec, t.GetName()+s.TaskName), taskVolName(t))
+		if err != nil {
+			return nil, err
+		}
+
 		wfSteps = append(wfSteps, argo.ParallelSteps{
 			Steps: []argo.WorkflowStep{
 				{
@@ -153,7 +161,12 @@ func taskVolName(t *v1alpha1.Task) string {
 	return fmt.Sprintf("%s-volume", t.GetName())
 }
 
-func genWfTemplate(templateName string, t *v1alpha1.Task, volName string) argo.Template {
+func genWfTemplate(templateName string, t *v1alpha1.Task, volName string) (argo.Template, error) {
+	podSpecPatch, err := podSpecPatch(t.Spec)
+	if err != nil {
+		return argo.Template{}, err
+	}
+
 	return argo.Template{
 		Name: templateName,
 
@@ -204,9 +217,21 @@ func genWfTemplate(templateName string, t *v1alpha1.Task, volName string) argo.T
 			},
 		},
 
-		PodSpecPatch: `{"containers":[{"name":"main", "resources":{"limits":{
-        "memory": "3Gi"   }}}]}`,
+		PodSpecPatch: podSpecPatch,
+	}, nil
+}
+
+func podSpecPatch(t v1alpha1.TaskSpec) (string, error) {
+	if len(t.Resources) == 0 {
+		return "", nil
 	}
+
+	requirements, err := json.Marshal(t.Resources)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("{\"containers\":[{\"name\":\"main\", \"resources\":{\"limits\":%s}}]}", requirements), nil
 }
 
 // TaskEnvToContainerEnv constructs an array of EnvVar from t's environment

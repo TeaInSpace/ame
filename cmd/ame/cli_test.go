@@ -20,6 +20,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"golang.org/x/sync/errgroup"
 
+	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/ActiveState/vt10x"
@@ -763,8 +764,9 @@ func TestCreateTaskConfig(t *testing.T) {
 						Value: "val1",
 					},
 				},
-				Secrets:  []amev1alpha1.TaskSecret{},
-				Pipeline: []amev1alpha1.PipelineStep{},
+				Secrets:   []amev1alpha1.TaskSecret{},
+				Pipeline:  []amev1alpha1.PipelineStep{},
+				Resources: corev1.ResourceList{},
 			},
 		},
 	}
