@@ -37,29 +37,29 @@ type TaskSpec struct {
 	// The command AME will use to execute the Task.
 	// The command must be runnable from a bash shell.
 	// TODO: define propper requirements for the run command.
-	RunCommand string `json:"runcommand,omitempty"`
+	RunCommand string `json:"runcommand,omitempty" yaml:",omitempty"`
 
 	// A unique identifier for the project wich the Task will
 	// be running based on.
-	ProjectId string `json:"projectid,omitempty"`
+	ProjectId string `json:"projectid,omitempty" yaml:"-"`
 
 	// Environment variables that will be made avaialbe to the Task during execution.
-	Env []TaskEnvVar `json:"env,omitempty"`
+	Env []TaskEnvVar `json:"env,omitempty"  yaml:",omitempty"`
 
 	// Secrets that will be made available to the Task during execution.
-	Secrets []TaskSecret `json:"secrets,omitempty"`
+	Secrets []TaskSecret `json:"secrets,omitempty" yaml:",omitempty"`
 
 	// Pipeline defines a sequence of tasks to execute.
 	// If a pipeline is specified the rest of the fields in this
 	// specification are ignored.
-	Pipeline []PipelineStep `json:"pipeline,omitempty"`
+	Pipeline []PipelineStep `json:"pipeline,omitempty" yaml:",omitempty"`
 
 	// source defines where AME will pull the project from.
 	// This can either be AME's own object storage or a git repository.
-	Source ProjectSource `json:"source,omitempty"`
+	Source ProjectSource `json:"source,omitempty" yaml:",omitempty"`
 
 	// Resources define what resources this Task requires.
-	Resources v1.ResourceList `json:"resources,omitempty"`
+	Resources v1.ResourceList `json:"resources,omitempty" yaml:",omitempty"`
 }
 
 // A ProjectSource describes where AME will fetch the project from.
@@ -69,13 +69,13 @@ type TaskSpec struct {
 // not be used and vice versa.
 type ProjectSource struct {
 	// GitRepository should point to the git repo containing the Task's project.
-	GitRepository string `json:"gitRepository"`
+	GitRepository string `json:"gitRepository,omitempty" yaml:",omitempty"`
 
 	// GitReference contains the reference which will be checked out from within the Git repository.
-	GitReference string `json:"gitReference"`
+	GitReference string `json:"gitReference,omitempty" yaml:",omitempty"`
 
 	// AmeStoragePath defines the path within AME's object storage where the Project should be copied from.
-	AmeStoragePath string `json:"ameStoragePath"`
+	AmeStoragePath string `json:"ameStoragePath,omitempty" yaml:",omitempty"`
 }
 
 // A PipelineStep is essentially a duplicated of the TaskSpec, which represents each step in a pipeline.
@@ -83,17 +83,17 @@ type ProjectSource struct {
 // we can't have recursive types and therefore we need this duplicated for now. See issue 43.
 type PipelineStep struct {
 	// TaskName is the name of the task represented by this step.
-	TaskName string `json:"taskname,omitempty"`
+	TaskName string `json:"taskname,omitempty" yaml:",omitempty"`
 
 	// The command AME will use to execute the Task.
 	// The command must be runnable from a bash shell.
-	RunCommand string `json:"runcommand,omitempty"`
+	RunCommand string `json:"runcommand,omitempty" yaml:",omitempty"`
 
 	// Environment variables that will be made avaialbe to the Task during execution.
-	Env []TaskEnvVar `json:"env,omitempty"`
+	Env []TaskEnvVar `json:"env,omitempty" yaml:",omitempty"`
 
 	// Secrets that will be made available to the Task during execution.
-	Secrets []TaskSecret `json:"secrets,omitempty"`
+	Secrets []TaskSecret `json:"secrets,omitempty" yaml:",omitempty"`
 }
 
 // A TaskEnvVar represents an environment variable
@@ -116,6 +116,9 @@ type TaskStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 	Phase TaskPhase `json:"phase"`
+
+	// Reason describes why the Task has the current status.
+	Reason string `json:"reason"`
 }
 
 type TaskPhase string

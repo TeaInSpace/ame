@@ -29,6 +29,7 @@ import (
 	"teainspace.com/ame/controllers"
 	"teainspace.com/ame/generated/clientset/versioned/typed/ame/v1alpha1"
 	"teainspace.com/ame/internal/ameproject"
+	"teainspace.com/ame/internal/common"
 	"teainspace.com/ame/internal/dirtools"
 	"teainspace.com/ame/internal/testcfg"
 	testenv "teainspace.com/ame/internal/testenv"
@@ -38,6 +39,7 @@ import (
 	"teainspace.com/ame/internal/config"
 
 	"teainspace.com/ame/internal/secrets"
+	"teainspace.com/ame/internal/testdata"
 )
 
 const (
@@ -45,11 +47,14 @@ const (
 )
 
 var (
-	tasks       v1alpha1.TaskInterface
-	workflows   argo.WorkflowInterface
-	ctx         context.Context
-	testCfg     testcfg.TestEnvConfig
-	secretStore secrets.SecretStore
+	tasks              v1alpha1.TaskInterface
+	workflows          argo.WorkflowInterface
+	ctx                context.Context
+	testCfg            testcfg.TestEnvConfig
+	secretStore        secrets.SecretStore
+	cronWorkflowClient common.AmeGenClient[*argoWf.CronWorkflow]
+	podClient          common.AmeGenClient[*corev1.Pod]
+	workflowClient     common.AmeGenClient[*argoWf.Workflow]
 )
 
 // rmProjectFile Removes the project file if it is present.
@@ -169,6 +174,9 @@ func TestMain(m *testing.M) {
 
 	workflows = clients.WorkflowsClientFromConfig(kubeCfg, testCfg.Namespace)
 	tasks = clients.TasksClientFromConfig(kubeCfg, testCfg.Namespace)
+	cronWorkflowClient = clients.GenericCronWorkflowCLient(kubeCfg, testCfg.Namespace)
+	podClient = clients.GenericPodClientFromConfig(kubeCfg, testCfg.Namespace)
+	workflowClient = common.NewAmeGenClient[*argoWf.Workflow](workflows)
 
 	secretStore = secrets.NewSecretStore(clients.SecretsClientFromConfig(kubeCfg, testCfg.Namespace))
 
@@ -1070,5 +1078,68 @@ func TestPipelineExecution(t *testing.T) {
 	err = waitForWorkflowStatus(ctx, wf.GetName(), time.Second*100, argoWf.WorkflowSucceeded)
 	if err != nil {
 		t.Error(err)
+	}
+}
+
+func TestReccuringTaskScheduling(t *testing.T) {
+	defer config.ClearCliCfgFromEnv()
+	_, err := testenv.SetupCluster(ctx, testCfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cli, err := genCliCmd(testenv.EchoProjectDir, "schedule", "task", "-s", "* * * * *", "-r", testdata.TestingGitSource, "-e", testdata.TestingGitReference, "-t", "train")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	output, err := cli.CombinedOutput()
+	if err != nil {
+		t.Fatalf("got cli error: %v, with output: %s", err, output)
+	}
+
+	ctxWithTimeout, cancel := context.WithTimeout(ctx, time.Minute*2)
+	defer cancel()
+
+	objRefChan := make(chan *corev1.ObjectReference)
+	cronWfChan, err := cronWorkflowClient.Watch(ctxWithTimeout, v1.ListOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	go func() {
+		defer close(objRefChan)
+
+		for cronWf := range cronWfChan {
+			for _, ref := range cronWf.Status.Active {
+				objRefChan <- &ref
+			}
+		}
+	}()
+
+	var foundPods bool
+
+	for ref := range objRefChan {
+		wfChan, err := workflowClient.WatchObj(ctx, ref.Name)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		for wf := range wfChan {
+
+			foundPods = true
+			if wf.Status.Phase == argoWf.WorkflowSucceeded {
+				break
+			}
+
+			if wf.Status.Phase == argoWf.WorkflowFailed || wf.Status.Phase == argoWf.WorkflowError {
+				t.Errorf("pod %s failed with reason: %s", wf.GetName(), wf.Status.Message)
+				break
+			}
+		}
+	}
+
+	if !foundPods {
+		t.Error("never found any pods")
 	}
 }

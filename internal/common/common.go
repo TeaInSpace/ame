@@ -8,9 +8,11 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/watch"
 	clientv1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"teainspace.com/ame/api/v1alpha1"
+	"teainspace.com/ame/internal/workflows"
 )
 
 type AmeKubeClient[obj any] interface {
@@ -18,6 +20,8 @@ type AmeKubeClient[obj any] interface {
 	Update(context.Context, obj, metav1.UpdateOptions) (obj, error)
 	Create(context.Context, obj, metav1.CreateOptions) (obj, error)
 	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
+	Delete(context.Context, string, metav1.DeleteOptions) error
+	DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error
 }
 
 type AmeGenClient[obj any] struct {
@@ -110,6 +114,14 @@ func (c AmeGenClient[obj]) Create(ctx context.Context, o obj) (obj, error) {
 	return c.Cli.Create(ctx, o, metav1.CreateOptions{})
 }
 
+func (c AmeGenClient[obj]) Get(ctx context.Context, name string) (obj, error) {
+	return c.Cli.Get(ctx, name, metav1.GetOptions{})
+}
+
+func (c AmeGenClient[obj]) DeleteCollection(ctx context.Context, delOpts metav1.DeleteOptions, listOpts metav1.ListOptions) error {
+	return c.Cli.DeleteCollection(ctx, delOpts, listOpts)
+}
+
 func WaitForPodPhase(ctx context.Context, pods clientv1.PodInterface, p *v1.Pod, targetPhase v1.PodPhase, timeout time.Duration) error {
 	ameGenCli := NewAmeGenClient[*v1.Pod](pods)
 	return ameGenCli.WaitForCondWithTimout(ctx, p.GetName(), func(p *v1.Pod) bool {
@@ -140,4 +152,8 @@ func GenNameListOpts(name string) (metav1.ListOptions, error) {
 
 func genNameSelector(name string) (fields.Selector, error) {
 	return fields.ParseSelector("metadata.name=" + name)
+}
+
+func GenTaskPodSelector(name string) (labels.Selector, error) {
+	return labels.Parse(fmt.Sprintf("%s=%s", workflows.TaskLabelKey, name))
 }

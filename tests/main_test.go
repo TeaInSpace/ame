@@ -21,10 +21,11 @@ import (
 )
 
 var (
-	ctx        context.Context
-	testCfg    testcfg.TestEnvConfig
-	taskClient common.AmeGenClient[*v1alpha1.Task]
-	podClient  common.AmeGenClient[*v1.Pod]
+	ctx                 context.Context
+	testCfg             testcfg.TestEnvConfig
+	taskClient          common.AmeGenClient[*v1alpha1.Task]
+	podClient           common.AmeGenClient[*v1.Pod]
+	recurringTaskClient common.AmeGenClient[*v1alpha1.ReccurringTask]
 )
 
 func TestMain(m *testing.M) {
@@ -37,6 +38,7 @@ func TestMain(m *testing.M) {
 
 	taskClient = clients.GenericTaskClientFromConfig(restCfg, testCfg.Namespace)
 	podClient = clients.GenericPodClientFromConfig(restCfg, testCfg.Namespace)
+	recurringTaskClient = clients.GenericRecurringTaskCLient(restCfg, testCfg.Namespace)
 	os.Exit(m.Run())
 }
 
@@ -119,4 +121,43 @@ func TestCanGenerateWorkflowWithResources(t *testing.T) {
 	}
 
 	t.Fatal("could not find a valid container")
+}
+
+func TestCanExecuteRecurringTaskWithGitSource(t *testing.T) {
+	src := v1alpha1.NewGitSrc("https://github.com/jmintb/ame-showcase.git", "main")
+	task := v1alpha1.NewTaskWithSrc("python main.py", "myproject", src)
+	recurringTask := v1alpha1.NewRecurringTask("testtask", task.Spec, "* * * * *")
+
+	recurringTask, err := recurringTaskClient.Create(ctx, recurringTask)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	taskSelector, err := common.GenTaskPodSelector(recurringTask.GetName())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	timeOut := time.Minute * 3
+	ctx, cancel := context.WithTimeout(ctx, timeOut)
+	defer cancel()
+
+	podChan, err := podClient.Watch(ctx, metav1.ListOptions{LabelSelector: taskSelector.String()})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var foundPods bool
+	for p := range podChan {
+		foundPods = true
+		// We are only interested in the pod for the main, as that is where the pod spec will be applied.
+		if p.Status.Phase == v1.PodFailed {
+			t.Fatalf("did not expected pods to fail: %s", p.Status.Reason)
+		}
+
+	}
+
+	if !foundPods {
+		t.Errorf("did not find any pods belonging to task: %s", recurringTask.GetName())
+	}
 }

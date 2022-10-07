@@ -43,10 +43,17 @@ message ArtifactGetRequest {
   string taskName = 1;
 }
 
+message RecurringTaskCreateRequest {
+  string namespace = 1;
+  teainspace.com.ame.pkg.apis.ame.v1alpha1.ReccurringTask task = 3;
+  k8s.io.apimachinery.pkg.apis.meta.v1.CreateOptions createOptions = 5;
+}
+
 service TaskService {
   rpc GetTask(TaskGetRequest) returns (teainspace.com.ame.pkg.apis.ame.v1alpha1.Task);
   rpc CreateTask(TaskCreateRequest) returns (teainspace.com.ame.pkg.apis.ame.v1alpha1.Task);
   rpc FileUpload(stream Chunk) returns (UploadStatus);
   rpc GetLogs(GetLogsRequest) returns (stream LogEntry);
   rpc GetArtifacts(ArtifactGetRequest) returns (stream Chunk);
+  rpc CreateRecurringTask(RecurringTaskCreateRequest) returns (teainspace.com.ame.pkg.apis.ame.v1alpha1.ReccurringTask);
 }

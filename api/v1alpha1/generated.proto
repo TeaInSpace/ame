@@ -148,7 +148,7 @@ message TaskSpec {
   // This can either be AME's own object storage or a git repository.
   optional ProjectSource source = 6;
 
-  // Resource define what resources this Task requires.
+  // Resources define what resources this Task requires.
   map<string, k8s.io.apimachinery.pkg.api.resource.Quantity> resources = 7;
 }
 
@@ -157,5 +157,8 @@ message TaskStatus {
   // INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
   // Important: Run "make" to regenerate code after modifying this file
   optional string phase = 1;
+
+  // Reason describes why the Task has the current status.
+  optional string reason = 2;
 }
 

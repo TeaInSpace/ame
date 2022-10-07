@@ -34,6 +34,7 @@ import (
 
 	amev1alpha1 "teainspace.com/ame/api/v1alpha1"
 	"teainspace.com/ame/controllers"
+	"teainspace.com/ame/internal/clients"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -90,6 +91,8 @@ func main() {
 	if err = (&controllers.ReccurringTaskReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
+		// TODO: How de we get the current name space?
+		CronWfs: clients.CronWorkflowsClientFromConfig(mgr.GetConfig(), "ame-system"),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ReccurringTask")
 		os.Exit(1)

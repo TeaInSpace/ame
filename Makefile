@@ -1,6 +1,7 @@
 # Image URL to use all building/pushing image targets
-IMG ?= ame-controller:local
-SERVER_IMG ?= ame-server:local
+IMG = ghcr.io/teainspace/ame/ame-controller:0.0.16
+SERVER_IMG = ghcr.io/teainspace/ame/ame-server:0.0.1
+EXECUTOR_IMG = ghcr.io/teainspace/ame/ame-executor:0.0.3
 
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.24.1
@@ -95,7 +96,31 @@ docker-push: ## Push docker image with the manager.
 	docker push ${IMG}
 
 docker-build-server: ## Builder docker image for the server.
-	docker buildx build . --target ame-server -t ${IMG}
+	docker buildx build . --target ame-server -t ${SERVER_IMG}
+
+docker-build-controller: ## Builder docker image for the server.
+	docker buildx build . --target task-controller -t ${IMG}
+
+docker-build-executor: ## Builder docker image for the server.
+	docker build ./executor/ -t ${EXECUTOR_IMG}
+
+build_images: docker-build-server docker-build-controller docker-build-executor
+
+push_controller_image: 
+	docker push ${IMG}
+
+push_server_images: 
+	docker push ${SERVER_IMG}
+
+push_executor_image:
+	docker push ${EXECUTOR_IMG}
+
+update_controller_image: docker-build-controller push_controller_image
+update_server_image: docker-build-server push_server_images
+update_executor_image: docker-build-executor push_executor_image
+
+update_images: update_controller_image update_server_image update_executor_image
+	
 
 ##@ Deployment
 
@@ -174,6 +199,18 @@ deploy_local_cluster: create_local_cluster prepare_local_cluster load_local_imag
 create_local_cluster:
 	kind create cluster
 
+prepare_remote_cluster:
+	kubectl create ns cert-manager --dry-run=client -o yaml | kubectl apply -f -
+	kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.9.1/cert-manager.yaml
+	sleep 20
+	kubectl wait --for=condition=Ready pods --all --namespace cert-manager
+	sleep 20
+	kubectl create ns ${NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
+	kubectl apply -n ${NAMESPACE} -f https://raw.githubusercontent.com/argoproj/argo-workflows/master/manifests/quick-start-postgres.yaml
+	kubectl patch svc argo-server -n ${NAMESPACE} -p '{"spec": {"type": "LoadBalancer"}}'
+	kubectl apply -f https://raw.githubusercontent.com/GoogleCloudPlatform/container-engine-accelerators/master/nvidia-driver-installer/cos/daemonset-preloaded.yaml
+	kubectl apply -n ${NAMESPACE} -f ./config/minio/
+
 prepare_local_cluster:
 	kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.12.1/manifests/namespace.yaml
 	kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.12.1/manifests/metallb.yaml
@@ -207,8 +244,8 @@ watch_task_contoller_logs:
 	kubectl logs -n ${NAMESPACE} -l control-plane=controller-manager -f
 
 refresh_task_controller:
-	docker buildx build . --target task-controller -t ame-controller:local
-	kind load docker-image ame-controller:local
+	docker buildx build . --target task-controller -t ${IMG} 
+	kind load docker-image ${IMG}
 	kubectl delete pod -l control-plane=controller-manager -n ${NAMESPACE}
 	
 refresh_server:

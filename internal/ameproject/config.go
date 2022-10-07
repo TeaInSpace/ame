@@ -5,7 +5,7 @@ import (
 	"os"
 	"path"
 
-	"gopkg.in/yaml.v3"
+	"sigs.k8s.io/yaml"
 	"teainspace.com/ame/api/v1alpha1"
 )
 
@@ -22,9 +22,9 @@ type TaskSpecs map[TaskSpecName]*v1alpha1.TaskSpec
 // A ProjectFileCfg encapsulats all of the configuration in an
 // AME project file.
 type ProjectFileCfg struct {
-	DefaultTask string    `yaml:"defaultTask,omitempty"`
-	ProjectName string    `yaml:"projectname"`
-	Specs       TaskSpecs `yaml:"tasks"`
+	DefaultTask string    `json:"defaultTask,omitempty"`
+	ProjectName string    `json:"projectname"`
+	Specs       TaskSpecs `json:"tasks,omitempty"`
 }
 
 // A ProjectFileBuilder allows for procedural creation of a ProjectFileCfg,
@@ -62,6 +62,10 @@ func (b ProjectFileBuilder) SetDefaultTask(name string) ProjectFileBuilder {
 }
 
 func (b ProjectFileBuilder) AddTaskSpecs(specs TaskSpecs) ProjectFileBuilder {
+	if b.fileCfg.Specs == nil {
+		b.fileCfg.Specs = make(TaskSpecs)
+	}
+
 	for name, spec := range specs {
 		b.fileCfg.Specs[name] = spec
 	}
@@ -87,6 +91,10 @@ func WriteToProjectFile(dir string, cfg *ProjectFileCfg) error {
 		existingCfg, err := ReadProjectFile(dir)
 		if err != nil {
 			return err
+		}
+
+		if existingCfg.Specs == nil {
+			existingCfg.Specs = make(TaskSpecs)
 		}
 
 		for key := range cfg.Specs {

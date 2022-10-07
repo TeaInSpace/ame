@@ -40,7 +40,7 @@ import (
 type ReccurringTaskReconciler struct {
 	client.Client
 	Scheme  *runtime.Scheme
-	cronWfs argoClients.CronWorkflowInterface
+	CronWfs argoClients.CronWorkflowInterface
 }
 
 //+kubebuilder:rbac:groups=ame.teainspace.com,resources=reccurringtasks,verbs=get;list;watch;create;update;patch;delete
@@ -67,7 +67,7 @@ func (r *ReccurringTaskReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{}, err
 	}
 
-	cronWf, err := workflows.CronWfForRecTask(ctx, r.cronWfs, rTask.GetName())
+	cronWf, err := workflows.CronWfForRecTask(ctx, r.CronWfs, rTask.GetName())
 	if err == nil {
 		err := r.reconcileCronWfSpec(ctx, &rTask, cronWf)
 		if err != nil {
@@ -83,7 +83,7 @@ func (r *ReccurringTaskReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		log.Error(err, "failed to generate CronWorkflow object")
 	}
 
-	_, err = r.cronWfs.Create(ctx, cwf, v1.CreateOptions{})
+	_, err = r.CronWfs.Create(ctx, cwf, v1.CreateOptions{})
 	if err != nil {
 		fmt.Println(err)
 		log.Error(err, "failed to create CronWorflow")

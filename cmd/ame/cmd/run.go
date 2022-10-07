@@ -1,7 +1,6 @@
 package commands
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"os"
@@ -28,27 +27,21 @@ func attachRun(rootCmd *cobra.Command) *cobra.Command {
 	return rootCmd
 }
 
-func shouldAProjectBeCreated() (bool, error) {
-	ok, err := ameproject.ValidProjectCfgExists(".")
+func SelectTask(specs ameproject.TaskSpecs) (string, error) {
+	var taskNames []string
+	for k := range specs {
+		taskNames = append(taskNames, string(k))
+	}
+
+	var name string
+	err := survey.AskOne(&survey.Select{
+		Message: "Please select a task:",
+		Options: taskNames,
+	}, &name)
 	if err != nil {
-		return false, err
+		return "", err
 	}
-
-	if !ok {
-		var resp bool
-		err = survey.AskOne(&survey.Confirm{
-			Message: "Would you like to setup a project?",
-			Default: true,
-		}, &resp)
-
-		if err != nil {
-			return false, err
-		}
-
-		return resp, nil
-	}
-
-	return false, nil
+	return name, nil
 }
 
 // TODO: current have to pass run command in quotes "python train.py"
@@ -58,81 +51,106 @@ func shouldAProjectBeCreated() (bool, error) {
 // TODO: Why does survey not block when being run during tests?
 
 func runTask(cmd *cobra.Command, args []string) {
-	ctx := context.Background()
-	ok, err := shouldAProjectBeCreated()
-	if err != nil {
-		// TODO: determine how to check for survey EOF so we don't break TestCanDownloadArtifacts when failing on this error.
-		log.Println(err)
-	}
-
-	if ok {
-		createProjectFile(cmd, args)
-	}
-
 	p, err := ameproject.ProjectFromWd(cmd.Context())
+	if err != nil && os.IsNotExist(err) {
+		fmt.Println("No valid ame file was found, please run 'ame create project' to create one.")
+		return
+	}
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalln(err)
 	}
 
-	// TODO: handle authtorization the context elegantly.
+	if len(p.ProjectFile.Specs) == 0 {
+		fmt.Println("There are no tasks for this project, please run 'ame create task' to create one.")
+		return
+	}
+
+	var taskNames []string
+
+	for k := range p.ProjectFile.Specs {
+		taskNames = append(taskNames, string(k))
+	}
+
+	var name string
+	if len(args) == 0 {
+		name, err = SelectTask(p.ProjectFile.Specs)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+	} else {
+		name = args[0]
+		nameIsValid := false
+		for _, tName := range taskNames {
+			if name == tName {
+				nameIsValid = true
+			}
+		}
+
+		if !nameIsValid {
+			fmt.Printf("The task %s does not exist in this project.\n", name)
+			return
+		}
+	}
+
 	s := spinner.New(spinner.CharSets[14], 100*time.Millisecond, spinner.WithWriter(os.Stderr))
 	fmt.Println()
 	s.Suffix = " Uploading project: " + p.Name
 	s.Start()
 
-	// TODO: we need to sort out how the user is supposed to execute a task from the project file
-	// vs adhoc tasks.
-	t := v1alpha1.NewTask(args[0], p.Name)
-	if ok {
-		projectCfg, err := ameproject.ReadProjectFile(".")
-		if err != nil {
-			log.Fatal(err)
-		}
+	spec := p.ProjectFile.Specs[ameproject.TaskSpecName(name)]
+	t := v1alpha1.NewTaskFromSpec(spec, name)
 
-		for k := range projectCfg.Specs {
-			t.Spec.Env = projectCfg.Specs[k].Env
-			t.Spec.Secrets = projectCfg.Specs[k].Secrets
-			t.Spec.Pipeline = projectCfg.Specs[k].Pipeline
-		}
-
-	}
-
-	projectTask, err := p.UploadAndRun(ctx, t)
+	projectTask, err := p.UploadAndRun(cmd.Context(), t)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalln(err)
 	}
 
 	s.Suffix = " Preparing execution environment"
 
-	err = p.ProcessTaskLogs(ctx, projectTask, func(le *task.LogEntry) error {
-		s.Stop()
-		if !strings.Contains(le.Content, "s3") {
-			fmt.Print(le.Content)
+	err = p.ProcessTaskLogs(cmd.Context(), projectTask, func(le *task.LogEntry) error {
+		if !strings.Contains(le.Content, "s3") && !strings.Contains(le.Content, "argo") && !strings.Contains(le.Content, "WARNING: Exiting") && !strings.Contains(le.Content, "Uploading artifacts") {
+			s.Suffix = " Executing"
+			s.Stop()
+			fmt.Println(le.Content)
+			s.Start()
 		}
 		return nil
 	})
-
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalln(err)
 	}
 
-	log.Println("Fetching artifacts produced during task execution.")
+	projectTask, err = p.GetTask(cmd.Context(), projectTask.GetName(), projectTask.GetNamespace())
+	if err != nil {
+		fmt.Println("failed to retrieve Task object: ", projectTask.GetName(), err)
+		return
+	}
 
-	artifacts, err := p.GetArtifacts(ctx, projectTask.GetName())
+	if projectTask.Status.Phase != v1alpha1.TaskSucceeded {
+		s.Stop()
+		fmt.Printf("The Task failed with the message:\n %s\n", projectTask.Status.Reason)
+		return
+	}
+
+	fmt.Println("The task finished successfully!")
+
+	artifacts, err := p.GetArtifacts(cmd.Context(), projectTask.GetName())
 	if err != nil {
 		log.Default().Fatal(err)
 	}
 
-	artifactPaths := ""
-	for _, ar := range artifacts {
-		artifactPaths = fmt.Sprintf("%s, %s", artifactPaths, ar.Path)
-	}
-	log.Println("Writing artifacts to disk.", artifactPaths)
+	if len(artifacts) > 0 {
 
-	err = dirtools.PopulateDir(".", artifacts)
-	if err != nil {
-		log.Default().Fatalf("failed to save artifacts due to error: %v", err)
+		s.Suffix = " Saving artifacts"
+		err = dirtools.PopulateDir(".", artifacts)
+		if err != nil {
+			log.Default().Fatalf("failed to save artifacts due to error: %v", err)
+		}
+		s.FinalMSG = "✓ Artifacts saved"
+	} else {
+		s.FinalMSG = "✓ Done"
 	}
 
-	log.Println("Artifacts successfully saved")
+	s.Stop()
 }

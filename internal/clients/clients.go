@@ -1,6 +1,7 @@
 package clients
 
 import (
+	argoWf "github.com/argoproj/argo-workflows/v3/pkg/apis/workflow/v1alpha1"
 	"k8s.io/client-go/kubernetes"
 	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
@@ -56,4 +57,12 @@ func GenericTaskClientFromConfig(cfg *rest.Config, ns string) common.AmeGenClien
 
 func GenericPodClientFromConfig(cfg *rest.Config, ns string) common.AmeGenClient[*corev1.Pod] {
 	return common.NewAmeGenClient[*corev1.Pod](PodClientFromConfig(cfg, ns))
+}
+
+func GenericRecurringTaskCLient(cfg *rest.Config, ns string) common.AmeGenClient[*amev1alpha1.ReccurringTask] {
+	return common.NewAmeGenClient[*amev1alpha1.ReccurringTask](RecTasksClientFromConfig(cfg, ns))
+}
+
+func GenericCronWorkflowCLient(cfg *rest.Config, ns string) common.AmeGenClient[*argoWf.CronWorkflow] {
+	return common.NewAmeGenClient[*argoWf.CronWorkflow](CronWorkflowsClientFromConfig(cfg, ns))
 }
