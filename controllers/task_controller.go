@@ -62,6 +62,10 @@ func (r *TaskReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
+	if task.Status.Phase == amev1alpha1.TaskSucceeded || task.Status.Phase == amev1alpha1.TaskFailed {
+		return ctrl.Result{}, nil
+	}
+
 	var wf argo.Workflow
 	err = GetArgoWorkflow(ctx, r.Client, task, &wf)
 	if err == nil {
@@ -81,6 +85,7 @@ func (r *TaskReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		newPhase, update := updateTaskPhase(wf.Status.Phase, task.Status.Phase)
 
 		if update {
+			task.Status.Reason = wf.Status.Message
 			task.Status.Phase = newPhase
 			err = r.Status().Update(ctx, &task)
 			if err != nil {

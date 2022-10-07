@@ -1,1 +1,12 @@
 projectname: echo
+tasks:
+  echo:
+    projectid: echo
+    runcommand: python echo.py myoutput
+    source: {}
+  train:
+    resources:
+      cpu: "2"
+      memory: 4Gi
+    runcommand: python main.py
+    source: {}

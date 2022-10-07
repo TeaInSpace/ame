@@ -7,8 +7,3 @@ import (
 func main() {
 	commands.Execute()
 }
-
-func run() int {
-	commands.Execute()
-	return 0
-}

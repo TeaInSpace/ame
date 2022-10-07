@@ -4,7 +4,6 @@ import (
 	"context"
 
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"teainspace.com/ame/generated/clientset/versioned/typed/ame/v1alpha1"
 	"teainspace.com/ame/internal/clients"
 	"teainspace.com/ame/internal/config"
 	"teainspace.com/ame/internal/testcfg"
@@ -29,28 +28,20 @@ func SetupCluster(ctx context.Context, cfg testcfg.TestEnvConfig) (storage.Stora
 		return nil, err
 	}
 
-	err = ClearTasksInCluster(ctx, clients.TasksClientFromConfig(kubeCfg, cfg.Namespace))
+	taskClient := clients.GenericTaskClientFromConfig(kubeCfg, cfg.Namespace)
+	recTaskClient := clients.GenericRecurringTaskCLient(kubeCfg, cfg.Namespace)
+
+	err = taskClient.DeleteCollection(ctx, v1.DeleteOptions{}, v1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	err = recTaskClient.DeleteCollection(ctx, v1.DeleteOptions{}, v1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
 
 	return store, nil
-}
-
-func ClearTasksInCluster(ctx context.Context, tasks v1alpha1.TaskInterface) error {
-	taskList, err := tasks.List(ctx, v1.ListOptions{})
-	if err != nil {
-		return err
-	}
-
-	for _, ta := range taskList.Items {
-		err := tasks.Delete(ctx, ta.GetName(), v1.DeleteOptions{})
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
 
 func LoadCliConfigToEnv(cfg testcfg.TestEnvConfig) error {

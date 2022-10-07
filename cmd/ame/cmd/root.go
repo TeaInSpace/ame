@@ -6,13 +6,16 @@ func newRootCmdWithSubCmds() *cobra.Command {
 	rootCmd := cobra.Command{
 		Use:   "ame",
 		Short: "ame is an awesome! MLOPS platform",
-		Long:  "ame is still an awesome! MLOPS platform",
+		Long:  "ame is an awesome! MLOPS platform",
 	}
 	return attachSubCommands(&rootCmd)
 }
 
 func attachSubCommands(rootCmd *cobra.Command) *cobra.Command {
-	return attachExec(attachCreate(attachSetup(attachRun(rootCmd))))
+	rootCmd = attachCreate(rootCmd)
+	rootCmd = attachSetup(rootCmd)
+	rootCmd = attachSchedule(rootCmd)
+	return attachRun(rootCmd)
 }
 
 func Execute() {

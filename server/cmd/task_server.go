@@ -278,3 +278,11 @@ func (s TaskServer) GetArtifacts(req *task_service.ArtifactGetRequest, server ta
 
 	return task_service.ProcessInChunks(artBuf, send, task_service.ChunkSize)
 }
+
+func (s TaskServer) CreateRecurringTask(ctx context.Context, req *task_service.RecurringTaskCreateRequest) (*v1alpha1.ReccurringTask, error) {
+	opts := v1.CreateOptions{}
+	if req.CreateOptions != nil {
+		opts = *req.GetCreateOptions()
+	}
+	return s.ameClientSet.AmeV1alpha1().ReccurringTasks(s.targetNamespace).Create(ctx, req.GetTask(), opts)
+}

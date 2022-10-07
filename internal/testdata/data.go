@@ -23,3 +23,8 @@ var TestFiles = []storage.ProjectFile{
 		Path: "somedir/somedeepdir/deepfile.go",
 	},
 }
+
+const (
+	TestingGitSource    = "https://github.com/jmintb/ame-showcase.git"
+	TestingGitReference = "main"
+)

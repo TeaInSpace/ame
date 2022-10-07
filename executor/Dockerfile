@@ -1,4 +1,4 @@
-FROM ubuntu:20.04
+FROM nvidia/cuda:11.4.2-cudnn8-runtime-ubuntu20.04
 
 # These packages are required by pyenv, see https://github.com/pyenv/pyenv/wiki#suggested-build-environment 
 RUN apt-get update \
@@ -16,7 +16,7 @@ RUN chmod +x /usr/bin/save_artifacts
 
 # It is important that AME does not execute tasks as root as AME is executing unknown code which
 # could be malicious.
-RUN adduser --disabled-password ame
+RUN adduser -u 1001 --disabled-password ame
 # Tasks are executed within the /project directory, therefore the ame user should require access
 # this directory.
 RUN mkdir /project

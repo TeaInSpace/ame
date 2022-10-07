@@ -1,10 +1,16 @@
 projectname: pipenvnn
 tasks:
-    training:
-        runcommand: python nn.py
-        projectid: pipenvnn
-        env:
-            - name: ENV
-              value: test
-        secrets: []
-        pipeline: []
+  gputraining:
+    resources:
+      cpu: "3"
+      memory: 8Gi
+      nvidia.com/gpu: "1"
+    runcommand: python nn.py
+    source: {}
+  training:
+    projectid: pipenvnn
+    resources:
+      cpu: "4"
+      memory: 8Gi
+    runcommand: python nn.py
+    source: {}

@@ -19,7 +19,7 @@ import (
 	"teainspace.com/ame/internal/secrets"
 )
 
-const taskLabelKey = "ame-task"
+const TaskLabelKey = "ame-task"
 
 // genWorkflowSpec generates a Workflow specficiation from a Task specification.
 func GenWorkflowSpec(task v1alpha1.Task) (argo.WorkflowSpec, error) {
@@ -28,6 +28,8 @@ func GenWorkflowSpec(task v1alpha1.Task) (argo.WorkflowSpec, error) {
 		if err != nil {
 			return argo.WorkflowSpec{}, err
 		}
+
+		spec.ImagePullSecrets = append(spec.ImagePullSecrets, apiv1.LocalObjectReference{Name: "regcred"})
 
 		return *spec, nil
 	}
@@ -67,6 +69,7 @@ func GenWorkflowSpec(task v1alpha1.Task) (argo.WorkflowSpec, error) {
 	}
 
 	wfSpec := *GenWfSpec(task.GetName(), pvClaims, wfTemplates)
+	wfSpec.ImagePullSecrets = append(wfSpec.ImagePullSecrets, apiv1.LocalObjectReference{Name: "regcred"})
 	return wfSpec, nil
 }
 
@@ -167,9 +170,12 @@ func genWfTemplate(templateName string, t *v1alpha1.Task, volName string) (argo.
 		return argo.Template{}, err
 	}
 
+	rootUser := int64(1001)
+	fsGroup := int64(2000)
 	return argo.Template{
 		Name: templateName,
 
+		SecurityContext: &apiv1.PodSecurityContext{RunAsUser: &rootUser, FSGroup: &fsGroup},
 		Script: &argo.ScriptTemplate{
 			Source: fmt.Sprintf(`
 
@@ -186,7 +192,7 @@ func genWfTemplate(templateName string, t *v1alpha1.Task, volName string) (argo.
           echo "0" >> exit.status
 					`, t.Spec.ProjectId, t.Spec.ProjectId, t.Spec.RunCommand, t.GetName()),
 			Container: apiv1.Container{
-				Image: "ame-executor:local",
+				Image: "ghcr.io/teainspace/ame/ame-executor:0.0.3",
 				Command: []string{
 					"bash",
 				},
@@ -277,7 +283,7 @@ func WaitForTaskWorkflow(ctx context.Context, workflows argoClients.WorkflowInte
 }
 
 func TaskWf(ctx context.Context, workflows argoClients.WorkflowInterface, name string) (*argo.Workflow, error) {
-	selector, err := labels.Parse(fmt.Sprintf("%s=%s", taskLabelKey, name))
+	selector, err := labels.Parse(fmt.Sprintf("%s=%s", TaskLabelKey, name))
 	if err != nil {
 		return nil, err
 	}
@@ -326,8 +332,11 @@ func genWfSetupTemplate(templateName string, t *v1alpha1.Task, volName string) a
 		projectPullCmd = fmt.Sprintf("git clone %s %s\n cd %s && git checkout %s", t.Spec.Source.GitRepository, t.Spec.ProjectId, t.Spec.ProjectId, t.Spec.Source.GitReference)
 	}
 
+	rootUser := int64(1001)
+	fsGroup := int64(2000)
 	return argo.Template{
-		Name: "setup",
+		Name:            "setup",
+		SecurityContext: &apiv1.PodSecurityContext{RunAsUser: &rootUser, FSGroup: &fsGroup},
 		Script: &argo.ScriptTemplate{
 			Source: fmt.Sprintf(`
           %s
@@ -335,7 +344,7 @@ func genWfSetupTemplate(templateName string, t *v1alpha1.Task, volName string) a
           echo "0" >> exit.status
 					`, projectPullCmd),
 			Container: apiv1.Container{
-				Image: "ame-executor:local",
+				Image: "ghcr.io/teainspace/ame/ame-executor:0.0.3",
 				Command: []string{
 					"bash",
 				},

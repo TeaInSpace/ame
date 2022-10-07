@@ -1,8 +1,8 @@
-projectname: artifacts
+projectname: artifact
 tasks:
     train:
-        runcommand: python artifacts.py
-        projectid: artifacts
+        runcommand: python artifact.py somedata2
+        projectid: artifact
         env: []
         secrets: []
         pipeline: []

@@ -151,9 +151,24 @@ func (p *Project) ProcessTaskLogs(ctx context.Context, targetTask *v1alpha1.Task
 	return nil
 }
 
+func (p *Project) GetTask(ctx context.Context, taskName string, ns string) (*v1alpha1.Task, error) {
+	ctx = auth.AuthorarizeCtx(ctx, p.AuthToken)
+	return p.taskClient.GetTask(ctx, &task_service.TaskGetRequest{
+		Name:      taskName,
+		Namespace: ns,
+	})
+}
+
 func (p *Project) GetArtifacts(ctx context.Context, taskName string) ([]storage.ProjectFile, error) {
 	ctx = auth.AuthorarizeCtx(ctx, p.AuthToken)
 	return GetArtifacts(ctx, p.taskClient, taskName)
+}
+
+func (p *Project) ScheduleTask(ctx context.Context, spec v1alpha1.TaskSpec, schedule string) (*v1alpha1.ReccurringTask, error) {
+	ctx = auth.AuthorarizeCtx(ctx, p.AuthToken)
+	return p.taskClient.CreateRecurringTask(ctx, &task_service.RecurringTaskCreateRequest{
+		Task: v1alpha1.NewRecurringTask(p.Name, spec, schedule),
+	})
 }
 
 // TODO: GetArtifacts loads all of the artifacts into memory at once, this will not work for large artifacts.
