@@ -143,7 +143,29 @@ tasks:
 
 ```
 
+## Getting started with the CLI
+
+### Connect the CLI to the server
+
+Before the CLI can execute Tasks it needs to be connected with an AME server. Use the setup command to get started.
+
+![setup](https://user-images.githubusercontent.com/10332534/194759967-4b0d80b8-eab7-4350-9d23-5b02b51440d3.gif)
+
+### Initialize a project
+
+All AME Tasks are executed with the context a project. To setup a project, run `ame create project`.
+
+### Creating a Task
+
+To create a Task use the `ame create task` command. AME supports single step tasks and multi stap Task pipeliens, the CLI will guide you through creating either one. You will be asked to supply the necessary information for AME to executr the Task successfully.
+
 ### Executing tasks from the CLI
+
+Once a task is created, it can be run. Use `ame run` to select a task and run it. The logs will be shown in the terminal as if you were running the task on your local machine. Any Artifacts generated will be transferred back to your local directory.
+
+### Scheduling tasks for recurring execution
+
+Ame supports Tasks that are run on repeatedly using a cron tab, as long as there is a git repository where ame can download the project from.
 
 When you are first starting out you will probably be experimenting with AME. The AME CLI supports running tasks remotely using what ever project you are working within at the time. In other words you can execute your python code on a remote machine, but still see output from the execution and get any artifacts locally, essentially mirroring the expericence of running your code locally, except you can request what ever compute resources you may need. 
 
