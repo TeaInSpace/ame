@@ -2,9 +2,9 @@
 
 AME(Artificial MLOPS Engineer) automates model training and orchestration of related tasks. 
 
-Long term the goal is to service the entire lifecycle of machine learning models but for now we focus on training and orchestration. AME is designed to make many decisions so users & admins don't have to, while still keeping them informed and in control.
+Long term the goal is to service the entire lifecycle of machine learning models but for now the focus is on training and orchestration. AME is designed to abstract away the details regarding infrastructure, so data scientists can focus on what is important. While at the same time AME enables a high degree of configurability.
 
-**Note that AME is still in early development, see the list further down the readme of which features are implemented.**
+**Note that AME is still in early development, see this [issue](https://github.com/TeaInSpace/ame/issues/69) for the current status.**
 
 **A few highlights**:
 - Simple declarative machine learning pipelines, through a minimal yaml file.
@@ -15,54 +15,66 @@ Long term the goal is to service the entire lifecycle of machine learning models
 - Jupylab support, use AME's scaling to spin up jupyter lab instances when needed.
 - Git tracking, AME will track any repository or organisation you grant access too and automatically detect when an AME file is created or updated.
 
-An example of running an adoc task with the CLI:
-![out](https://user-images.githubusercontent.com/10332534/192134166-0eddbeae-853e-40f7-bd56-cb3400899c0f.gif)
+## Quick start
 
-## Feature overview
+### Installation:
 
-### MVP:
-The initial MVP of AME will be able to do the following, implemented features have a checkmark:
+TODO: Fill this out when the CLI is available.
 
-- [x] Run your model training with zero changes to your python code.
-- [x] Execute tasks remotely, but display output and downloads artifacts to simulate local execution.
-- [ ] Automatic setup of python versions and dependencies using any common python dependency manager.
-- [x] Scale the infrastructure used for the model training in a code effective manner.
-- [x] Provide simple authentication when using the CLI.
-- [x] Support injecting secrets during Task execution.
-- [x] Support configuration environment variables for Task execution.
-- [ ] Adjust the resource requirements to fit the needs of your training
-automatically, for example if you training fails due to lack of ram, the task
-will be rescheduled and more ram provisioned.
-- [x] Schedule reoccuring model traning based on project specifications.
-- [x] Configure how your project is run declaritively in a config file.
-- [ ] Support outputting artifacts from your training to an arbitrary location
-such as an s3 bucket.
-- [x] Support storing artifacts within AME's own object storage.
-- [ ] Deployable with a terraform setup supplied from the project repository.
-- [ ] AME will be able to track projects in your git repositories and detect
-when they have an AME config file. Allowing you to simply place your config file
-in the repo like you would with CI/CD configuration and let AME take care of the
-rest.
-- [ ] Display project runs in a graphical UI, perhaps using mlflow.
-- [ ] Support using Jupyterlab with AME.
-- [ ] Support using custom images.
-- [ ] Support overriding default workflow behavior.
+### Connect the CLI to the server
+
+Before the CLI can execute Tasks it needs to be connected with an AME server. Use the setup command to get started.
+
+![setup](https://user-images.githubusercontent.com/10332534/194759967-4b0d80b8-eab7-4350-9d23-5b02b51440d3.gif)
+
+### Training a model
+
+#### Initialize a project
+
+All AME Tasks are executed within the context a project. To setup a project in a directory, run `ame create project`. This will generate
+an AME file(ame.yaml) containing the name of a project. When you create Tasks, they will be placed here.
+
+#### Create a Task
+
+To create a Task run `ame create task`. AME supports single step tasks and multi step Task pipelines, the CLI will guide you through creating either one. You will be asked to supply the necessary information for AME to execute the Task successfully, such as compute cpu, gpu, env variables etc.
+
+#### Run it
+
+Once a task is created, it can be run. Use `ame run` to select a task and run it. The logs will be shown in the terminal as if you were running the task on your local machine. Any Artifacts generated will be transferred back to your local directory.
+
+This gif demonstrates these steps, note that it is sped up to keep the length to a minimum:
+![readme](https://user-images.githubusercontent.com/10332534/196032105-869531c3-ebea-44cf-9cee-e57f0546dcda.gif)
 
 
-### Core concepts
+### Scheduled training
 
-AME has a few simple concepts which users should be familiar with.
+Ame supports scheduling Tasks to run on a recurring basis using a cron schedule, as long as there is a git repository where ame can clone the project from. Run `ame schedule task` to schedule a Task.
 
-#### Tasks
+![image](https://user-images.githubusercontent.com/10332534/196032747-f5e65c1a-a183-491a-9512-7762df070349.png)
 
-Ame uses tasks as building blocks, a task defines a piece of work to be done. This includes what command to run, which compute resources are required and various other configuration options. Tasks are defined in the ame project file, it will live in your git repository in a similar manner to Github actions, Gitlab CI etc.
+### Exploring
+
+The CLI can be used to explore and change the state of your AME instance. This includes viewing logs for running tasks, 
+
+### Handling secrets and environment variables
+
+
+## Core concepts
+
+AME has a few concepts which users should be familiar with.
+
+Note that the examples below all show yaml files to demonstrate what the various configurations look like but one of the goals of AME is to minimize the time spent on manually writing and debugging yaml configuration. Therefore when using AME you will not normally have to manually write, edit or debug yaml files.
+
+### Tasks
+
+Ame uses Tasks as building blocks, a Task defines a piece of work to be done. This includes what command to run, which compute resources are required and various other configuration options. Tasks are defined in the ame project file and are expected to live in the git repository in a similar manner to Github actions, Gitlab CI etc.
 
 ```yaml
 #ame.yaml
 projectname: bestproject
 tasks:
   download_data:
-    runcommand: python downloaddata.py
+    runcommand: python download_data.py
     secrets:
       name: storagesecret
       envkey: STORAGE_SECRET
@@ -70,19 +82,20 @@ tasks:
       envkey: PROJECT_ENVIRONMENT
       value: production
     resources:
-      cpu: 2
-      memory: 8Gi
-      storage: 50Gi 
+      cpu: 1
+      memory: 2Gi
+      storage: 50Gi
 ```
 
-#### Projects
-A project is the directory of files that you are working from. It provides the context to which any Task is executed. This allows AME to run your code as if it were running locally on your machine. For example if you have an experiment which produces artifacts and you run that experiment using AME, all of the artifacts will appear locally in your directory as if you had run the experiment on your local machine.
+### Projects
+A project consists of a directory of files containing the AME file and must have a unique name. It provides the context to which any Task is executed. This allows AME to run your code as if it were running locally on your machine. For example if you have an experiment which produces artifacts and you run that experiment using AME, all of the artifacts will appear locally in your directory as if you had run the experiment on your local machine.
 
 TODO: show an example of this.
 
 ### Pipelines
 
-You might have multiple Tasks meant to be executed together, for example downloading data, preparing data, model training, model upload. Each of these Tasks will have different requirements. This can be expressed using a pipeline.
+You might have multiple Tasks meant to be executed together, for example downloading data, preparing data, model training, model upload. Each of these Tasks will have different requirements. This can be expressed using a pipeline. Each Task in a pipeline is executed in a separate container potentially on different machines if their compute requirements are different. To ensure that your code will work without modification, all of the state is transferred between steps transparently so it appears as if all of the steps are executed on the same machine. For example data is downloaed in step 1, prepared in step 2 and trained on in step 3 AME will make sure to transfer these files automaticlly between steps so no adjustments are reqired to the project's code.
+
 ```yaml
 #ame.yaml
 projectname: bestproject
@@ -124,81 +137,26 @@ tasks:
 ```
 ### Recurring tasks
 
-AME currently only supports time based scheduling, for example at 12pm every day. You can do that by adding a recurring Task to the AME file in your repository. Recurring tasks only require the schedule and a reference to a Task it should execute.
-```yaml
-#ame.yaml
-projectname: bestproject
-recurring_tasks:
-  daily_training:
-    taskref: main
-    schedule: 0 12 * * *
-tasks:
-  main:
-    pipeline:
-      download_data:
-        runcommand: python downloaddata.py
-        secrets:
-          name: storagesecret
-...
-
-```
-
-## Getting started with the CLI
-
-### Connect the CLI to the server
-
-Before the CLI can execute Tasks it needs to be connected with an AME server. Use the setup command to get started.
-
-![setup](https://user-images.githubusercontent.com/10332534/194759967-4b0d80b8-eab7-4350-9d23-5b02b51440d3.gif)
-
-### Initialize a project
-
-All AME Tasks are executed with the context a project. To setup a project, run `ame create project`.
-
-### Creating a Task
-
-To create a Task use the `ame create task` command. AME supports single step tasks and multi stap Task pipeliens, the CLI will guide you through creating either one. You will be asked to supply the necessary information for AME to executr the Task successfully.
-
-### Executing tasks from the CLI
-
-Once a task is created, it can be run. Use `ame run` to select a task and run it. The logs will be shown in the terminal as if you were running the task on your local machine. Any Artifacts generated will be transferred back to your local directory.
-
-### Scheduling tasks for recurring execution
-
-Ame supports Tasks that are run on repeatedly using a cron tab, as long as there is a git repository where ame can download the project from.
-
-When you are first starting out you will probably be experimenting with AME. The AME CLI supports running tasks remotely using what ever project you are working within at the time. In other words you can execute your python code on a remote machine, but still see output from the execution and get any artifacts locally, essentially mirroring the expericence of running your code locally, except you can request what ever compute resources you may need. 
-
-TODO: insert gif of executing a task.
-
-### Configuring your project from the CLI
-
-In order to guarantee a valid configuratinon and avoid wasting time on finding YAML errors, the CLI can build the config for your and ensure that it is valid.
-
-TODO: insert gif of building yaml config.
-
-### Override defaults
-
-TODO
-
-#### Custom images
-
-TODO
-
-
+RecurringTasks, concists of a Task, a cron schedule and a reference to a git repository. Currently the only way to schedule recurring tasks is through the CLI.
 
 ## Deployment and administration
 
-AME is Kubernetive native, it will play nicely with any existing Kubenertes setup you may. If you do not have an existing see our examples in this repo for how to spin up a production ready Cluster with AME in your environment of choice.
+AME is Kubernetes native, it will play nicely with any existing Kubenertes setup you may have and is very gitops friendly.
 
-TODO
+TODO: Fill in details
 
 ## Architecture
 
-AME is designed to be run within a Kubernetes cluster and therefores consists of multiple custom resource definitions, controllers a gRPC+REST server and a CLI.
-Eventually a a graphical interface will be developed aswell.
+AME is designed to be run within a Kubernetes cluster and therefore consists of multiple custom resource definitions, controllers a gRPC+REST server and a CLI.
+Eventually a graphical interface will be developed aswell.
 
-TODO
+![Untitled Diagram drawio](https://user-images.githubusercontent.com/10332534/195980196-06fbf347-19a2-48eb-915d-44008bd606e7.png)
+
+### Dependencies
+
+AME relies on Argo Workflows as a workflow engine and minio for object storage at the moment.
+
+TODO: Fill architecture details
 
 ## Roadmap
 
