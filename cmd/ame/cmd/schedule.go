@@ -92,18 +92,20 @@ func scheduleTask(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	name, err := SelectTask(p.ProjectFile.Specs)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	spec, err := p.GetTaskSpec(name)
-	if err != nil {
-		fmt.Println(err)
-		return
+	if scheduleCfg.Task == "" {
+		name, err := SelectTask(p.ProjectFile.Specs)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		scheduleCfg.Task = name
 	}
 
-	scheduleCfg.Task = name
+	spec, err := p.GetTaskSpec(scheduleCfg.Task)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 
 	spec.Source.GitRepository = scheduleCfg.Repo
 	spec.Source.GitReference = scheduleCfg.Ref

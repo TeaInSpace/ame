@@ -1,8 +1,8 @@
 projectname: artifact
 tasks:
-    train:
-        runcommand: python artifact.py somedata2
-        projectid: artifact
-        env: []
-        secrets: []
-        pipeline: []
+  artifact:
+    resources:
+      cpu: "2"
+      memory: 4Gi
+    runcommand: python artifact.py artifactContents
+    source: {}
