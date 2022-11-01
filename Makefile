@@ -229,8 +229,8 @@ prepare_local_cluster:
 load_local_images: refresh_task_controller load_executor refresh_server
 
 load_executor:
-	docker build ./executor/ -t ame-executor:local
-	kind load docker-image ame-executor:local
+	docker build ./executor/ -t ${EXECUTOR_IMG}
+	kind load docker-image ${EXECUTOR_IMG}
 
 refresh_deployment: install undeploy prepare_local_cluster load_local_images deploy
 
@@ -249,8 +249,8 @@ refresh_task_controller:
 	kubectl delete pod -l control-plane=controller-manager -n ${NAMESPACE}
 	
 refresh_server:
-	docker buildx build . --target ame-server -t ame-server:local
-	kind load docker-image ame-server:local
+	docker buildx build . --target ame-server -t ${SERVER_IMG}
+	kind load docker-image ${SERVER_IMG}
 	kubectl delete pod -l app=ame-server -n ${NAMESPACE}
 
 delete_controller_and_server_pods:

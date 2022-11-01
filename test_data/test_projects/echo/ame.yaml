@@ -1,10 +1,20 @@
 projectname: echo
 tasks:
   echo:
+    resources:
+      cpu: "2"
+      memory: 4Gi
     projectid: echo
     runcommand: python echo.py myoutput
     source: {}
+  failure:
+    resources:
+      cpu: "2"
+      memory: 4Gi
+    runcommand: sdfdsf
+    source: {}
   train:
+    projectid: echo
     resources:
       cpu: "2"
       memory: 4Gi
