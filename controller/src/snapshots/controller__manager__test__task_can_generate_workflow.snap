@@ -1,0 +1,116 @@
+---
+source: controller/src/manager.rs
+expression: "&wf"
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  labels:
+    task: training
+  name: training
+  ownerReferences:
+    - apiVersion: ""
+      kind: ""
+      name: ""
+      uid: ""
+spec:
+  entrypoint: main
+  templates:
+    - name: main
+      metadata: ~
+      steps:
+        - - name: setup
+            inline:
+              name: setup
+              metadata:
+                labels:
+                  ame-task: training
+                annotations: ~
+              steps: ~
+              securitycontext:
+                fsGroup: 2000
+                runAsUser: 1001
+              script:
+                command:
+                  - bash
+                env:
+                  - name: AWS_ACCESS_KEY_ID
+                    value: minio
+                  - name: AWS_SECRET_ACCESS_KEY
+                    value: minio123
+                  - name: MINIO_URL
+                    value: "http://ame-minio.ame-system.svc.cluster.local:9000"
+                  - name: TASK_DIRECTORY
+                    value: ameprojectstorage/myproject
+                  - name: PIPENV_YES
+                    value: "1"
+                image: "ghcr.io/teainspace/ame/ame-executor:0.0.3"
+                name: ""
+                volumeMounts:
+                  - mountPath: /project
+                    name: training-volume
+                source: "\n                       s3cmd --no-ssl --region us-east-1 --host=$MINIO_URL --host-bucket=$MINIO_URL get --recursive s3://$TASK_DIRECTORY ./\n                       echo \"0\" >> exit.status\n                        "
+              podspecpatch: ~
+        - - name: main
+            inline:
+              name: training
+              metadata:
+                labels:
+                  ame-task: training
+                annotations: ~
+              steps: ~
+              securitycontext:
+                fsGroup: 2000
+                runAsUser: 1001
+              script:
+                command:
+                  - bash
+                env:
+                  - name: AWS_ACCESS_KEY_ID
+                    value: minio
+                  - name: AWS_SECRET_ACCESS_KEY
+                    value: minio123
+                  - name: MINIO_URL
+                    value: "http://ame-minio.ame-system.svc.cluster.local:9000"
+                  - name: TASK_DIRECTORY
+                    value: ameprojectstorage/myproject
+                  - name: PIPENV_YES
+                    value: "1"
+                  - name: KEY1
+                    valueFrom:
+                      secretKeyRef:
+                        key: secret
+                        name: secret1
+                  - name: KEY2
+                    valueFrom:
+                      secretKeyRef:
+                        key: secret
+                        name: secret2
+                  - name: VAR1
+                    value: val1
+                  - name: VAR2
+                    value: val2
+                image: "ghcr.io/teainspace/ame/ame-executor:0.0.3"
+                name: ""
+                volumeMounts:
+                  - mountPath: /project
+                    name: training-volume
+                source: "\n          export TASK_DIRECTORY=ameprojectstorage/myproject\n\n          cd \"./myproject\" \n\n          set -e # It is important that the workflow exits with an error code if execute or save_artifacts fails, so AME can take action based on that information.\n\n          execute \"python train.py\" \n          \n          save_artifacts \"ameprojectstorage/training/artifacts/\"\n\n          echo \"0\" >> exit.status\n            "
+              podspecpatch: "{\"containers\":[{\"name\":\"main\", \"resources\":{\"limits\":null}}]}"
+      securitycontext: ~
+      script: ~
+      podspecpatch: ~
+  imagepullsecrets: ~
+  volumeClaimTemplates:
+    - apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: training-volume
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 50Gi
+  volumes: ~
+
