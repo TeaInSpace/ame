@@ -1,2 +1,2 @@
 [workspace]
-members = ["controller"]
+members = ["controller", "service", "doctest"]

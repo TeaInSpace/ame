@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package taskservice;
+
+message TaskIdentifier {
+  string name = 1;
+}
+
+message Task {
+  string projectid = 1;
+  string command = 2;
+}
+
+message Empty {
+
+}
+
+service TaskService {
+  rpc GetTask(TaskIdentifier) returns (Task) {}
+  rpc CreateTask(Task) returns (TaskIdentifier) {}
+  rpc DeleteTask(TaskIdentifier) returns (Empty) {}
+}

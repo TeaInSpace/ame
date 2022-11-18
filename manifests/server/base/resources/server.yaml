@@ -1,0 +1,96 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ame-server
+  namespace: ame-system
+  labels:
+    app: ame-server
+spec:
+  selector:
+    matchLabels:
+      app: ame-server
+  replicas: 1
+  template:
+    metadata:
+      annotations:
+        kubectl.kubernetes.io/default-container: server
+      labels:
+        app: ame-server
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+      imagePullSecrets:
+        - name: regcred
+      containers:
+      - image: ame-server:latest
+        name: server
+        securityContext:
+          allowPrivilegeEscalation: false
+        readinessProbe:
+          exec:
+            command: ["/usr/local/bin/grpc_health_probe", "-addr=:3342"]
+          initialDelaySeconds: 5
+        livenessProbe:
+          exec:
+            command: ["/usr/local/bin/grpc_health_probe", "-addr=:3342"]
+          initialDelaySeconds: 10
+        ports:
+          - containerPort: 3342
+        # TODO(user): Configure the resources accordingly based on the project requirements.
+        # More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+        resources:
+          limits:
+            cpu: 500m
+            memory: 500Mi
+          requests:
+            cpu: 10m
+            memory: 250Mi
+        env:
+          - name: AME_SERVER_PORT
+            valueFrom:
+              configMapKeyRef:
+                name: ame-server-configmap
+                key: server_port
+          - name: TASK_SERVER_OBJECT_STORAGE_BUCKET_NAME
+            valueFrom:
+              configMapKeyRef:
+                name: ame-server-configmap
+                key: minio_bucket_name 
+          - name: TASK_SERVER_OBJECT_STORAGE_ENDPOINT
+            valueFrom:
+              configMapKeyRef:
+                name: ame-server-configmap
+                key: minio_endpoint
+          - name: TASK_SERVER_OBJECT_STORAGE_ENDPOINT_ACCESS_KEY
+            value: minio
+          - name: TASK_SERVER_OBJECT_STORAGE_ENDPOINT_ACCESS_SECRET
+            value: minio123
+          - name: TASK_SERVER_TARGET_NAMESPACE
+            value: ame-system
+          - name: AME_AUTH_TOKEN
+            value: mytoken
+      serviceAccountName: ame-server
+      terminationGracePeriodSeconds: 10
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: ame-server-service
+spec:
+  type: LoadBalancer
+  selector:
+    app: ame-server
+  ports:
+    - port: 3342
+      targetPort: 3342
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ame-server-configmap
+data:
+  server_port: "3342"
+  minio_endpoint: "http://ame-minio:9000"
+  minio_bucket_name: "ameprojectstorage"
+  auth_token: "mytoken"
