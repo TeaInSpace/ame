@@ -1,0 +1,3 @@
+resources:
+- server.yaml
+- rbac.yaml

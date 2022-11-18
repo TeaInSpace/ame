@@ -1,0 +1,10 @@
+resources:
+- ../base/resources
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+images:
+- name: ame-server
+  newName: main:39431/ame-server
+  newTag: latest
+namespace: ame-system
