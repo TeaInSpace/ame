@@ -24,3 +24,5 @@ testbin/*
 *.swo
 *~
 test.env
+
+target/

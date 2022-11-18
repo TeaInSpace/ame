@@ -57,26 +57,26 @@ pub struct TaskControllerConfig {
 #[kube(status = "TaskStatus", shortname = "task")]
 pub struct TaskSpec {
     // Runcommand defines the command AME will use to start this Task.
-    runcommand: String,
+    pub runcommand: String,
 
     // Projectid defines which project this Task belongs to.
-    projectid: String,
-    env: Option<Vec<TaskEnvVar>>,
+    pub projectid: String,
+    pub env: Option<Vec<TaskEnvVar>>,
 
     // Secrets that will be made available to the Task during execution.
-    secrets: Option<Vec<TaskSecret>>,
+    pub secrets: Option<Vec<TaskSecret>>,
 
     // Pipeline defines a sequence of tasks to execute.
     // If a pipeline is specified the rest of the fields in this
     // specification are ignored.
-    pipeline: Option<Vec<PipelineStep>>,
+    pub pipeline: Option<Vec<PipelineStep>>,
 
     // source defines where AME will pull the project from.
     // This can either be AME's own object storage or a git repository.
-    source: Option<ProjectSource>,
+    pub source: Option<ProjectSource>,
 
     // Resources define what resources this Task requires.
-    resources: Option<BTreeMap<String, Quantity>>,
+    pub resources: Option<BTreeMap<String, Quantity>>,
 }
 
 /// The status object of `Task`

@@ -1,0 +1,32 @@
+# Using the `rust-musl-builder` as base image, instead of 
+# the official Rust toolchain
+FROM clux/muslrust:stable AS chef
+USER root
+RUN cargo install cargo-chef
+WORKDIR /app
+
+FROM chef AS planner
+COPY . .
+RUN cargo chef prepare --recipe-path service/recipe.json
+
+FROM chef AS builder
+COPY --from=planner /app/service/recipe.json recipe.json
+# Notice that we are specifying the --target flag!
+RUN cargo chef cook --release --target x86_64-unknown-linux-musl --recipe-path recipe.json
+COPY . .
+RUN cargo build --release --target x86_64-unknown-linux-musl --bin ame-server
+
+# Install grpc health probe
+
+FROM alpine as health-builder
+RUN apk add wget
+RUN GRPC_HEALTH_PROBE_VERSION=v0.3.1 && \
+    wget -qO/bin/grpc_health_probe https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/${GRPC_HEALTH_PROBE_VERSION}/grpc_health_probe-linux-amd64 && \
+    chmod +x /bin/grpc_health_probe
+
+FROM alpine AS runtime
+RUN addgroup -S ame && adduser -u 1001 -S -D ame -G ame
+COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/ame-server /usr/local/bin/
+COPY --from=health-builder /bin/grpc_health_probe /usr/local/bin/
+USER ame
+CMD ["/usr/local/bin/ame-server"]

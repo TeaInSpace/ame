@@ -10,6 +10,8 @@ pkgs.mkShell {
     openssl 
     pkgconfig 
     python310Packages.ipython
+    protobuf
+    kustomize
   ];
 
   # Certain Rust tools won't work without this
