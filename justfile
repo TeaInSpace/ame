@@ -102,3 +102,5 @@ remove_server:
 describe_server:
   kubectl describe pod -l app=ame-server -n {{TARGET_NAMESPACE}}
 
+install_commit_template:
+  git config commit.template ./.git_commit_message_template

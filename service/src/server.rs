@@ -38,6 +38,7 @@ impl From<Task> for controller::Task {
             spec: controller::TaskSpec {
                 projectid: t.projectid,
                 runcommand: t.command,
+                image: t.image,
                 ..controller::TaskSpec::default()
             },
             status: None,
@@ -50,6 +51,7 @@ impl From<controller::Task> for Task {
         Task {
             command: t.spec.runcommand,
             projectid: t.spec.projectid,
+            image: t.spec.image,
         }
     }
 }
@@ -195,6 +197,7 @@ mod test {
         let task = Task {
             command: "test".to_string(),
             projectid: "myproject".to_string(),
+            ..Task::default()
         };
 
         let task_in_cluster = tasks
@@ -227,11 +230,37 @@ mod test {
         let task = Task {
             command: "test".to_string(),
             projectid: "myproject".to_string(),
+            ..Task::default()
         };
 
         let new_task = service_client
             .create_task(Request::new(task.clone()))
             .await?;
+        let task_in_cluster = tasks.get(&new_task.get_ref().name).await?;
+
+        assert_eq!(Task::from(task_in_cluster), task);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn can_create_task_with_image_override() -> Result<()> {
+        let mut service_client = start_server().await?;
+        let client = Client::try_default().await?;
+        let tasks = Api::<controller::Task>::default_namespaced(client);
+
+        let task = Task {
+            command: "test".to_string(),
+            projectid: "myproject".to_string(),
+            image: Some("my-new-image".to_string()),
+            ..Task::default()
+        };
+
+        let new_task = service_client
+            .create_task(Request::new(task.clone()))
+            .await?;
+
         let task_in_cluster = tasks.get(&new_task.get_ref().name).await?;
 
         assert_eq!(Task::from(task_in_cluster), task);
@@ -252,6 +281,7 @@ mod test {
                 &controller::Task::from(Task {
                     command: "test".to_string(),
                     projectid: "myproject".to_string(),
+                    ..Task::default()
                 }),
             )
             .await?;
