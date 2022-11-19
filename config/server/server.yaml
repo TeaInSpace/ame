@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: ame-server
-  namespace: system
+  namespace: ame-system
   labels:
     app: ame-server
 spec:

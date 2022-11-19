@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package taskservice;
+package ame.v1 ;
 
 message TaskIdentifier {
   string name = 1;
@@ -16,7 +16,7 @@ message Empty {
 
 }
 
-service TaskService {
+service AmeService {
   rpc GetTask(TaskIdentifier) returns (Task) {}
   rpc CreateTask(Task) returns (TaskIdentifier) {}
   rpc DeleteTask(TaskIdentifier) returns (Empty) {}

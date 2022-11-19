@@ -268,7 +268,14 @@ impl Task {
                 scrict_src,
                 volume_name,
                 Some(task_env),
-                &TaskControllerConfig { executor_image: self.spec.image.clone().unwrap_or(config.clone().executor_image), ..config.clone() },
+                &TaskControllerConfig {
+                    executor_image: self
+                        .spec
+                        .image
+                        .clone()
+                        .unwrap_or(config.clone().executor_image),
+                    ..config.clone()
+                },
             )?
         })
     }
@@ -477,7 +484,7 @@ mod test {
 
     /// Prepare a cluster for tests, under the assumptions that the `just setup_cluster` recipe has been run successfully.
     /// This implies that all required custom resource definitions are installed in the cluster.
-    /// This function will generate clients and clear all Task and Workflow objects in the cluster.
+    /// This function will generate clients and clear all Task and `Workflow` objects in the cluster.
     async fn setup_cluster(
     ) -> Result<(TaskControllerConfig, Api<Task>, Api<Workflow>), Box<dyn std::error::Error>> {
         let config = gen_test_config();

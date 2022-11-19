@@ -46,7 +46,7 @@ check: && test
 
 k3s:
   k3d cluster create main --servers 1 --registry-create main \
-    --no-lb --no-rollback \
+    --no-rollback \
     --k3s-arg "--disable=traefik,metrics-server@server:*" \
     --k3s-arg '--kubelet-arg=eviction-hard=imagefs.available<1%,nodefs.available<1%@agent:*' \
     --k3s-arg '--kubelet-arg=eviction-minimum-reclaim=imagefs.available=1%,nodefs.available=1%@agent:*'
@@ -104,3 +104,12 @@ describe_server:
 
 install_commit_template:
   git config commit.template ./.git_commit_message_template
+
+start_opentelemtry_collector:
+  docker run -d -p6831:6831/udp -p6832:6832/udp -p16686:16686 jaegertracing/all-in-one:latest
+
+start_keycloak:
+  docker run -p 8080:8080 -e KEYCLOAK_ADMIN=admin -e KEYCLOAK_ADMIN_PASSWORD=admin quay.io/keycloak/keycloak:20.0.1 start-dev
+
+run_client:
+  cargo run --bin ame-client
