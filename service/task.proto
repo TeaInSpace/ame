@@ -9,6 +9,7 @@ message TaskIdentifier {
 message Task {
   string projectid = 1;
   string command = 2;
+  optional string image = 3;
 }
 
 message Empty {
