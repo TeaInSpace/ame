@@ -5,6 +5,7 @@ pub mod taskservice {
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
 use kube::api::{DeleteParams, PostParams};
 use kube::{Api, Client, ResourceExt};
+use log::{debug, error, info, log_enabled, Level};
 use std::sync::Arc;
 use taskservice::task_service_server::{TaskService, TaskServiceServer};
 use taskservice::{Empty, Task, TaskIdentifier};
@@ -114,7 +115,7 @@ impl TaskService for TService {
     }
 }
 
-async fn build_server() -> Result<TaskServiceServer<TService>> {
+async fn build_server() -> Result<TService> {
     let client = Client::try_default().await.expect("Failed to create a K8S client, is the controller running in an environment with access to cluster credentials?");
     let tasks = Api::<controller::Task>::namespaced(client.clone(), "default");
 
@@ -122,18 +123,27 @@ async fn build_server() -> Result<TaskServiceServer<TService>> {
         config: Arc::new(TaskServiceConfig { tasks }),
     };
 
-    Ok(TaskServiceServer::new(task_service))
+    Ok(task_service)
+}
+
+fn request_logger(req: Request<()>) -> Result<Request<()>, Status> {
+    info!("{:?}", req);
+    println!("got req");
+    Ok(req)
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
+
     let (mut health_reporter, health_service) = tonic_health::server::health_reporter();
     let addr = "0.0.0.0:3342".parse().unwrap();
 
     let svc = build_server().await?;
+
     Server::builder()
         .add_service(health_service)
-        .add_service(svc)
+        .add_service(TaskServiceServer::with_interceptor(svc, request_logger))
         .serve(addr)
         .await?;
 
@@ -157,7 +167,11 @@ mod test {
         let addr = port.parse().unwrap();
 
         let svc = build_server().await?;
-        tokio::spawn(Server::builder().add_service(svc).serve(addr));
+        tokio::spawn(
+            Server::builder()
+                .add_service(TaskServiceServer::new(svc))
+                .serve(addr),
+        );
 
         // The server needs time to start serving requests.
         for _ in 0..2 {

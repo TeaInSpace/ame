@@ -8,7 +8,7 @@ use tonic::{Request, Response, Status};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut client = TaskServiceClient::connect("http://172.25.0.2:3342").await?;
+    let mut client = TaskServiceClient::connect("http://localhost:3342").await?;
 
     let res = client
         .get_task(Request::new(TaskIdentifier {

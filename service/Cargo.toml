@@ -27,6 +27,8 @@ k8s-openapi = { version = "0.16.0", features = ["v1_23", "schemars"] }
 kube = { version = "0.76.0", features = ["client"] }
 thiserror = "1.0.37"
 tonic-health = "0.7.1"
+env_logger = "0.9.3"
+log = "0.4.17"
 
 [build-dependencies]
 tonic-build = "0.8"
