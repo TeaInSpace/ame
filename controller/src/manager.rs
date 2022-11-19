@@ -62,7 +62,7 @@ pub struct TaskSpec {
     // Projectid defines which project this Task belongs to.
     pub projectid: String,
     pub env: Option<Vec<TaskEnvVar>>,
-
+    pub image: Option<String>,
     // Secrets that will be made available to the Task during execution.
     pub secrets: Option<Vec<TaskSecret>>,
 
@@ -268,7 +268,7 @@ impl Task {
                 scrict_src,
                 volume_name,
                 Some(task_env),
-                config,
+                &TaskControllerConfig { executor_image: self.spec.image.clone().unwrap_or(config.clone().executor_image), ..config.clone() },
             )?
         })
     }
@@ -611,6 +611,45 @@ mod test {
                     "value": "val2"
                 }
                 ],
+                "secrets": [
+                {
+                    "name": "secret1",
+                    "envkey": "KEY1"
+                },
+                {
+                    "name": "secret2",
+                    "envkey": "KEY2"
+                }
+                ]
+            }
+        }))
+        .unwrap();
+
+        let wf: Workflow = t.generate_workflow(&gen_test_config()).unwrap();
+
+        insta::assert_yaml_snapshot!(&wf);
+    }
+
+    #[test]
+    fn task_can_override_workflow_image() {
+        let t: Task = serde_json::from_value(json!({
+            "apiVersion": "ame.teainspace.com/v1alpha1",
+            "kind": "Task",
+            "metadata": { "name": "training" },
+            "spec": {
+                "runcommand": "python train.py",
+                "projectid": "myproject",
+                "env": [
+                {
+                    "name": "VAR1",
+                    "value": "val1"
+                },
+                {
+                    "name": "VAR2",
+                    "value": "val2"
+                }
+                ],
+                "image": "very-different-image",
                 "secrets": [
                 {
                     "name": "secret1",
