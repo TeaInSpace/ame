@@ -12,6 +12,7 @@ pkgs.mkShell {
     python310Packages.ipython
     protobuf
     kustomize
+    kubectl
   ];
 
   # Certain Rust tools won't work without this

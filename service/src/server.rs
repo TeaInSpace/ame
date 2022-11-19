@@ -1,16 +1,31 @@
-pub mod taskservice {
-    tonic::include_proto!("taskservice");
+pub mod ameservice {
+    tonic::include_proto!("ame.v1");
 }
 
+use hyper::header::{self};
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
-use kube::api::{DeleteParams, PostParams};
+use kube::api::{DeleteParams, ListParams, PostParams};
 use kube::{Api, Client, ResourceExt};
-use log::{debug, error, info, log_enabled, Level};
+use tonic_health::server::HealthReporter;
+
+use ameservice::ame_service_server::{AmeService, AmeServiceServer};
+use ameservice::{Empty, Task, TaskIdentifier};
+use std::iter::once;
 use std::sync::Arc;
-use taskservice::task_service_server::{TaskService, TaskServiceServer};
-use taskservice::{Empty, Task, TaskIdentifier};
-use tonic::transport::Server;
+use tokio::time::Duration;
+use tonic::transport::{NamedService, Server};
 use tonic::{Request, Response, Status};
+use tower::ServiceBuilder;
+use tower_http::{
+    classify::{GrpcCode, GrpcErrorsAsFailures, SharedClassifier},
+    compression::CompressionLayer,
+    sensitive_headers::SetSensitiveHeadersLayer,
+    trace::{DefaultMakeSpan, DefaultOnRequest, TraceLayer},
+};
+
+use tracing::error;
+
+use tracing::Level;
 
 use thiserror::Error;
 
@@ -68,12 +83,12 @@ struct TaskServiceConfig {
 }
 
 #[derive(Debug, Clone)]
-struct TService {
+struct AService {
     config: Arc<TaskServiceConfig>,
 }
 
 #[tonic::async_trait]
-impl TaskService for TService {
+impl AmeService for AService {
     async fn get_task(&self, request: Request<TaskIdentifier>) -> Result<Response<Task>, Status> {
         let task = self
             .config
@@ -117,35 +132,62 @@ impl TaskService for TService {
     }
 }
 
-async fn build_server() -> Result<TService> {
+async fn build_server() -> Result<AService> {
     let client = Client::try_default().await.expect("Failed to create a K8S client, is the controller running in an environment with access to cluster credentials?");
-    let tasks = Api::<controller::Task>::namespaced(client.clone(), "default");
+    let tasks = Api::<controller::Task>::namespaced(client, "default");
 
-    let task_service = TService {
+    let task_service = AService {
         config: Arc::new(TaskServiceConfig { tasks }),
     };
 
     Ok(task_service)
 }
 
-fn request_logger(req: Request<()>) -> Result<Request<()>, Status> {
-    info!("{:?}", req);
-    println!("got req");
-    Ok(req)
+async fn health_check<S: NamedService>(mut reporter: HealthReporter) {
+    let client = Client::try_default().await.expect("Failed to create a K8S client, is the controller running in an environment with access to cluster credentials?");
+    let tasks = Api::<controller::Task>::namespaced(client, "default");
+
+    loop {
+        if (tasks.list(&ListParams::default()).await).is_ok() {
+            reporter.set_serving::<S>().await;
+        } else {
+            reporter.set_not_serving::<S>().await;
+        }
+
+        tokio::time::sleep(Duration::from_secs(5)).await;
+    }
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
-
-    let (mut health_reporter, health_service) = tonic_health::server::health_reporter();
-    let addr = "0.0.0.0:3342".parse().unwrap();
+    let (health_reporter, health_service) = tonic_health::server::health_reporter();
+    tokio::spawn(health_check::<AmeServiceServer<AService>>(
+        health_reporter.clone(),
+    ));
 
     let svc = build_server().await?;
+    let addr = "0.0.0.0:3342".parse().unwrap();
+
+    let classifier = GrpcErrorsAsFailures::new()
+        .with_success(GrpcCode::InvalidArgument)
+        .with_success(GrpcCode::NotFound);
+
+    // Build our middleware stack
+    let layer = ServiceBuilder::new()
+        .timeout(Duration::from_secs(10))
+        .layer(CompressionLayer::new())
+        .layer(SetSensitiveHeadersLayer::new(once(header::AUTHORIZATION)))
+        .layer(
+            TraceLayer::new(SharedClassifier::new(classifier))
+                .make_span_with(DefaultMakeSpan::new().include_headers(true))
+                .on_request(DefaultOnRequest::new().level(Level::INFO)),
+        )
+        .into_inner();
 
     Server::builder()
+        .layer(layer)
+        .add_service(AmeServiceServer::new(svc))
         .add_service(health_service)
-        .add_service(TaskServiceServer::with_interceptor(svc, request_logger))
         .serve(addr)
         .await?;
 
@@ -161,23 +203,23 @@ mod test {
     use tonic::transport::Channel;
 
     use super::*;
+    use ameservice::ame_service_client::AmeServiceClient;
     use serial_test::serial;
-    use taskservice::task_service_client::TaskServiceClient;
 
-    async fn start_server() -> Result<TaskServiceClient<Channel>> {
+    async fn start_server() -> Result<AmeServiceClient<Channel>> {
         let port = "[::1]:10000";
         let addr = port.parse().unwrap();
 
         let svc = build_server().await?;
         tokio::spawn(
             Server::builder()
-                .add_service(TaskServiceServer::new(svc))
+                .add_service(AmeServiceServer::new(svc))
                 .serve(addr),
         );
 
         // The server needs time to start serving requests.
         for _ in 0..2 {
-            if let Ok(client) = TaskServiceClient::connect("http://".to_string() + port).await {
+            if let Ok(client) = AmeServiceClient::connect("http://".to_string() + port).await {
                 return Ok(client);
             }
 
