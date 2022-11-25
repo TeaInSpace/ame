@@ -1,0 +1,13 @@
+[package]
+name = "common"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+controller = { version = "0.1.0", path = "../controller" }
+either = "1.8.0"
+k8s-openapi = "0.16.0"
+kube = "0.76.0"
+tokio = "1.23.0"

@@ -37,10 +37,7 @@ use envconfig::Envconfig;
 
 #[derive(Envconfig, Clone)]
 pub struct TaskControllerConfig {
-    #[envconfig(
-        from = "EXECUTOR_IMAGE",
-        default = "ghcr.io/teainspace/ame/ame-executor:0.0.4"
-    )]
+    #[envconfig(from = "EXECUTOR_IMAGE", default = "main:45289/ame-executor:latest")]
     pub executor_image: String,
 
     #[envconfig(from = "NAMESPACE", default = "ame-system")]
@@ -82,8 +79,8 @@ pub struct TaskSpec {
 /// The status object of `Task`
 #[derive(Deserialize, Serialize, Clone, Debug, JsonSchema, PartialEq, Eq)]
 pub struct TaskStatus {
-    phase: Option<TaskPhase>,
-    reason: Option<String>,
+    pub phase: Option<TaskPhase>,
+    pub reason: Option<String>,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug, JsonSchema, PartialEq, Eq)]
@@ -392,7 +389,7 @@ async fn reconcile(task: Arc<Task>, ctx: Arc<Context>) -> Result<Action> {
         Ok(wf) => wf,
         Err(e) => {
             println!("error: {:?}", e);
-            panic!()
+            return Err(e)?;
         }
     };
 

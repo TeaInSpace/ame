@@ -1,0 +1,12 @@
+---
+source: ame-cli/tests/cli.rs
+expression: "&String::from_utf8(res.get_output().stdout.clone())?"
+---
+uploaded project!
+timestamp="redacted" argo=true
+
+ERROR: S3 error: 404 (NoSuchBucket): The specified bucket does not exist
+
+timestamp="redacted"
+
+

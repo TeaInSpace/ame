@@ -1,0 +1,3 @@
+resources:
+  - controller.yaml
+  - rbac.yaml
