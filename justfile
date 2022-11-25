@@ -45,11 +45,12 @@ check: && test
   cargo outdated
 
 k3s:
-  k3d cluster create main --servers 1 --registry-create main \
-    --no-rollback \
-    --k3s-arg "--disable=traefik,metrics-server@server:*" \
-    --k3s-arg '--kubelet-arg=eviction-hard=imagefs.available<1%,nodefs.available<1%@agent:*' \
-    --k3s-arg '--kubelet-arg=eviction-minimum-reclaim=imagefs.available=1%,nodefs.available=1%@agent:*'
+  k3d cluster create main \
+    --servers 1 \
+    --registry-create main \
+    --k3s-arg "--disable=traefik@server:*" \
+    --k3s-arg '--kubelet-arg=eviction-hard=imagefs.available<0.1%,nodefs.available<0.1%@agent:*' \
+    --k3s-arg '--kubelet-arg=eviction-minimum-reclaim=imagefs.available=0.1%,nodefs.available=0.1%@agent:*'
 
 delete_cluster:
   k3d cluster delete main
@@ -67,15 +68,21 @@ install_crd:
  kubectl apply -f manifests/crd.yaml
 
 install_argo_workflows:
- kubectl apply -f manifests/argo.yaml
+ kubectl apply -n {{TARGET_NAMESPACE}} -f manifests/argo.yaml
 
-setup_cluster: k3s install_crd install_argo_workflows
+create_namespace:
   kubectl create ns {{TARGET_NAMESPACE}}
+
+setup_cluster: k3s create_namespace install_crd install_argo_workflows deploy_keycloak deploy_minio
 
 start_controller:
   cargo run --bin controller
 
 start_server:
+  #!/bin/sh
+  export S3_ENDPOINT=http://$(kubectl get svc -n {{TARGET_NAMESPACE}} ame-minio -o jsonpath='{.status.loadBalancer.ingress[0].ip}'):9000
+  export S3_ACCESS_ID=minio
+  export S3_SECRET=minio123
   cargo run --bin ame-server
 
 build_server_image:
@@ -92,7 +99,16 @@ deploy_server:
   kustomize edit set namespace {{TARGET_NAMESPACE}}
   kustomize build . | kubectl apply -f -
   sleep 1
+  kubectl delete pod -n ame-system -l app=ame-server
   kubectl wait pods -n {{TARGET_NAMESPACE}} -l app=ame-server --for condition=Ready --timeout=90s
+
+deploy_minio:
+  #!/bin/sh
+  cd ./manifests/minio/base/resources
+  kustomize edit set namespace {{TARGET_NAMESPACE}}
+  kustomize build . | kubectl apply -f -
+  sleep 2
+  kubectl wait pods -n {{TARGET_NAMESPACE}} -l app=ame-minio --for condition=Ready --timeout 90s
 
 build_and_deploy_server: build_server_image push_server_image deploy_server
 
@@ -113,3 +129,40 @@ start_keycloak:
 
 run_client:
   cargo run --bin ame-client
+
+run_cli *ARGS:
+ cargo run -p ame-cli -- {{ARGS}}
+
+install_olm:
+  operator-sdk olm install
+
+install_keycloak_operator:
+  kubectl apply -n {{TARGET_NAMESPACE}} -f https://raw.githubusercontent.com/keycloak/keycloak-k8s-resources/20.0.1/kubernetes/keycloaks.k8s.keycloak.org-v1.yml
+  kubectl apply -n {{TARGET_NAMESPACE}} -f https://raw.githubusercontent.com/keycloak/keycloak-k8s-resources/20.0.1/kubernetes/keycloakrealmimports.k8s.keycloak.org-v1.yml
+  kubectl apply -n {{TARGET_NAMESPACE}} -f https://raw.githubusercontent.com/keycloak/keycloak-k8s-resources/20.0.1/kubernetes/kubernetes.yml
+
+add_helm_repos:
+  helm repo add oauth2-proxy https://oauth2-proxy.github.io/manifests
+  helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+  helm repo add bitnami https://charts.bitnami.com/bitnami
+  helm repo update
+
+deploy_keycloak:
+  helm install keycloak bitnami/keycloak --set auth.adminPassword=admin
+
+deploy_oauth2_proxy:
+  helm install oauth2-proxy oauth2-proxy/oauth2-proxy \
+   --version 3.3.2 -f ./manifests/oauth2-proxy/oauth2proxy-values.yaml --wait
+
+deploy_nginx:
+  helm install ingress-nginx ingress-nginx/ingress-nginx \
+  --wait --version 3.34.0 --set-string controller.config.ssl-redirect=false
+
+test_cli:
+  cargo test -p ame-cli
+
+test_server:
+  cargo test -p service
+
+server_logs *ARGS:
+  kubectl logs -n {{TARGET_NAMESPACE}} -l app=ame-server {{ARGS}}

@@ -62,14 +62,19 @@ spec:
               configMapKeyRef:
                 name: ame-server-configmap
                 key: minio_endpoint
-          - name: TASK_SERVER_OBJECT_STORAGE_ENDPOINT_ACCESS_KEY
-            value: minio
-          - name: TASK_SERVER_OBJECT_STORAGE_ENDPOINT_ACCESS_SECRET
-            value: minio123
-          - name: TASK_SERVER_TARGET_NAMESPACE
-            value: ame-system
-          - name: AME_AUTH_TOKEN
-            value: mytoken
+          - name: S3_ACCESS_ID
+            valueFrom:
+              secretKeyRef:
+                name: ame-minio-secret
+                key: MINIO_ROOT_USER
+          - name: S3_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: ame-minio-secret
+                key: MINIO_ROOT_PASSWORD
+          - name: RUST_LOG
+            value: tower_http=debug,ame_server=debug
+
       serviceAccountName: ame-server
       terminationGracePeriodSeconds: 10
 ---

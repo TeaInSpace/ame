@@ -1,2 +1,2 @@
 [workspace]
-members = ["controller", "service"]
+members = ["controller", "service", "ame-cli", "client"]
