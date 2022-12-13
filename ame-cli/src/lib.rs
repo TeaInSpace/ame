@@ -35,6 +35,9 @@ pub enum Error {
 
     #[error("failed to construct configuration: {0}")]
     ConfigError(#[from] confy::ConfyError),
+
+    #[error("got filesystem related error: {0}")]
+    WalkDir(#[from] walkdir::Error),
 }
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;

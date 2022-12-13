@@ -49,6 +49,7 @@ rules:
   resources: 
   - pods
   - pods/log
+  - pods/status
   verbs:
   - get
   - watch

@@ -1,11 +1,8 @@
 use crate::ameservice::{TaskIdentifier, TaskProjectDirectoryStructure};
-use crate::{Error, Result};
+use crate::Result;
 use async_trait::async_trait;
 use envconfig::Envconfig;
-use s3::{
-    bucket::Bucket, creds::error::CredentialsError, creds::Credentials, error::S3Error,
-    BucketConfiguration, Region,
-};
+use s3::{bucket::Bucket, creds::Credentials, BucketConfiguration, Region};
 
 #[derive(PartialEq, Clone, Debug, Default)]
 pub struct AmeFile {
@@ -79,18 +76,17 @@ impl<T: ObjectStorageDriver> ObjectStorage<T> {
         task_id: &TaskIdentifier,
         file: AmeFile,
     ) -> Result<()> {
-        Ok(self
-            .driver
+        self.driver
             .write(&task_project_files_path(task_id), file)
-            .await?)
+            .await
     }
 
     pub async fn list_task_project_files(&self, task_id: &TaskIdentifier) -> Result<Vec<String>> {
-        Ok(self.driver.list(&task_project_files_path(task_id)).await?)
+        self.driver.list(&task_project_files_path(task_id)).await
     }
 
     pub async fn ensure_storage_is_ready(&self) -> Result<()> {
-        Ok(self.driver.init_storage().await?)
+        self.driver.init_storage().await
     }
 
     pub async fn store_project_directory_structure(
@@ -103,7 +99,7 @@ impl<T: ObjectStorageDriver> ObjectStorage<T> {
             contents: serde_json::to_vec(&project_dir_struct)?,
         };
 
-        Ok(self.driver.write(&task_directory(task_id), f).await?)
+        self.driver.write(&task_directory(task_id), f).await
     }
 
     pub async fn get_task_project_directory_structure(
@@ -123,10 +119,7 @@ impl<T: ObjectStorageDriver> ObjectStorage<T> {
         task_id: &TaskIdentifier,
         key: &str,
     ) -> Result<AmeFile> {
-        Ok(self
-            .driver
-            .read(task_project_file_path(task_id, key))
-            .await?)
+        self.driver.read(task_project_file_path(task_id, key)).await
     }
 
     pub async fn delete_task_project_file(
@@ -134,10 +127,9 @@ impl<T: ObjectStorageDriver> ObjectStorage<T> {
         task_id: &TaskIdentifier,
         file_name: &str,
     ) -> Result<()> {
-        Ok(self
-            .driver
+        self.driver
             .delete(&task_project_file_path(task_id, file_name))
-            .await?)
+            .await
     }
 
     pub async fn health_check(&self) -> Result<()> {
@@ -151,13 +143,9 @@ pub struct S3StorageDriver {
 }
 
 impl S3StorageDriver {
-    fn new(bucket: Bucket) -> Self {
-        S3StorageDriver { bucket }
-    }
-
     fn new_init_bucket(bucket_name: &str, config: S3Config) -> Result<Self> {
         let bucket = Bucket::new(
-            &bucket_name,
+            bucket_name,
             Region::Custom {
                 region: config.region,
                 endpoint: config.endpoint.to_string(),
@@ -196,7 +184,6 @@ impl S3StorageDriver {
 #[async_trait]
 impl ObjectStorageDriver for S3StorageDriver {
     async fn write(&self, prefix: &str, file: AmeFile) -> Result<()> {
-        println!("Prefix: {}", prefix);
         self.bucket
             .put_object(format!("{}/{}", prefix, file.key), file.contents.as_slice())
             .await?;
@@ -222,8 +209,7 @@ impl ObjectStorageDriver for S3StorageDriver {
             .list(key.to_string(), None)
             .await?
             .into_iter()
-            .map(|r| r.contents.into_iter().map(|m| m.key))
-            .flatten()
+            .flat_map(|r| r.contents.into_iter().map(|m| m.key))
             .collect())
     }
 

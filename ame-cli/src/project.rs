@@ -64,7 +64,7 @@ impl Project {
         };
 
         let valid_task_templates: Vec<&TaskTemplate> =
-            task_templates.iter().filter(|t| &t.name == name).collect();
+            task_templates.iter().filter(|t| t.name == name).collect();
 
         if valid_task_templates.len() > 1 {
             return Err(Error::MisConfiguredProject(
@@ -72,7 +72,7 @@ impl Project {
             ));
         }
 
-        if valid_task_templates.len() == 0 {
+        if valid_task_templates.is_empty() {
             return Err(Error::MissingTaskTemplate(name.to_string()));
         }
 
@@ -85,7 +85,7 @@ impl Project {
         template_name: &str,
     ) -> Result<()> {
         let project_file: Project = serde_yaml::from_str(&fs::read_to_string("ame.yaml")?)?;
-        let task_template = project_file.get_task_template(&template_name)?;
+        let task_template = project_file.get_task_template(template_name)?;
 
         // TODO: handle name clashes in the cluster.
         let random_task_name = format!(
@@ -106,7 +106,13 @@ impl Project {
         let _chunk_size = 1024;
 
         for entry in walkdir::WalkDir::new(".").into_iter().flatten() {
-            let Ok(mut f) = File::open(entry.path()) else {
+            if entry.metadata()?.is_dir() {
+                continue;
+            }
+
+            let task_name = random_task_name.clone();
+
+            let Ok(mut f) = File::open(entry.clone().path()) else {
                             continue;
                         };
 
@@ -118,8 +124,8 @@ impl Project {
 
                 yield ProjectFileChunk {
                     messages: Some(Messages::Identifier(ProjectFileIdentifier{
-                        taskid: "testtask".to_string(),
-                        filepath:entry.path().to_str().unwrap().to_string(),
+                        taskid: task_name,
+                        filepath:entry.clone().path().to_str().unwrap().to_string(),
                     }))
                 };
 
@@ -172,7 +178,16 @@ impl Project {
             .into_inner();
 
         while let Some(entry) = log_stream.next().await {
-            println!("{}", String::from_utf8(entry?.contents).unwrap());
+            let line = String::from_utf8(entry?.contents).unwrap();
+            if line.contains("s3") || line.contains("argo") {
+                continue;
+            }
+
+            if line.contains("WARNING:") {
+                break;
+            }
+
+            print!("{line}");
         }
 
         Ok(())

@@ -1,0 +1,23 @@
+projectname: env
+tasks:
+  env:
+    env:
+    - name: VAR1
+      value: VAL1
+    - name: VAR2
+      value: VAL2
+    resources:
+      cpu: "2"
+      memory: 4Gi
+    runcommand: python env.py
+    source: {}
+  secret:
+    projectid: env
+    resources:
+      cpu: "2"
+      memory: 4Gi
+    runcommand: python env.py VAR1=mysecretval
+    secrets:
+    - envkey: VAR1
+      name: mysecret
+    source: {}

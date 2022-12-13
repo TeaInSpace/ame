@@ -10,7 +10,7 @@ use serde_tuple::*;
 use std::collections::BTreeMap;
 use std::default::Default;
 
-#[derive(CustomResource, Deserialize, Serialize, Clone, Debug, JsonSchema, Default)]
+#[derive(CustomResource, Deserialize, Serialize, Clone, Debug, JsonSchema, Default, PartialEq)]
 #[kube(
     kind = "Workflow",
     group = "argoproj.io",
@@ -22,7 +22,7 @@ use std::default::Default;
 pub struct WorkflowSpec {
     pub entrypoint: String,
     pub templates: Option<Vec<WorkflowTemplate>>,
-    pub imagepullsecrets: Option<Vec<LocalObjectReference>>,
+    pub image_pull_secrets: Option<Vec<LocalObjectReference>>,
     pub volume_claim_templates: Option<Vec<PersistentVolumeClaim>>,
     pub volumes: Option<Vec<Volume>>,
 }
@@ -42,25 +42,26 @@ pub enum WorkflowPhase {
     Error,
 }
 
-#[derive(Deserialize, Serialize, Clone, Debug, JsonSchema)]
+#[derive(Deserialize, Serialize, Clone, Debug, JsonSchema, PartialEq)]
+#[serde(rename_all = "camelCase")]
 pub struct WorkflowTemplate {
     pub name: String,
     pub metadata: Option<PodMetadata>,
     pub steps: Option<Vec<Vec<WorkflowStep>>>,
-    pub securitycontext: Option<PodSecurityContext>,
+    pub security_context: Option<PodSecurityContext>,
     pub script: Option<ArgoScriptTemplate>,
-    pub podspecpatch: Option<String>,
+    pub pod_spec_patch: Option<String>,
 }
 
 impl WorkflowTemplate {
     pub fn new(name: String) -> WorkflowTemplate {
         WorkflowTemplate {
             name,
-            metadata: None,
+            metadata: Some(PodMetadata::default()),
             steps: None,
-            securitycontext: None,
+            security_context: None,
             script: None,
-            podspecpatch: None,
+            pod_spec_patch: None,
         }
     }
 
@@ -82,6 +83,7 @@ impl WorkflowTemplate {
                 None => {
                     let mut labels = BTreeMap::new();
                     labels.insert(key, val);
+                    m.labels = Some(labels);
                 }
             },
             None => {
@@ -99,7 +101,7 @@ impl WorkflowTemplate {
     }
 }
 
-#[derive(Deserialize, Serialize, Clone, Debug, JsonSchema)]
+#[derive(Deserialize, Serialize, Clone, Debug, JsonSchema, PartialEq)]
 pub struct ArgoScriptTemplate {
     #[serde(flatten)]
     pub container: Container,
@@ -107,7 +109,7 @@ pub struct ArgoScriptTemplate {
     pub source: String,
 }
 
-#[derive(Deserialize, Serialize, Clone, Debug, JsonSchema)]
+#[derive(Deserialize, Serialize, Clone, Debug, JsonSchema, PartialEq, Default)]
 pub struct PodMetadata {
     pub labels: Option<BTreeMap<String, String>>,
     pub annotations: Option<BTreeMap<String, String>>,
@@ -118,7 +120,7 @@ pub struct ParallelSteps {
     pub steps: Vec<WorkflowStep>,
 }
 
-#[derive(Deserialize, Serialize, Clone, Debug, JsonSchema)]
+#[derive(Deserialize, Serialize, Clone, Debug, JsonSchema, PartialEq)]
 pub struct WorkflowStep {
     pub name: String,
     pub inline: Option<Box<WorkflowTemplate>>,
@@ -139,7 +141,7 @@ impl Default for Workflow {
 
 impl Workflow {
     pub fn add_pull_secret(&mut self, name: String) -> &mut Workflow {
-        let mut refs = if let Some(obj_refs) = self.spec.imagepullsecrets.clone() {
+        let mut refs = if let Some(obj_refs) = self.spec.image_pull_secrets.clone() {
             obj_refs
         } else {
             vec![]
@@ -147,7 +149,7 @@ impl Workflow {
 
         refs.push(LocalObjectReference { name: Some(name) });
 
-        self.spec.imagepullsecrets = Some(refs);
+        self.spec.image_pull_secrets = Some(refs);
         self
     }
 
@@ -224,12 +226,12 @@ mod test {
     fn can_add_pull_secret() {
         let mut wf = Workflow::default();
 
-        assert_eq!(wf.spec.imagepullsecrets, None);
+        assert_eq!(wf.spec.image_pull_secrets, None);
 
         let secret_name = "mysecret".to_string();
         wf.add_pull_secret(secret_name.clone());
 
-        match wf.spec.imagepullsecrets {
+        match wf.spec.image_pull_secrets {
             Some(ref secrets) => {
                 assert_eq!(secrets.len(), 1);
                 assert_eq!(secrets[0].name.as_ref().unwrap(), &secret_name);
@@ -239,7 +241,7 @@ mod test {
 
         let second_secret_name = "mysecret2".to_string();
         wf.add_pull_secret(second_secret_name.clone());
-        match wf.spec.imagepullsecrets {
+        match wf.spec.image_pull_secrets {
             Some(secrets) => {
                 assert_eq!(secrets.len(), 2);
                 assert_eq!(secrets[1].name.as_ref().unwrap(), &second_secret_name);

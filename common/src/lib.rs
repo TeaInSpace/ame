@@ -27,7 +27,7 @@ pub async fn find_service_endpoint(
         ..
     }),
     ..} = service else {
-        return Err(format!("failed to extract service ips and ports: {:#?}", service))?; 
+        return Err(format!("failed to extract service ips and ports: {service:#?}"))?; 
     };
 
     if ingress.len() != 1 {
@@ -76,7 +76,7 @@ pub async fn setup_cluster(
         }
 
         Either::Right(status) => {
-            println!("Deleted collection of tasks: {:?}", status);
+            println!("Deleted collection of tasks: {status:?}");
         }
     };
 
@@ -88,7 +88,7 @@ pub async fn setup_cluster(
         }
 
         Either::Right(status) => {
-            println!("Deleted collection of tasks: {:?}", status);
+            println!("Deleted collection of tasks: {status:?}");
         }
     };
 

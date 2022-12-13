@@ -1,0 +1,12 @@
+resources:
+- ../base/resources
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+images:
+- name: ame-controller
+  newName: main:45373/ame-controller
+  newTag: latest
+namespace: ame-system
+patchesStrategicMerge:
+- ./controller_config.yaml
