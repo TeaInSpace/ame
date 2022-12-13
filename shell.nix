@@ -13,6 +13,11 @@ pkgs.mkShell {
     protobuf
     kustomize
     kubectl
+    operator-sdk
+    postgresql
+    s3cmd
+    minio-client
+    argo
   ];
 
   # Certain Rust tools won't work without this

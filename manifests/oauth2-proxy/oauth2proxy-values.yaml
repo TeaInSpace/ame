@@ -1,0 +1,18 @@
+image:
+  tag: "v7.1.3"
+ingress:
+  enabled: true
+  path: /oauth2
+  hosts:
+    - ame.teainspace.com
+config:
+  clientID: oauth2proxy-client
+  clientSecret: "w5mFEvKBIR2cGYsvpI7uKS5QQN14q72W"
+  cookieSecret: "UlpPOE8wWUo3cmZtRGxDRllXUmd2bEhaN1VXcGxFclI="
+extraArgs:
+  provider: keycloak
+  scope: address
+  login-url: http://ame.teainspace.com/auth/realms/ame/protocol/openid-connect/auth
+  redeem-url: http://ame.teainspace.com/auth/realms/ame/protocol/openid-connect/token
+  profile-url: http://ame.teainspace.com/auth/realms/ame/protocol/openid-connect/userinfo
+  validate-url: http://ame.teainspace.com/auth/realms/ame/protocol/protocol/openid-connect/userinfo

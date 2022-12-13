@@ -21,7 +21,6 @@ message CreateTaskRequest {
 message Empty {
 }
 
-
 message ProjectFileIdentifier {
   string taskid= 1;
   string filepath = 2;

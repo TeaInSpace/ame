@@ -1,10 +1,17 @@
 pub mod ameservice;
-pub use ameservice::*;
-use s3::{creds::error::CredentialsError, error::S3Error};
-use thiserror::Error;
+pub mod storage;
 
-mod storage;
-use storage::{ObjectStorage, S3Config, S3StorageDriver};
+use kube::api::ListParams;
+use kube::{Api, Client};
+use s3::{creds::error::CredentialsError, error::S3Error};
+use std::net::AddrParseError;
+use std::time::Duration;
+use storage::S3Config;
+use thiserror::Error;
+use tonic::transport::NamedService;
+use tonic_health::server::HealthReporter;
+
+use storage::ObjectStorage;
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -29,19 +36,49 @@ pub enum Error {
 
     #[error("got error while converting: {0}")]
     ConversionError(String),
+
+    #[error("got error while parsing address: {0}")]
+    AddrParseError(#[from] AddrParseError),
 }
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
+pub async fn health_check<S: NamedService>(
+    mut reporter: HealthReporter,
+    bucket: String,
+    s3config: S3Config,
+) -> Result<()> {
+    let client = Client::try_default().await.expect("Failed to create a K8S client, is the controller running in an environment with access to cluster credentials?");
+    let tasks = Api::<controller::Task>::namespaced(client, "default");
+
+    let storage = ObjectStorage::new_s3_storage(&bucket, s3config)
+        .expect("failed to create object storage client");
+
+    loop {
+        let storage_health = storage.health_check().await;
+        if storage_health.is_err() {
+            reporter.set_not_serving::<S>().await;
+            continue;
+        } else {
+            reporter.set_serving::<S>().await;
+        }
+
+        if (tasks.list(&ListParams::default()).await).is_ok() {
+            reporter.set_serving::<S>().await;
+        } else {
+            reporter.set_not_serving::<S>().await;
+        }
+
+        tokio::time::sleep(Duration::from_secs(5)).await;
+    }
+}
+
 #[cfg(test)]
 mod test {
-    use std::time::Duration;
-
-    use crate::storage::{AmeFile, ObjectStorageDriver};
-
-    use super::*;
+    use super::ameservice::{TaskIdentifier, TaskProjectDirectoryStructure};
+    use super::storage::{AmeFile, ObjectStorage, ObjectStorageDriver, S3Config, S3StorageDriver};
+    use super::Result;
     use common::find_service_endpoint;
     use serial_test::serial;
-    use tokio;
 
     async fn get_fresh_storage() -> Result<ObjectStorage<S3StorageDriver>> {
         let s3config = S3Config {

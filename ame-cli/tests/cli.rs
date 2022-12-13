@@ -110,6 +110,10 @@ async fn ame_run_task() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut settings = insta::Settings::clone_current();
     settings.add_filter("time=\".*\"", "timestamp=\"redacted\"");
+    settings.add_filter(
+        "created virtual environment .*",
+        "created virtual environment \"redacted\"",
+    );
     let _guard = settings.bind_to_scope();
     insta::assert_snapshot!(&String::from_utf8(res.get_output().stdout.clone())?);
 

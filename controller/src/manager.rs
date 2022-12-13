@@ -13,6 +13,7 @@ use k8s_openapi::api::core::v1::EnvVarSource;
 
 use k8s_openapi::api::core::v1::PersistentVolumeClaim;
 use k8s_openapi::api::core::v1::PersistentVolumeClaimSpec;
+use k8s_openapi::api::core::v1::PersistentVolumeClaimStatus;
 use k8s_openapi::api::core::v1::ResourceRequirements;
 
 use k8s_openapi::api::core::v1::SecretKeySelector;
@@ -20,8 +21,9 @@ use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::OwnerReference;
 use kube::api::PatchParams;
 use kube::core::ObjectMeta;
+use kube::error::ErrorResponse;
 use kube::{
-    api::{Api, ListParams, PostParams, ResourceExt},
+    api::{Api, ListParams, ResourceExt},
     client::Client,
     runtime::controller::{Action, Controller},
     CustomResource, Resource,
@@ -37,11 +39,17 @@ use envconfig::Envconfig;
 
 #[derive(Envconfig, Clone)]
 pub struct TaskControllerConfig {
-    #[envconfig(from = "EXECUTOR_IMAGE", default = "main:45289/ame-executor:latest")]
+    #[envconfig(
+        from = "EXECUTOR_IMAGE",
+        default = "main.localhost:45373/ame-executor:latest"
+    )]
     pub executor_image: String,
 
     #[envconfig(from = "NAMESPACE", default = "ame-system")]
     pub namespace: String,
+
+    #[envconfig(from = "BUCKET", default = "ame")]
+    pub bucket: String,
 }
 
 #[derive(CustomResource, Deserialize, Serialize, Clone, Debug, JsonSchema, Default)]
@@ -77,7 +85,7 @@ pub struct TaskSpec {
 }
 
 /// The status object of `Task`
-#[derive(Deserialize, Serialize, Clone, Debug, JsonSchema, PartialEq, Eq)]
+#[derive(Deserialize, Serialize, Clone, Debug, JsonSchema, PartialEq, Eq, Default)]
 pub struct TaskStatus {
     pub phase: Option<TaskPhase>,
     pub reason: Option<String>,
@@ -89,6 +97,7 @@ pub enum TaskPhase {
     Pending,
     Failed,
     Succeeded,
+    Error,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug, JsonSchema)]
@@ -168,10 +177,6 @@ impl Task {
             "name":  "MINIO_URL",
             "value": "http://ame-minio.ame-system.svc.cluster.local:9000",
         },
-        {
-            "name":  "TASK_DIRECTORY",
-            "value": format!("ameprojectstorage/{}",  self.spec.projectid),
-        },
 
                     {
                         "name":  "PIPENV_YES",
@@ -186,7 +191,7 @@ impl Task {
         };
 
         Ok(WorkflowTemplate {
-            securitycontext: Some(serde_json::from_value(json!({
+            security_context: Some(serde_json::from_value(json!({
                 "runAsUser": 1001,
                 "fsGroup": 2000
             }
@@ -202,6 +207,7 @@ impl Task {
                               "mountPath": "/project",
                           }],
                           "env": final_env,
+                          "resources": {},
                         }
                 ))?,
             }),
@@ -216,15 +222,22 @@ impl Task {
         volume_name: &str,
         config: &TaskControllerConfig,
     ) -> Result<WorkflowTemplate> {
-        let project_pull_command = "s3cmd --no-ssl --region us-east-1 --host=$MINIO_URL --host-bucket=$MINIO_URL get --recursive s3://$TASK_DIRECTORY ./";
+        let project_pull_command = format!("s3cmd --no-ssl --region us-east-1 --host=$MINIO_URL --host-bucket=$MINIO_URL get --recursive s3://{} ./", self.task_files_path());
         let script_src = format!(
             "
-                       {}
+                       {project_pull_command}
                        echo \"0\" >> exit.status
-                        ",
-            project_pull_command
+                        "
         );
         self.common_wf_template("setup".to_string(), script_src, volume_name, None, config)
+    }
+
+    fn task_files_path(&self) -> String {
+        format!("ame/tasks/{}/projectfiles/", self.name_any())
+    }
+
+    fn task_artifacts_path(&self) -> String {
+        format!("ame/tasks/{}/artifacts/", self.name_any())
     }
 
     fn generate_wf_template(
@@ -233,18 +246,14 @@ impl Task {
         config: &TaskControllerConfig,
     ) -> Result<WorkflowTemplate> {
         let scrict_src = format!("
-          export TASK_DIRECTORY=ameprojectstorage/{}
-
-          cd \"./{}\" 
-
           set -e # It is important that the workflow exits with an error code if execute or save_artifacts fails, so AME can take action based on that information.
 
-          execute \"{}\" 
+          execute {} 
           
-          save_artifacts \"ameprojectstorage/{}/artifacts/\"
+          save_artifacts {}
 
           echo \"0\" >> exit.status
-            ", self.spec.projectid, self.spec.projectid, self.spec.runcommand, self.name_any());
+            ",  self.spec.runcommand, self.task_artifacts_path() );
 
         let secret_env: Vec<EnvVar> = if let Some(secrets) = &self.spec.secrets {
             secrets.iter().map(EnvVar::from).collect()
@@ -259,7 +268,7 @@ impl Task {
         };
 
         Ok(WorkflowTemplate {
-            podspecpatch: Some(self.generate_pod_spec_patch()?),
+            pod_spec_patch: Some(self.generate_pod_spec_patch()?),
             ..self.common_wf_template(
                 self.name_any(),
                 scrict_src,
@@ -296,7 +305,7 @@ impl Task {
 
         Ok(Workflow::default()
             .set_name(self.name_any())
-            .label("task".to_string(), self.name_any())
+            .label("ame-task".to_string(), self.name_any())
             .add_template(
                 WorkflowTemplate::new("main".to_string())
                     .add_parallel_step(vec![WorkflowStep {
@@ -325,7 +334,11 @@ impl Task {
                     ..PersistentVolumeClaimSpec::default()
                 }),
 
-                status: None,
+                // Note that it is important to create the equivalent of an empty struct here
+                // and not just a None.
+                // Otherwise the Workflow controller will disagree with AME's controller on
+                // how an empty status should be specified.
+                status: Some(PersistentVolumeClaimStatus::default()),
             })
             .add_owner_reference(oref)
             .clone())
@@ -356,7 +369,7 @@ async fn reconcile(task: Arc<Task>, ctx: Arc<Context>) -> Result<Action> {
     }
 
     if task_phase == &TaskPhase::Pending && task.status.is_none() {
-        let new_task = Task {
+        let mut new_task = Task {
             metadata: task.metadata.clone(),
             spec: TaskSpec::default(),
             status: Some(TaskStatus {
@@ -365,13 +378,16 @@ async fn reconcile(task: Arc<Task>, ctx: Arc<Context>) -> Result<Action> {
             }),
         };
 
+        new_task.metadata.managed_fields = None;
+
         tasks
-            .replace_status(
+            .patch_status(
                 &task.name_any(),
-                &PostParams::default(),
-                serde_json::to_vec(&new_task)?,
+                &PatchParams::apply("taskmanager.teainspace.com"),
+                &kube::api::Patch::Apply(new_task),
             )
             .await?;
+
         return Ok(Action::requeue(Duration::from_secs(50)));
     }
 
@@ -379,16 +395,24 @@ async fn reconcile(task: Arc<Task>, ctx: Arc<Context>) -> Result<Action> {
     let wf = match workflows
         .patch(
             &correct_wf.name_any(),
-            &PatchParams {
-                ..PatchParams::apply("taskmanager.teainspace.com")
-            },
+            &PatchParams::apply("taskmanager.teainspace.com"),
             &kube::api::Patch::Apply(correct_wf),
         )
         .await
     {
         Ok(wf) => wf,
+        Err(kube::Error::Api(ErrorResponse { code: 409, .. })) => {
+            workflows
+                .patch(
+                    &correct_wf.name_any(),
+                    &PatchParams::apply("taskmanager.teainspace.com").force(),
+                    &kube::api::Patch::Apply(correct_wf),
+                )
+                .await?
+        }
         Err(e) => {
-            println!("error: {:?}", e);
+            let wf = workflows.get(&correct_wf.name_any()).await?;
+            similar_asserts::assert_eq!(wf.spec, correct_wf.spec);
             return Err(e)?;
         }
     };
@@ -399,23 +423,23 @@ async fn reconcile(task: Arc<Task>, ctx: Arc<Context>) -> Result<Action> {
             WorkflowPhase::Pending => TaskPhase::Pending,
             WorkflowPhase::Succeeded => TaskPhase::Succeeded,
             WorkflowPhase::Failed => TaskPhase::Failed,
-            WorkflowPhase::Error => TaskPhase::Failed,
+            WorkflowPhase::Error => TaskPhase::Error,
         };
 
         if &correct_task_phase != task_phase {
-            let new_task = Task {
-                metadata: task.metadata.clone(),
-                spec: TaskSpec::default(),
-                status: Some(TaskStatus {
-                    phase: Some(correct_task_phase),
-                    reason: None,
-                }),
-            };
+            let mut new_task = (*task).clone();
+            let original_status = new_task.status.unwrap_or(TaskStatus::default());
+
+            new_task.metadata.managed_fields = None;
+            new_task.status = Some(TaskStatus {
+                phase: Some(correct_task_phase),
+                ..original_status
+            });
 
             let res = tasks
                 .patch_status(
-                    &task.name_any(),
-                    &PatchParams::default(),
+                    &new_task.name_any(),
+                    &PatchParams::apply("taskmanager.teainspace.com"),
                     &kube::api::Patch::Apply(new_task),
                 )
                 .await;
@@ -423,7 +447,6 @@ async fn reconcile(task: Arc<Task>, ctx: Arc<Context>) -> Result<Action> {
             match res {
                 Ok(_) => println!("Patched status for task: {} ", task.name_any()),
                 Err(e) => {
-                    println!("Failed to set status: {}", e);
                     return Err(Error::KubeApiError(e));
                 }
             };
@@ -476,6 +499,7 @@ mod test {
         TaskControllerConfig {
             namespace: String::from("default"),
             executor_image: "ghcr.io/teainspace/ame/ame-executor:0.0.3".to_string(),
+            bucket: String::from("ame"),
         }
     }
 
@@ -500,7 +524,7 @@ mod test {
             }
 
             Either::Right(status) => {
-                println!("Deleted collection of tasks: {:?}", status);
+                println!("Deleted collection of tasks: {status:?}");
             }
         };
 
@@ -512,7 +536,7 @@ mod test {
             }
 
             Either::Right(status) => {
-                println!("Deleted collection of tasks: {:?}", status);
+                println!("Deleted collection of tasks: {status:?}");
             }
         };
 
@@ -546,7 +570,7 @@ mod test {
         let task_in_cluster = tasks.create(&pp, &t).await?;
 
         let lp = ListParams::default()
-            .labels(&format!("task={}", task_in_cluster.name_any()))
+            .labels(&format!("ame-task={}", task_in_cluster.name_any()))
             .timeout(5);
 
         let mut stream = workflows.watch(&lp, "0").await?.boxed();
@@ -698,7 +722,7 @@ mod test {
         let task_in_cluster = tasks.create(&PostParams::default(), &t).await?;
 
         let lp = ListParams::default()
-            .labels(&format!("task={}", task_in_cluster.name_any()))
+            .labels(&format!("ame-task={}", task_in_cluster.name_any()))
             .timeout(5);
 
         let mut correct_labels = BTreeMap::new();
@@ -707,7 +731,7 @@ mod test {
             if let WatchEvent::Added(wf) = e? {
                 correct_labels = wf.metadata.labels.clone().unwrap();
                 let mut labels = wf.metadata.labels.clone().unwrap();
-                labels.insert("task".to_string(), "test".to_string());
+                labels.insert("ame-task".to_string(), "test".to_string());
                 workflows
                     .patch(
                         &wf.name_any(),
@@ -741,7 +765,7 @@ mod test {
                     return Ok(());
                 }
 
-                e => println!("event: {:?}", e),
+                e => println!("event: {e:?}"),
             }
         }
 

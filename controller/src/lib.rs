@@ -8,8 +8,7 @@ pub enum Error {
     #[error("SerializationError: {0}")]
     SerializationError(#[from] serde_json::Error),
 
-    //TODO: can we have from and source at the same time?
-    #[error("Failed to create workflow: {0}")]
+    #[error("Received error from kube API: {0}")]
     KubeApiError(#[from] kube::Error),
 }
 pub type Result<T, E = Error> = std::result::Result<T, E>;
