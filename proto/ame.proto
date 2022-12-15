@@ -15,7 +15,7 @@ message TaskTemplate {
 
 message CreateTaskRequest {
   TaskIdentifier id = 1;
-  TaskTemplate templat = 2;
+  TaskTemplate template = 2;
 }
 
 message Empty {

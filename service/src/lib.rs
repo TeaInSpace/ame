@@ -2,12 +2,15 @@ pub mod ameservice;
 pub mod storage;
 
 use kube::api::ListParams;
+use kube::runtime::wait;
 use kube::{Api, Client};
 use s3::{creds::error::CredentialsError, error::S3Error};
 use std::net::AddrParseError;
+use std::string::FromUtf8Error;
 use std::time::Duration;
 use storage::S3Config;
 use thiserror::Error;
+
 use tonic::transport::NamedService;
 use tonic_health::server::HealthReporter;
 
@@ -39,6 +42,15 @@ pub enum Error {
 
     #[error("got error while parsing address: {0}")]
     AddrParseError(#[from] AddrParseError),
+
+    #[error("Got error from kube-rs runtime: {0}")]
+    KubeRuntime(#[from] wait::Error),
+
+    #[error("Got error from tokio send: {0}")]
+    TokioSendError(String),
+
+    #[error("Got error from formatting: {0}")]
+    FormatError(#[from] FromUtf8Error),
 }
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
@@ -90,7 +102,7 @@ mod test {
             secret: "minio123".to_string(),
         };
 
-        println!("service enpoint: {}", s3config.endpoint);
+        println!("service endpoint: {}", s3config.endpoint);
 
         let object_storage = ObjectStorage::new_s3_storage("test", s3config)?;
 

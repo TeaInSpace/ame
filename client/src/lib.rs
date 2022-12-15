@@ -28,7 +28,7 @@ impl CreateTaskRequest {
     pub fn new(task_name: &str, task_template: TaskTemplate) -> Self {
         Self {
             id: Some(TaskIdentifier::from(task_name)),
-            templat: Some(task_template),
+            template: Some(task_template),
         }
     }
 }

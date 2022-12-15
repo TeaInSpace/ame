@@ -28,7 +28,7 @@ pkgs.mkShell {
   # This is required to build hun-spell for cargo-spellchecker
   LIBCLANG_PATH="${pkgs.llvmPackages.libclang.lib}/lib"; 
 
-  # TODO: use cargo bin path env varibles instead of specific path.
+  # TODO: use cargo bin path env variables instead of specific path.
   shellHook = ''
     export PATH=$PATH:~/.cargo/bin
   '';

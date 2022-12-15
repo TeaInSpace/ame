@@ -167,11 +167,23 @@ impl Task {
         let required_env: Vec<EnvVar> = serde_json::from_value(json!([
             {
             "name":  "AWS_ACCESS_KEY_ID",
-            "value": "minio",
+            "valueFrom": {
+                "secretKeyRef":  {
+                    "key": "MINIO_ROOT_USER",
+                    "name": "ame-minio-secret",
+                    "optional": false,
+                }
+            },
         },
         {
             "name":  "AWS_SECRET_ACCESS_KEY",
-            "value": "minio123",
+            "valueFrom": {
+                "secretKeyRef":  {
+                    "key": "MINIO_ROOT_PASSWORD",
+                    "name": "ame-minio-secret",
+                    "optional": false
+                }
+        },
         },
         {
             "name":  "MINIO_URL",
@@ -222,10 +234,11 @@ impl Task {
         volume_name: &str,
         config: &TaskControllerConfig,
     ) -> Result<WorkflowTemplate> {
-        let project_pull_command = format!("s3cmd --no-ssl --region us-east-1 --host=$MINIO_URL --host-bucket=$MINIO_URL get --recursive s3://{} ./", self.task_files_path());
+        let project_pull_command = format!("s3cmd --no-ssl --region eu-central-1 --host=$MINIO_URL --host-bucket=$MINIO_URL get --recursive s3://{} ./", self.task_files_path());
         let script_src = format!(
             "
-                       {project_pull_command}
+            {project_pull_command}
+
                        echo \"0\" >> exit.status
                         "
         );
