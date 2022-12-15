@@ -15,18 +15,17 @@ jobs:
           profile: minimal
           toolchain: stable
       - uses: Swatinem/rust-cache@v2
+      - uses: arduino/setup-protoc@v1
+        with:
+          version: '3.19.4'
       - name: Rust validation
         run: |
           just setup_toolchains
           just tools
           just check
-      - uses: actions/setup-go@v2
-        with:
-          go-version: '1.18.*' # The Go version to download (if necessary) and use.
-          check-latest: true
-      - uses: arduino/setup-protoc@v1
-        with:
-          version: '3.19.4'
+          just setup_cluster
+          just install_ame
+          just test
       - name: Prep test environment
         run: |
           make tools
@@ -34,9 +33,3 @@ jobs:
       - name: Validate commit
         run: |
           make test
-      - name: Build
-        run: |
-          echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u USERNAME --password-stdin
-          export IMG=ghcr.io/teainspace/ame-server/$GITHUB_REF_NAME:$(git rev-parse --short=4 $GITHUB_SHA) 
-          make docker-build-server
-          make docker-push
