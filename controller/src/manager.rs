@@ -60,6 +60,7 @@ pub struct TaskControllerConfig {
     namespaced
 )]
 #[kube(status = "TaskStatus", shortname = "task")]
+#[serde(rename_all = "camelCase")]
 pub struct TaskSpec {
     // Runcommand defines the command AME will use to start this Task.
     pub runcommand: String,
@@ -82,6 +83,15 @@ pub struct TaskSpec {
 
     // Resources define what resources this Task requires.
     pub resources: Option<BTreeMap<String, Quantity>>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub task_type: Option<TaskType>,
+}
+
+#[derive(JsonSchema, Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum TaskType {
+    PipEnv,
+    Mlflow,
 }
 
 /// The status object of `Task`
@@ -183,7 +193,11 @@ impl Task {
                     "name": "ame-minio-secret",
                     "optional": false
                 }
+            },
         },
+        {
+            "name": "MLFLOW_TRACKING_URI",
+            "value": "http://mlflow.default.svc.cluster.local:5000"
         },
         {
             "name":  "MINIO_URL",
@@ -253,21 +267,40 @@ impl Task {
         format!("ame/tasks/{}/artifacts/", self.name_any())
     }
 
+    fn script_src(&self) -> String {
+        let task_exec_cmd = if let Some(TaskType::Mlflow) = self.spec.task_type {
+            "export PATH=$HOME/.pyenv/bin:$PATH
+
+             unset AWS_SECRET_ACCESS_KEY
+
+             unset AWS_ACCESS_KEY_ID
+
+             mlflow run ."
+                .to_string()
+        } else {
+            format!(
+                "exec {}
+
+                save_artifacts {}",
+                self.spec.runcommand,
+                self.task_artifacts_path()
+            )
+        };
+
+        format!("
+          set -e # It is important that the workflow exits with an error code if execute or save_artifacts fails, so AME can take action based on that information.
+
+          {task_exec_cmd}
+
+          echo \"0\" >> exit.status
+            ",)
+    }
+
     fn generate_wf_template(
         &self,
         volume_name: &str,
         config: &TaskControllerConfig,
     ) -> Result<WorkflowTemplate> {
-        let scrict_src = format!("
-          set -e # It is important that the workflow exits with an error code if execute or save_artifacts fails, so AME can take action based on that information.
-
-          execute {} 
-          
-          save_artifacts {}
-
-          echo \"0\" >> exit.status
-            ",  self.spec.runcommand, self.task_artifacts_path() );
-
         let secret_env: Vec<EnvVar> = if let Some(secrets) = &self.spec.secrets {
             secrets.iter().map(EnvVar::from).collect()
         } else {
@@ -284,7 +317,7 @@ impl Task {
             pod_spec_patch: Some(self.generate_pod_spec_patch()?),
             ..self.common_wf_template(
                 self.name_any(),
-                scrict_src,
+                self.script_src(),
                 volume_name,
                 Some(task_env),
                 &TaskControllerConfig {

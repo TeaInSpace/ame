@@ -1,0 +1,10 @@
+projectid: sklearn_logistic_regression
+tasks:
+  - name: training
+    resources:
+      cpu: "4"
+      memory: 4Gi
+    projectid: sklearn_logistic_regression
+    command: mlflow run .
+    task_type: 1
+    source: {}

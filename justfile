@@ -53,7 +53,7 @@ test_controller *ARGS:
   cargo test -p controller {{ARGS}}
 
 test_cli *ARGS:
-  cargo test -p ame-cli {{ARGS}}
+  cargo test -p cli {{ARGS}}
 
 test_server *ARGS:
   cargo test -p service {{ARGS}}
@@ -80,7 +80,11 @@ start_server:
   cargo run --bin ame-server
 
 run_cli *ARGS:
- cargo run -p ame-cli -- {{ARGS}}
+ cargo run -p cli {{ARGS}}
+
+setup_cli:
+ cargo run -p cli setup http://$(kubectl get svc -n {{TARGET_NAMESPACE}} ame-server-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}'):3342
+
 
 # Local cluster utilities
 
@@ -190,7 +194,6 @@ start_keycloak:
 run_client:
   cargo run --bin ame-client
 
-
 deploy_minio:
   #!/bin/sh
   cd ./manifests/minio/base/resources
@@ -208,6 +211,7 @@ add_helm_repos:
   helm repo add oauth2-proxy https://oauth2-proxy.github.io/manifests
   helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
   helm repo add bitnami https://charts.bitnami.com/bitnami
+  helm repo add ncsa https://opensource.ncsa.illinois.edu/charts/
   helm repo update
 
 deploy_keycloak:
@@ -216,6 +220,9 @@ deploy_keycloak:
 deploy_oauth2_proxy:
   helm install oauth2-proxy oauth2-proxy/oauth2-proxy \
    --version 3.3.2 -f ./manifests/oauth2-proxy/oauth2proxy-values.yaml --wait
+
+deploy_mlflow:
+  helm install mlflow ncsa/mlflow
 
 deploy_nginx:
   helm install ingress-nginx ingress-nginx/ingress-nginx \

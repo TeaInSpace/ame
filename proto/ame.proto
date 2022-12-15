@@ -6,11 +6,17 @@ message TaskIdentifier {
   string name = 1;
 }
 
+enum TaskType {
+  Pipenv = 0;
+  Mlflow = 1;
+}
+
 message TaskTemplate {
   string projectid = 1;
   string command = 2;
   string name = 3;
   optional string image = 4;
+  optional TaskType taskType = 5;
 }
 
 message CreateTaskRequest {

@@ -293,6 +293,13 @@ impl TryFrom<self::CreateTaskRequest> for controller::Task {
                 projectid: template.projectid,
                 runcommand: template.command,
                 image: template.image,
+                task_type: template.task_type.map(|t| {
+                    if t == 1 {
+                        controller::TaskType::Mlflow
+                    } else {
+                        controller::TaskType::PipEnv
+                    }
+                }),
                 ..controller::TaskSpec::default()
             },
             status: None,
@@ -311,6 +318,13 @@ impl From<TaskTemplate> for controller::Task {
                 projectid: t.projectid,
                 runcommand: t.command,
                 image: t.image,
+                task_type: t.task_type.map(|t| {
+                    if t == 1 {
+                        controller::TaskType::Mlflow
+                    } else {
+                        controller::TaskType::PipEnv
+                    }
+                }),
                 ..controller::TaskSpec::default()
             },
             status: None,
@@ -325,6 +339,13 @@ impl From<controller::Task> for TaskTemplate {
             command: t.spec.runcommand,
             projectid: t.spec.projectid,
             image: t.spec.image,
+            task_type: t.spec.task_type.map(|t| {
+                if t == controller::TaskType::Mlflow {
+                    1
+                } else {
+                    0
+                }
+            }),
         }
     }
 }

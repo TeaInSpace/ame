@@ -148,6 +148,12 @@ spec:
                           nullable: true
                           type: string
                       type: object
+                    taskType:
+                      enum:
+                      - PipEnv
+                      - Mlflow
+                      nullable: true
+                      type: string
                   required:
                   - projectid
                   - runcommand
@@ -279,6 +285,12 @@ spec:
                           nullable: true
                           type: string
                       type: object
+                    taskType:
+                      enum:
+                      - PipEnv
+                      - Mlflow
+                      nullable: true
+                      type: string
                   required:
                   - projectid
                   - runcommand

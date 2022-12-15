@@ -2,6 +2,7 @@ use assert_cmd::prelude::*;
 use assert_fs::prelude::*;
 use common::{find_service_endpoint, setup_cluster};
 use fs_extra::dir::CopyOptions;
+use rstest::*;
 use serial_test::serial;
 use std::{
     path::{Path, PathBuf},
@@ -92,13 +93,18 @@ fn ame_file_does_not_exist() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+#[rstest]
+#[case("test_data/test_projects/new_echo", "echo")]
+#[case("test_data/test_projects/sklearn_logistic_regression", "training")]
+#[ignore]
 #[tokio::test]
-async fn ame_run_task() -> Result<(), Box<dyn std::error::Error>> {
+async fn ame_run_task(
+    #[case] project_dir: &str,
+    #[case] task_id: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
     setup_cluster("ame-system").await?;
-    let temp = prepare_test_project("test_data/test_projects/new_echo")?;
-    println!("test project {}", temp.display());
+    let temp = prepare_test_project(project_dir)?;
     let mut cmd = Command::cargo_bin("cli")?;
-    let task_id = "echo";
     test_setup().await?;
 
     let res = cmd
@@ -115,7 +121,20 @@ async fn ame_run_task() -> Result<(), Box<dyn std::error::Error>> {
         "created virtual environment \"redacted\"",
     );
     settings.add_filter("creator .*", "creator \"redacted\"");
+    settings.add_filter(
+        "\\d\\d\\d\\d/\\d\\d/\\d\\d \\d\\d:\\d\\d:\\d\\d",
+        "\"redacted timestamp\"",
+    );
+    settings.add_filter("run .*", "\"redacted run ID\"");
+    settings.add_filter("ID '.*'", "\"redacted run ID\"");
+    settings.add_filter("tmp/tmp.*\\s", "\"redacted temporary directory\"");
+    settings.add_filter("mlflow-.*/", "\"redacted MLflow env ID\"");
+    settings.add_filter(".*: UserWarning: .*\\n", "");
+    settings.add_filter("warnings\\.warn.*\\n", "");
+    settings.add_filter("  \"redacted timestamp", "\"redacted timestamp");
+    settings.add_filter("  Score:", "Score:");
     let _guard = settings.bind_to_scope();
+
     insta::assert_snapshot!(&String::from_utf8(res.get_output().stdout.clone())?);
 
     Ok(())
