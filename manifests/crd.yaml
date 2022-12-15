@@ -157,6 +157,7 @@ spec:
                 - Pending
                 - Failed
                 - Succeeded
+                - Error
                 nullable: true
                 type: string
               reason:

@@ -46,17 +46,17 @@ check:
   cargo +nightly clippy --workspace --tests --all -- -D warnings
   cargo outdated
 
-test:
-  cargo test --workspace
+test *ARGS:
+  cargo test --workspace {{ARGS}}
 
-test_controller:
-  cargo test -p controller
+test_controller *ARGS:
+  cargo test -p controller {{ARGS}}
 
-test_cli:
-  cargo test -p ame-cli
+test_cli *ARGS:
+  cargo test -p ame-cli {{ARGS}}
 
-test_server:
-  cargo test -p service
+test_server *ARGS:
+  cargo test -p service {{ARGS}}
 
 server_logs *ARGS:
   kubectl logs -n {{TARGET_NAMESPACE}} -l app=ame-server {{ARGS}}
@@ -66,6 +66,8 @@ review_snapshots:
 
 crdgen:
  cargo run --bin crdgen > manifests/crd.yaml
+ cargo run --bin project_src_crdgen > manifests/project_src_crd.yaml
+ cargo run --bin project_crdgen > manifests/project_crd.yaml
 
 start_controller:
   cargo run --bin controller
@@ -101,6 +103,8 @@ delete_cluster:
 
 install_crd:
  kubectl apply -f manifests/crd.yaml
+ kubectl apply -f manifests/project_src_crd.yaml
+ kubectl apply -f manifests/project_crd.yaml
 
 install_argo_workflows:
   kubectl apply -n {{TARGET_NAMESPACE}} -f https://raw.githubusercontent.com/argoproj/argo-workflows/master/manifests/quick-start-postgres.yaml

@@ -12,6 +12,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: ame-ci-cache
+          cache-on-failure: "true"
       - uses: rinx/setup-k3d@v0.0.3
         with:
           skipClusterCreation: true
@@ -25,11 +26,18 @@ jobs:
           just setup_cluster
           just deploy_ame_to_cluster
       - name: Validate commit
+        env:
+          AME_TEST_GH_TOKEN: ${{ secrets.AME_TEST_GH_TOKEN }}
         run: |
           just check
           just test
-      - name: build
+      - name: build and push images
         run: |
           echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u USERNAME --password-stdin
           just AME_REGISTRY=ghcr.io/teainspace IMG_TAG=/$GITHUB_REF_NAME:$(git rev-parse --short=4 $GITHUB_SHA) publish_images
+      - name: push latest images
+        if: env.GITHUB_REF_NAME  == 'main'
+        run: |
+          just AME_REGISTRY=ghcr.io/teainspace IMG_TAG=/$GITHUB_REF_NAME:latest publish_images
+
 

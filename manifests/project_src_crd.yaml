@@ -1,0 +1,74 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: projectsources.ame.teainspace.com
+spec:
+  group: ame.teainspace.com
+  names:
+    categories: []
+    kind: ProjectSource
+    plural: projectsources
+    shortNames:
+    - psrc
+    singular: projectsource
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns: []
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: Auto-generated derived type for ProjectSourceSpec via `CustomResource`
+        properties:
+          spec:
+            properties:
+              git:
+                nullable: true
+                properties:
+                  repository:
+                    type: string
+                  secret:
+                    nullable: true
+                    type: string
+                  syncInternal:
+                    nullable: true
+                    properties:
+                      nanos:
+                        format: uint32
+                        minimum: 0.0
+                        type: integer
+                      secs:
+                        format: uint64
+                        minimum: 0.0
+                        type: integer
+                    required:
+                    - nanos
+                    - secs
+                    type: object
+                  username:
+                    nullable: true
+                    type: string
+                required:
+                - repository
+                type: object
+            type: object
+          status:
+            nullable: true
+            properties:
+              lastSynced:
+                description: Time is a wrapper around time.Time which supports correct marshaling to YAML and JSON.  Wrappers are provided for many of the factory methods that the time package offers.
+                format: date-time
+                nullable: true
+                type: string
+              syncing:
+                type: boolean
+            required:
+            - syncing
+            type: object
+        required:
+        - spec
+        title: ProjectSource
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
