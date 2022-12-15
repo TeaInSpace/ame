@@ -9,7 +9,7 @@ Creating a virtualenv for this project...
 Pipfile: /project/Pipfile
 Using /usr/bin/python3.8 (3.8.10) to create virtualenv...
 created virtual environment "redacted"
-  creator CPython3Posix(dest=/home/ame/.local/share/virtualenvs/project-OdyMjCZJ, clear=False, no_vcs_ignore=False, global=False)
+  creator "redacted"
   seeder FromAppData(download=False, pip=bundle, setuptools=bundle, wheel=bundle, via=copy, app_data_dir=/home/ame/.local/share/virtualenv)
     added seed packages: pip==22.3.1, setuptools==65.6.3, wheel==0.38.4
   activators BashActivator,CShellActivator,FishActivator,NushellActivator,PowerShellActivator,PythonActivator

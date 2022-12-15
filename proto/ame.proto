@@ -53,6 +53,14 @@ message LogEntry {
   bytes contents = 1;
 }
 
+message ProjectSource {
+  optional GitProjectSource git = 1;
+}
+
+message GitProjectSource {
+  string repository = 1;
+}
+
 service AmeService {
   rpc GetTask(TaskIdentifier) returns (TaskTemplate) {}
   rpc CreateTask(CreateTaskRequest) returns (TaskIdentifier) {}

@@ -110,3 +110,51 @@ rules:
   - get
   - list
   - watch
+- apiGroups:
+  - ame.teainspace.com
+  resources:
+  - projects
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ame.teainspace.com
+  resources:
+  - projects/status
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ame.teainspace.com
+  resources:
+  - projectsources
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ame.teainspace.com
+  resources:
+  - projectsources/status
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch

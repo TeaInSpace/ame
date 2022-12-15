@@ -8,6 +8,7 @@ futures-core = "0.3.25"
 tonic = "0.8.3"
 prost = "0.11"
 serde = "1.0"
+jsonschema = "0.16.1"
 
 [build-dependencies]
 tonic-build = "0.8.4"

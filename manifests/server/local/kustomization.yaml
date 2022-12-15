@@ -5,6 +5,6 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 images:
 - name: ame-server
-  newName: main:34713/ame-server
+  newName: main:42629/ame-server
   newTag: latest
 namespace: ame-system
