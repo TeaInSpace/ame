@@ -28,7 +28,7 @@ TODO: gif
 
 #### Creating a pipeline
 
-Inorder to conserve compute resources and allow for cacheing you might want to split up your task into multiple sub tasks. AME supports pipelines of Tasks with individual requirenments. All of the project context is carried over between steps in the pipeline so if your first task saves files to the project directory, they will be available in the next step.
+Inorder to conserve compute resources and allow for caching you might want to split up your task into multiple sub tasks. AME supports pipelines of Tasks with individual requirenments. All of the project context is carried over between steps in the pipeline so if your first task saves files to the project directory, they will be available in the next step.
 
 TODO: gif
 

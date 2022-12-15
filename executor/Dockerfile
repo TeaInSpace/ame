@@ -1,4 +1,4 @@
-FROM nvidia/cuda:11.4.2-cudnn8-runtime-ubuntu20.04
+FROM ubuntu:20.04
 
 # These packages are required by pyenv, see https://github.com/pyenv/pyenv/wiki#suggested-build-environment 
 RUN apt-get update \

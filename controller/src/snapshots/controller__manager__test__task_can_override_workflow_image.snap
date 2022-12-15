@@ -37,9 +37,17 @@ spec:
                   - bash
                 env:
                   - name: AWS_ACCESS_KEY_ID
-                    value: minio
+                    valueFrom:
+                      secretKeyRef:
+                        key: MINIO_ROOT_USER
+                        name: ame-minio-secret
+                        optional: false
                   - name: AWS_SECRET_ACCESS_KEY
-                    value: minio123
+                    valueFrom:
+                      secretKeyRef:
+                        key: MINIO_ROOT_PASSWORD
+                        name: ame-minio-secret
+                        optional: false
                   - name: MINIO_URL
                     value: "http://ame-minio.ame-system.svc.cluster.local:9000"
                   - name: PIPENV_YES
@@ -50,7 +58,7 @@ spec:
                 volumeMounts:
                   - mountPath: /project
                     name: training-volume
-                source: "\n                       s3cmd --no-ssl --region us-east-1 --host=$MINIO_URL --host-bucket=$MINIO_URL get --recursive s3://ame/tasks/training/projectfiles/ ./\n                       echo \"0\" >> exit.status\n                        "
+                source: "\n            s3cmd --no-ssl --region eu-central-1 --host=$MINIO_URL --host-bucket=$MINIO_URL get --recursive s3://ame/tasks/training/projectfiles/ ./\n\n                       echo \"0\" >> exit.status\n                        "
               podSpecPatch: ~
         - - name: main
             inline:
@@ -68,9 +76,17 @@ spec:
                   - bash
                 env:
                   - name: AWS_ACCESS_KEY_ID
-                    value: minio
+                    valueFrom:
+                      secretKeyRef:
+                        key: MINIO_ROOT_USER
+                        name: ame-minio-secret
+                        optional: false
                   - name: AWS_SECRET_ACCESS_KEY
-                    value: minio123
+                    valueFrom:
+                      secretKeyRef:
+                        key: MINIO_ROOT_PASSWORD
+                        name: ame-minio-secret
+                        optional: false
                   - name: MINIO_URL
                     value: "http://ame-minio.ame-system.svc.cluster.local:9000"
                   - name: PIPENV_YES

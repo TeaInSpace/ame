@@ -1,35 +1,35 @@
 on: push
 
-env:
-  IMG: ame-controller:local
-  SERVER_IMG: ame-server:local
-
 jobs:
   validate:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - uses: extractions/setup-just@v1
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          profile: minimal
           toolchain: stable
       - uses: Swatinem/rust-cache@v2
-      - uses: arduino/setup-protoc@v1
         with:
-          version: '3.19.4'
-      - name: Rust validation
-        run: |
-          just setup_toolchains
-          just tools
-          just check
-          just setup_cluster
-          just install_ame
-          just test
+          shared-key: ame-ci-cache
+      - uses: rinx/setup-k3d@v0.0.3
+        with:
+          skipClusterCreation: true
       - name: Prep test environment
         run: |
-          make tools
-          make deploy_local_cluster
+          sudo apt-get update
+          sudo apt-get install -y build-essential openssl libssl-dev libc6-dev clang libclang-dev ca-certificates protobuf-compiler-grpc
+          just setup_toolchains
+          just tools
+          just add_helm_repos
+          just setup_cluster
+          just deploy_ame_to_cluster
       - name: Validate commit
         run: |
-          make test
+          just check
+          just test
+      - name: build
+        run: |
+          echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u USERNAME --password-stdin
+          just publish_images AME_REGISTRY=ghcr.io/ame-server IMG_TAG=$GITHUB_REF_NAME:$(git rev-parse --short=4 $GITHUB_SHA)
+
