@@ -1,6 +1,5 @@
-use std::env::VarError;
-
 use k8s_openapi::chrono::OutOfRangeError;
+use std::env::VarError;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -50,6 +49,7 @@ pub type Result<T, E = Error> = std::result::Result<T, E>;
 pub mod manager;
 pub use manager::Task;
 pub use manager::TaskSpec;
+pub use manager::TaskType;
 
 pub mod argo;
 pub use argo::Workflow;

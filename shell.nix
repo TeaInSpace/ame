@@ -18,6 +18,8 @@ pkgs.mkShell {
     s3cmd
     minio-client
     argo
+    python310Packages.mlflow
+    kubernetes-helm
   ];
 
   # Certain Rust tools won't work without this

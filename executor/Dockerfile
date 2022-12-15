@@ -31,9 +31,9 @@ ENV PATH="/home/ame/.local/bin:${PATH}"
 # ducumented here: https://github.com/pyenv/pyenv#installation
 # TODO: We need a way to validate that pyenv is installed correctly, from the official repo. 
 RUN PYENV_GIT_TAG=v2.3.4 curl https://pyenv.run | bash
-RUN echo 'export PYENV_ROOT="$HOME/.pyenv"' >> ~/.profile
-RUN echo 'export PATH="$PYENV_ROOT/bin:$PATH"' >> ~/.profile
-RUN echo 'eval "$(pyenv init --path)"' >> ~/.profile
+RUN echo 'export PYENV_ROOT="$HOME/.pyenv"' >> ~/.bashrc
+RUN echo 'export PATH="$PYENV_ROOT/bin:$PATH"' >> ~/.bashrc
+RUN echo 'eval "$(pyenv init --path)"' >> ~/.bashrc
 
 # Install pipenv
 RUN pip install --upgrade pip
@@ -43,5 +43,6 @@ RUN pip install pipenv
 # Task execution.
 RUN pip install s3cmd
 
+RUN pip install mlflow
 
 WORKDIR /project

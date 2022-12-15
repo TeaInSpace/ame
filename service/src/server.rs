@@ -187,6 +187,7 @@ mod test {
             command: "test".to_string(),
             projectid: "myproject".to_string(),
             image: Some("my-new-image".to_string()),
+            task_type: None,
         };
 
         let create_task_req = CreateTaskRequest {

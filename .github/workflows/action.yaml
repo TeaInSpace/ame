@@ -5,7 +5,6 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v3
-      - uses: extractions/setup-just@v1
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
@@ -20,6 +19,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential openssl libssl-dev libc6-dev clang libclang-dev ca-certificates protobuf-compiler-grpc
+          cargo install just
           just setup_toolchains
           just tools
           just add_helm_repos
