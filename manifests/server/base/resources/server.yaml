@@ -73,7 +73,7 @@ spec:
                 name: ame-minio-secret
                 key: MINIO_ROOT_PASSWORD
           - name: RUST_LOG
-            value: tower_http=debug,ame_server=debug
+            value: tower_http=info,ame_server=debug
 
       serviceAccountName: ame-server
       terminationGracePeriodSeconds: 10

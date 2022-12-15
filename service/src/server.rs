@@ -158,7 +158,7 @@ mod test {
             id: Some(TaskIdentifier {
                 name: "mytask".to_string(),
             }),
-            templat: Some(task.clone()),
+            template: Some(task.clone()),
         };
 
         let new_task = service_client
@@ -193,7 +193,7 @@ mod test {
             id: Some(TaskIdentifier {
                 name: "mytask2".to_string(),
             }),
-            templat: Some(task.clone()),
+            template: Some(task.clone()),
         };
 
         let _new_task = service_client

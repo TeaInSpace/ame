@@ -25,7 +25,7 @@ pub enum Error {
     EmptyProjectField(String),
 
     #[error("The project file is in a bad state: {0}")]
-    MisConfiguredProject(String),
+    MissConfiguredProject(String),
 
     #[error("Could not find a task with the given name: {0} in the project file")]
     MissingTaskTemplate(String),

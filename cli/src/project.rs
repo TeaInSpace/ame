@@ -67,7 +67,7 @@ impl Project {
             task_templates.iter().filter(|t| t.name == name).collect();
 
         if valid_task_templates.len() > 1 {
-            return Err(Error::MisConfiguredProject(
+            return Err(Error::MissConfiguredProject(
                 "found multiple tasks templates with the same name".to_string(),
             ));
         }
@@ -178,7 +178,11 @@ impl Project {
             .into_inner();
 
         while let Some(entry) = log_stream.next().await {
-            let line = String::from_utf8(entry?.contents).unwrap();
+            let Ok(line) = String::from_utf8(entry.clone()?.contents) else {
+                println!("failed to parse log entry: {entry:?}");
+                return Ok(());
+            };
+
             if line.contains("s3") || line.contains("argo") {
                 continue;
             }

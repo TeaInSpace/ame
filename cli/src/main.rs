@@ -1,6 +1,6 @@
-use ame_cli::{project::Project, CliConfiguration, Result};
 use ame_client::ame_service_client::AmeServiceClient;
 use clap::{Parser, Subcommand};
+use cli::{project::Project, CliConfiguration, Result};
 
 #[derive(Parser)]
 #[command()]

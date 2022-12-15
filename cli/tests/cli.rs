@@ -59,7 +59,7 @@ fn ame_file_already_exists() -> Result<(), Box<dyn std::error::Error>> {
     let test_file = temp.child(AME_FILE_NAME);
     test_file.touch()?;
 
-    let mut cmd = Command::cargo_bin("ame-cli")?;
+    let mut cmd = Command::cargo_bin("cli")?;
 
     cmd.current_dir(temp.path())
         .arg("init")
@@ -78,7 +78,7 @@ fn ame_file_already_exists() -> Result<(), Box<dyn std::error::Error>> {
 fn ame_file_does_not_exist() -> Result<(), Box<dyn std::error::Error>> {
     let temp = assert_fs::TempDir::new()?;
     let test_file = temp.child(AME_FILE_NAME);
-    let mut cmd = Command::cargo_bin("ame-cli")?;
+    let mut cmd = Command::cargo_bin("cli")?;
     let project_id = "myproject";
 
     cmd.current_dir(temp.path())
@@ -97,7 +97,7 @@ async fn ame_run_task() -> Result<(), Box<dyn std::error::Error>> {
     setup_cluster("ame-system").await?;
     let temp = prepare_test_project("test_data/test_projects/new_echo")?;
     println!("test project {}", temp.display());
-    let mut cmd = Command::cargo_bin("ame-cli")?;
+    let mut cmd = Command::cargo_bin("cli")?;
     let task_id = "echo";
     test_setup().await?;
 
@@ -134,7 +134,7 @@ async fn ame_setup_cli() -> Result<(), Box<dyn std::error::Error>> {
     temp_env::with_vars(
         vec![("AME_ENDPOINT", None), ("XDG_CONFIG_HOME", Some(temp_path))],
         || {
-            Command::cargo_bin("ame-cli")
+            Command::cargo_bin("cli")
                 .unwrap()
                 .current_dir(temp_path)
                 .arg("setup")
@@ -159,7 +159,7 @@ async fn fail_bad_server_endpoint() -> Result<(), Box<dyn std::error::Error>> {
     temp_env::with_vars(
         vec![("AME_ENDPOINT", None), ("XDG_CONFIG_HOME", Some(temp_path))],
         || {
-            Command::cargo_bin("ame-cli")
+            Command::cargo_bin("cli")
                 .unwrap()
                 .current_dir(temp_path)
                 .arg("setup")

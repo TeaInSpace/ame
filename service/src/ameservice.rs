@@ -11,6 +11,7 @@ use kube::runtime::wait::await_condition;
 use kube::runtime::wait::conditions;
 use kube::{Api, Client, ResourceExt};
 use tokio::sync::mpsc;
+use tokio::task::JoinHandle;
 use tokio_stream::wrappers::ReceiverStream;
 
 use ame_service_server::AmeService;
@@ -159,13 +160,13 @@ impl AmeService for Service {
         &self,
         request: Request<TaskLogRequest>,
     ) -> Result<Response<Self::StreamTaskLogsStream>, Status> {
-        let (log_sender, log_reciever) = mpsc::channel(1);
+        let (log_sender, log_receiver) = mpsc::channel(1);
         let task_name = request.get_ref().clone().taskid.unwrap().name;
         let pods = self.pods.clone();
         let tasks = self.tasks.clone();
 
         tracing::info!("streaming logs for: {}", &task_name);
-        tokio::spawn(async move {
+        let _handle: JoinHandle<Result<()>> = tokio::spawn(async move {
             loop {
                 let task_pods = pods
                     .list(&ListParams::default().labels(&format!("ame-task={task_name}")))
@@ -187,8 +188,7 @@ impl AmeService for Service {
                             &pod.name_any(),
                             conditions::is_pod_running(),
                         )
-                        .await
-                        .unwrap();
+                        .await?;
 
                         info!("pod is running!");
 
@@ -203,17 +203,19 @@ impl AmeService for Service {
                                     ..LogParams::default()
                                 },
                             )
-                            .await
-                            .unwrap();
+                            .await?;
 
                         while let Some(e) = pod_log_stream.next().await {
                             debug!("sent log entry: {:?}", &e);
-                            log_sender
-                                .send(Ok(LogEntry {
-                                    contents: e.unwrap().to_vec(),
-                                }))
-                                .await
-                                .unwrap();
+                            let log_entry = LogEntry {
+                                contents: e.unwrap().to_vec(),
+                            };
+                            log_sender.send(Ok(log_entry.clone())).await.or(Err(
+                                Error::TokioSendError(format!(
+                                    "failed to send log entry: {}",
+                                    String::from_utf8(log_entry.contents)?
+                                )),
+                            ))?
                         }
                     }
                 }
@@ -228,14 +230,14 @@ impl AmeService for Service {
                 if task.status.clone().unwrap().phase.unwrap() != TaskPhase::Running
                     && task.status.unwrap().phase.unwrap() != TaskPhase::Pending
                 {
-                    break;
+                    return Ok(());
                 }
 
                 sleep(Duration::from_millis(50)).await;
             }
         });
 
-        Ok(Response::new(ReceiverStream::new(log_reciever)))
+        Ok(Response::new(ReceiverStream::new(log_receiver)))
     }
 }
 
@@ -277,7 +279,7 @@ impl TryFrom<self::CreateTaskRequest> for controller::Task {
     fn try_from(t: CreateTaskRequest) -> Result<Self> {
         let CreateTaskRequest {
             id: Some(TaskIdentifier { name: id }),
-            templat: Some(template),
+            template: Some(template),
         } = t else {
             return Err(Error::ConversionError("Failed to extract id and template from CreateTaskRequest".to_string()))
         };
