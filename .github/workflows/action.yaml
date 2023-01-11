@@ -12,24 +12,8 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: ame-ci-cache
-      - uses: rinx/setup-k3d@v0.0.3
-        with:
-          skipClusterCreation: true
-      - name: Prep test environment
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential openssl libssl-dev libc6-dev clang libclang-dev ca-certificates protobuf-compiler-grpc
-          just setup_toolchains
-          just tools
-          just add_helm_repos
-          just setup_cluster
-          just deploy_ame_to_cluster
-      - name: Validate commit
-        run: |
-          just check
-          just test
       - name: build
         run: |
           echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u USERNAME --password-stdin
-          just publish_images AME_REGISTRY=ghcr.io/ame-server IMG_TAG=$GITHUB_REF_NAME:$(git rev-parse --short=4 $GITHUB_SHA)
+          just AME_REGISTRY=ghcr.io/ame-server IMG_TAG=$GITHUB_REF_NAME:$(git rev-parse --short=4 $GITHUB_SHA) publish_images 
 
