@@ -20,6 +20,7 @@ pkgs.mkShell {
     argo
     python310Packages.mlflow
     kubernetes-helm
+    grpcurl
   ];
 
   # Certain Rust tools won't work without this

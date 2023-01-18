@@ -6,7 +6,7 @@ use service::health_check;
 use service::storage::S3Config;
 use service::Result;
 use tonic::transport::Server;
-use tower_http::trace::TraceLayer;
+
 use tracing_subscriber::{prelude::*, EnvFilter, Registry};
 
 #[tokio::main]
@@ -35,7 +35,6 @@ async fn main() -> Result<()> {
     tracing::info!("Serving at: {}", addr);
 
     Server::builder()
-        .layer(TraceLayer::new_for_grpc())
         .accept_http1(true)
         .add_service(tonic_web::enable(AmeServiceServer::new(svc)))
         .add_service(health_service)

@@ -11,6 +11,8 @@ LOCAL_EXECUTOR_IMAGE_TAG := "main:" + AME_REGISTRY_PORT + "/" + EXECUTOR_IMAGE +
 CONTROLLER_IMAGE_TAG := AME_REGISTRY + "/" +  CONTROLLER_IMAGE + IMG_TAG
 TARGET_NAMESPACE := "ame-system"
 TASK_SERVICE_ACCOUNT := "ame-task"
+AME_HOST := "ame.local"
+KEYCLOAK_HOST := "keycloak.ame.local"
 
 # See https://github.com/rust-lang/rustfix/issues/200#issuecomment-923111872
 export __CARGO_FIX_YOLO := "1"
@@ -29,6 +31,7 @@ tools:
   cargo install --locked cargo-insta
   cargo install --locked cargo-audit
   cargo install --locked cargo-outdated
+  cargo install --locked cargo-udeps
 
 fix: fmt
   cargo fix --workspace --allow-dirty --tests --allow-staged
@@ -46,6 +49,7 @@ check:
   cargo +nightly fmt --check 
   cargo +nightly clippy --workspace --tests --all -- -D warnings
   cargo outdated
+  cargo +nightly udeps --all-targets --workspace --show-unused-transitive
 
 test *ARGS:
   cargo test --workspace {{ARGS}}
@@ -89,10 +93,13 @@ run_cli *ARGS:
 setup_cli:
  cargo run -p cli setup http://$(kubectl get svc -n {{TARGET_NAMESPACE}} ame-server-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}'):3342
 
+setup_cli_ingress:
+ cargo run -p cli setup https://$(kubectl get ingress -n {{TARGET_NAMESPACE}} ame-server -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+
 
 # Local cluster utilities
 
-setup_cluster: k3s create_namespace install_cert_manager install_argo_workflows deploy_keycloak deploy_minio 
+setup_cluster: k3s create_namespace create_service_accounts install_cert_manager install_argo_workflows deploy_keycloak deploy_minio deploy_nginx
 
 k3s:
   k3d cluster create main \
@@ -105,7 +112,9 @@ k3s:
 
 create_namespace:
   kubectl create ns {{TARGET_NAMESPACE}}
-  kubectl create sa {{TASK_SERVICE_ACCOUNT}}
+
+create_service_accounts:
+  kubectl create sa {{TASK_SERVICE_ACCOUNT}} -n {{TARGET_NAMESPACE}} # TODO: move this to vault setup
 
 delete_cluster:
   k3d cluster delete main
@@ -114,6 +123,26 @@ install_crd:
  kubectl apply -f manifests/crd.yaml
  kubectl apply -f manifests/project_src_crd.yaml
  kubectl apply -f manifests/project_crd.yaml
+
+set_host_entries:
+ #!/bin/sh
+ LB_IP=$(kubectl get svc -n ingress-nginx ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+ 
+ echo "In order to test AME with SSL a host entry must be set in your local host file, this requires root permissions"
+
+ just ensure_host_entry $LB_IP {{AME_HOST}}
+ just ensure_host_entry $LB_IP {{KEYCLOAK_HOST}}
+
+ensure_host_entry IP HOST:
+ #!/bin/sh
+ echo "ensure host entry: {{IP}} {{HOST}}"
+ if grep -q {{HOST}} "/etc/hosts"; then
+ echo "Found existing ame host entry, will replace the IP to make sure it is up to date."
+ sudo sed -i "s/.* {{HOST}}.*/{{IP}} {{HOST}}/" /etc/hosts
+ else
+ echo "Adding new entry to entry/hosts"
+ echo "{{IP}} {{HOST}}" | sudo tee -a /etc/hosts
+ fi
 
 install_argo_workflows:
   kubectl apply -n {{TARGET_NAMESPACE}} -f https://raw.githubusercontent.com/argoproj/argo-workflows/master/manifests/quick-start-postgres.yaml
@@ -136,6 +165,25 @@ deploy_server:
   sleep 1
   kubectl delete pod -n ame-system -l app=ame-server
   kubectl wait pods -n {{TARGET_NAMESPACE}} -l app=ame-server --for condition=Ready --timeout=90s
+
+deploy_server_to_ask:
+  #!/bin/sh
+  cd ./manifests/server/aks/
+  kustomize edit set namespace {{TARGET_NAMESPACE}}
+  kustomize build . | kubectl apply -f -
+  sleep 1
+  kubectl delete pod -n ame-system -l app=ame-server
+  kubectl wait pods -n {{TARGET_NAMESPACE}} -l app=ame-server --for condition=Ready --timeout=90s
+
+deploy_controller_to_ask:
+  #!/bin/sh
+  cd ./manifests/controller/aks/
+  kustomize edit set namespace {{TARGET_NAMESPACE}}
+  kustomize build . | kubectl apply -f -
+  sleep 1
+  kubectl delete pod -n ame-system -l app=ame-server
+  kubectl wait pods -n {{TARGET_NAMESPACE}} -l app=ame-server --for condition=Ready --timeout=90s
+
 
 deploy_controller:
   #!/bin/sh
@@ -180,7 +228,6 @@ push_executor_image:
 push_controller_image:
   docker push {{CONTROLLER_IMAGE_TAG}}
 
-
 remove_server:
 	kustomize build manifests/server/local | kubectl delete --ignore-not-found=true -f -
  
@@ -192,9 +239,6 @@ install_commit_template:
 
 start_opentelemtry_collector:
   docker run -d -p6831:6831/udp -p6832:6832/udp -p16686:16686 jaegertracing/all-in-one:latest
-
-start_keycloak:
-  docker run -p 8080:8080 -e KEYCLOAK_ADMIN=admin -e KEYCLOAK_ADMIN_PASSWORD=admin quay.io/keycloak/keycloak:20.0.1 start-dev
 
 run_client:
   cargo run --bin ame-client
@@ -221,49 +265,70 @@ add_helm_repos:
   helm repo update
 
 deploy_keycloak:
-  helm install keycloak bitnami/keycloak --set auth.adminPassword=admin
+  helm install keycloak bitnami/keycloak --set auth.adminPassword=admin -f ./manifests/keycloak/values_local.yaml
+
+deploy_keycloak_ask:
+  helm install keycloak bitnami/keycloak --set auth.adminPassword=admin -f ./manifests/keycloak/values.yaml
 
 deploy_oauth2_proxy:
   helm install oauth2-proxy oauth2-proxy/oauth2-proxy \
-   --version 3.3.2 -f ./manifests/oauth2-proxy/oauth2proxy-values.yaml --wait
+    -f ./manifests/oauth2-proxy/oauth2proxy-values.yaml --wait
+
+deploy_oauth2_proxy_local:
+  helm install oauth2-proxy oauth2-proxy/oauth2-proxy \
+    -f ./manifests/oauth2-proxy/oauth2proxy-values-local.yaml --wait
 
 deploy_mlflow:
   helm install mlflow ncsa/mlflow
 
 deploy_nginx:
-  helm install ingress-nginx ingress-nginx/ingress-nginx \
-  --wait --version 3.34.0 --set-string controller.config.ssl-redirect=false
+  helm upgrade --install ingress-nginx ingress-nginx \
+    --repo https://kubernetes.github.io/ingress-nginx \
+    --namespace ingress-nginx --create-namespace 
+
+setup_ask:
+  # ask ingress nginx install: https://kubernetes.github.io/ingress-nginx/deploy/#azure
+  kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.5.1/deploy/static/provider/cloud/deploy.yaml
+
+  # Standard cert manager install: https://cert-manager.io/docs/installation/
+  kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.11.0/cert-manager.yaml
+  kubectl apply -f ./manifests/cert-manager/issuers.yaml
 
 deploy_vault:
   helm install vault hashicorp/vault \
-      --set "server.dev.enabled=true" -n vault 
+      --set "server.dev.enabled=true" -n vault --create-namespace
+  just configure_vault_k8s_auth
+  just set_vault_secret
 
-configure_vault:
+configure_vault_k8s_auth:
    #!/bin/sh
    kubectl exec -n vault -it vault-0 -- vault auth enable kubernetes
    kubectl exec -n vault -it vault-0 -- bin/sh -c 'vault write auth/kubernetes/config \
       kubernetes_host="https://$KUBERNETES_PORT_443_TCP_ADDR:443"'
-
+   
    kubectl exec -n vault -it vault-0 -- vault policy write {{TASK_SERVICE_ACCOUNT}} - <<EOF
    path "internal/data/database/config" {
    capabilities = ["read"]
    }
    EOF
-
+   
    kubectl exec -n vault -it vault-0 -- vault write auth/kubernetes/role/{{TASK_SERVICE_ACCOUNT}} \
    bound_service_account_names={{TASK_SERVICE_ACCOUNT}} \
    bound_service_account_namespaces={{TARGET_NAMESPACE}} \
    policies=ame-task \
    ttl=24h
 
+set_vault_secret:
+   #!/bin/sh
    kubectl exec -n vault -it vault-0 -- vault secrets enable -path=internal kv-v2
    kubectl exec -n vault -it vault-0 -- vault kv put internal/data/database/config username="db-readonly-username" password="db-secret-password"
 
 install_cert_manager:
-	kubectl create ns cert-manager --dry-run=client -o yaml | kubectl apply -f -
-	kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.9.1/cert-manager.yaml
-	sleep 20 
-	kubectl wait --for=condition=Ready pods --all --namespace cert-manager
+  kubectl create ns cert-manager --dry-run=client -o yaml | kubectl apply -f -
+  kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.9.1/cert-manager.yaml
+  sleep 20 
+  kubectl wait --for=condition=Ready pods --all --namespace cert-manager
+  kubectl apply -f manifests/cert-manager/self_signed_issuer.yaml
 
 add_mc_alias:
   mc alias set minio http://$(kubectl get service ame-minio -n ame-system -o jsonpath='{.status.loadBalancer.ingress[0].ip}'):9000 minio minio123

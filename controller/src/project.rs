@@ -6,6 +6,7 @@ use std::{
 
 use crate::{manager, Error, Result, TaskSpec};
 
+use ame_client::LogEntry;
 use futures::{future::BoxFuture, FutureExt, StreamExt};
 use k8s_openapi::{
     api::{
@@ -56,6 +57,9 @@ pub struct ProjectSpec {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub templates: Option<Vec<TaskSpec>>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub log_entry: Option<LogEntry>,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug, JsonSchema, PartialEq, Eq, Default)]
@@ -236,6 +240,11 @@ impl Model {
             .clone()
             .unwrap_or(BTreeMap::<String, String>::new());
 
+        ingress_annotations.insert(
+            "nginx.ingress.kubernetes.io/ssl-redirect".to_string(),
+            "false".to_string(),
+        );
+
         if let Some(mut annotations) = model_deployment.ingress_annotations {
             ingress_annotations.append(&mut annotations);
         }
@@ -282,7 +291,7 @@ impl Model {
                                 ..IngressBackend::default()
                             },
                             path_type: "ImplementationSpecific".to_string(),
-                            path: None,
+                            path: Some("/invocations".to_string()),
                         }],
                     }),
                 }]),

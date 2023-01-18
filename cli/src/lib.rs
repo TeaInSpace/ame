@@ -1,8 +1,12 @@
 pub mod project;
 
+use ame_client::client_builder::AmeServiceClientCfg;
 use envconfig::Envconfig;
+
+use http::uri::InvalidUri;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
+use url::ParseError;
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -38,6 +42,15 @@ pub enum Error {
 
     #[error("got filesystem related error: {0}")]
     WalkDir(#[from] walkdir::Error),
+
+    #[error("failed to parse URL: {0}")]
+    ParseError(#[from] ParseError),
+
+    #[error("Ame errored: {0}")]
+    ClientError(#[from] ame_client::Error),
+
+    #[error("Invalid URI: {0}")]
+    UriParseError(#[from] InvalidUri),
 }
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
@@ -46,6 +59,9 @@ pub type Result<T, E = Error> = std::result::Result<T, E>;
 pub struct CliConfiguration {
     #[envconfig(from = "AME_ENDPOINT")]
     pub endpoint: String,
+    pub id_token: Option<String>,
+    pub access_token: Option<String>,
+    pub refresh_token: Option<String>,
 }
 
 impl CliConfiguration {
@@ -66,6 +82,35 @@ impl CliConfiguration {
 
     pub fn save(&self) -> Result<()> {
         Ok(confy::store("ame", None, self)?)
+    }
+
+    pub fn set_auth_details(
+        &mut self,
+        id_token: String,
+        access_token: String,
+        refresh_token: String,
+    ) {
+        self.id_token = Some(id_token);
+        self.access_token = Some(access_token);
+        self.refresh_token = Some(refresh_token);
+    }
+
+    pub fn init_with_endpoint(endpoint: String) -> Self {
+        CliConfiguration {
+            endpoint,
+            ..CliConfiguration::default()
+        }
+    }
+}
+
+impl TryFrom<CliConfiguration> for AmeServiceClientCfg {
+    type Error = Error;
+    fn try_from(cli_cfg: CliConfiguration) -> std::result::Result<Self, Self::Error> {
+        Ok(AmeServiceClientCfg {
+            disable_tls_cert_check: true,
+            endpoint: cli_cfg.endpoint.parse()?,
+            id_token: cli_cfg.id_token,
+        })
     }
 }
 
@@ -97,6 +142,9 @@ mod test {
 
         let correct_config = CliConfiguration {
             endpoint: "anendpoint".to_string(),
+            id_token: Some("an id token".to_string()),
+            refresh_token: Some("a refresh token".to_string()),
+            access_token: Some("an access token".to_string()),
         };
 
         correct_config.save()?;
@@ -113,6 +161,9 @@ mod test {
 
         let file_config = CliConfiguration {
             endpoint: "anendpoint".to_string(),
+            id_token: Some("an id token".to_string()),
+            refresh_token: Some("a refresh token".to_string()),
+            access_token: Some("an access token".to_string()),
         };
 
         file_config.save()?;

@@ -8,6 +8,33 @@ use kube::{
     Api, Client,
 };
 
+pub async fn find_ame_endpoint(
+    namespace: &str,
+    service_name: &str,
+) -> Result<String, Box<dyn std::error::Error>> {
+    let client = Client::try_default().await?;
+    let services = Api::<Service>::namespaced(client.clone(), namespace);
+    let service = services.get(service_name).await?;
+
+    let Service { spec: Some(ServiceSpec{
+       ports: Some(ports),
+       ..
+    }),
+    ..} = service else {
+        return Err(format!("failed to extract service ips and ports: {service:#?}"))?; 
+    };
+
+    let port = ports
+        .iter()
+        .find(|p| p.name.clone().unwrap_or("".to_string()) == "https");
+
+    if let Some(port) = port {
+        Ok(format!("https://ame.local:{}", port.port))
+    } else {
+        Err("failed to find a port".to_string())?
+    }
+}
+
 pub async fn find_service_endpoint(
     namespace: &str,
     service_name: &str,
