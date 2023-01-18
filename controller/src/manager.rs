@@ -342,7 +342,17 @@ impl Task {
             ..
         }) = self.spec.source
         {
-            format!("git clone {repo} .")
+            format!(
+                "
+                git clone {repo} repo
+
+                cp -r repo/* .
+
+                rm -rf repo
+
+                ls
+                "
+            )
         } else {
             format!("s3cmd --no-ssl --region eu-central-1 --host=$MINIO_URL --host-bucket=$MINIO_URL get --recursive s3://{} ./", self.task_files_path())
         };

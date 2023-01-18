@@ -37,8 +37,6 @@ spec:
           initialDelaySeconds: 10
         ports:
           - containerPort: 3342
-        # TODO(user): Configure the resources accordingly based on the project requirements.
-        # More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
         resources:
           limits:
             cpu: 500m
@@ -73,17 +71,43 @@ spec:
                 name: ame-minio-secret
                 key: MINIO_ROOT_PASSWORD
           - name: RUST_LOG
-            value: tower_http=info,ame_server=debug
+            value: debug
 
       serviceAccountName: ame-server
       terminationGracePeriodSeconds: 10
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ame-server-https
+  namespace: ame-system
+  annotations:
+    nginx.ingress.kubernetes.io/backend-protocol: "GRPC"
+    cert-manager.io/cluster-issuer: "selfsigned-cluster-issuer"
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: ame.local 
+    http:
+      paths:
+      - path: /
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: ame-server-service
+            port:
+              number: 3342 
+  tls: 
+    - hosts:
+      - ame.local
+      secretName: ame-tls-cert
 ---
 kind: Service
 apiVersion: v1
 metadata:
   name: ame-server-service
 spec:
-  type: LoadBalancer
+  type: ClusterIP
   selector:
     app: ame-server
   ports:

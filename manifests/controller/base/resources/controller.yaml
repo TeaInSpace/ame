@@ -44,6 +44,8 @@ spec:
             value: ame-system
           - name: AME_MLFLOW_URL
             value: http://mlflow.default.svc.cluster.local:5000
+          - name: AME_MODEL_INGRESS_HOST
+            value: "20.4.90.180.nip.io"
           - name: AME_MODEL_DEPLOYMENT_INGRESS
             value: |
                 apiVersion: networking.k8s.io/v1

@@ -21,6 +21,18 @@ spec:
         properties:
           spec:
             properties:
+              logEntry:
+                nullable: true
+                properties:
+                  contents:
+                    items:
+                      format: uint8
+                      minimum: 0.0
+                      type: integer
+                    type: array
+                required:
+                - contents
+                type: object
               models:
                 items:
                   properties:

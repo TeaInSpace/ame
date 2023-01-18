@@ -25,6 +25,7 @@ jobs:
           just add_helm_repos
           just setup_cluster
           just deploy_ame_to_cluster
+          just set_host_entries
       - name: Validate commit
         env:
           AME_TEST_GH_TOKEN: ${{ secrets.AME_TEST_GH_TOKEN }}

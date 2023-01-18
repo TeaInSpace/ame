@@ -60,7 +60,7 @@ spec:
                 volumeMounts:
                   - mountPath: /project
                     name: training-volume
-                source: "\n            git clone gitrepo .\n\n                       echo \"0\" >> exit.status\n                        "
+                source: "\n            \n                git clone gitrepo repo\n\n                cp -r repo/* .\n\n                rm -rf repo\n\n                ls\n                \n\n                       echo \"0\" >> exit.status\n                        "
               podSpecPatch: ~
         - - name: main
             inline:

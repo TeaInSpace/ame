@@ -1,19 +1,19 @@
 use crate::{Error, Result};
+use ame_client::client_builder::AmeClient;
 use ame_client::TaskLogRequest;
 use ame_client::{
-    ame_service_client::AmeServiceClient, project_file_chunk::Messages, CreateTaskRequest,
-    FileChunk, ProjectFileChunk, ProjectFileIdentifier, TaskProjectDirectoryStructure,
-    TaskTemplate,
+    project_file_chunk::Messages, CreateTaskRequest, FileChunk, ProjectFileChunk,
+    ProjectFileIdentifier, TaskProjectDirectoryStructure, TaskTemplate,
 };
 use console::Emoji;
 use futures_util::StreamExt;
+
 use rand::distributions::{Alphanumeric, DistString};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::fs::File;
 use std::io::Read;
 use std::time::Duration;
-use tonic::transport::Channel;
 
 #[derive(Clone, Default, Deserialize, Serialize)]
 pub struct Project {
@@ -79,11 +79,7 @@ impl Project {
         Ok(valid_task_templates[0].clone())
     }
 
-    pub async fn run_task(
-        &self,
-        mut client: AmeServiceClient<Channel>,
-        template_name: &str,
-    ) -> Result<()> {
+    pub async fn run_task(&self, client: &mut AmeClient, template_name: &str) -> Result<()> {
         let project_file: Project = serde_yaml::from_str(&fs::read_to_string("ame.yaml")?)?;
         let task_template = project_file.get_task_template(template_name)?;
 
@@ -103,7 +99,7 @@ impl Project {
             )))
             .await?;
 
-        let _chunk_size = 1024;
+        let _chunk_size = 500;
 
         for entry in walkdir::WalkDir::new(".").into_iter().flatten() {
             if entry.metadata()?.is_dir() {

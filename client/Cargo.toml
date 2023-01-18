@@ -8,7 +8,23 @@ futures-core = "0.3.25"
 tonic = "0.8.3"
 prost = "0.11"
 serde = "1.0"
-jsonschema = "0.16.1"
+thiserror = "1.0.38"
+tokio-rustls = "0.23.4"
+rustls-native-certs = "0.6.2"
+hyper = { version = "0.14.23", features = ["client"] }
+openidconnect = "2.5.0"
+serde_json = "1.0.91"
+tower = "0.4.13"
+hyper-rustls = { version = "0.23.2", features = ["http2"] }
+http = "0.2.8"
+http-body = "0.4.5"
+tower-http = { version = "0.3.5", features = ["auth"] }
+oauth2 = "4.3.0"
+open = "3.2.0"
+url = "2.3.1"
+reqwest = "0.11.14"
+schemars = "0.8.11"
+hyper-timeout = "0.4.1"
 
 [build-dependencies]
 tonic-build = "0.8.4"

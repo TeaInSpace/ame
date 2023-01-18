@@ -1,0 +1,8 @@
+---
+source: cli/tests/cli.rs
+expression: "&String::from_utf8(output.get_output().stdout.clone()).unwrap()"
+---
+testing connection
+Could not reach an AME endpoint at: wrong_endpoint, Status { code: Unknown, message: "buffer's worker closed unexpectedly", source: Some(Closed) }
+configuration saved!
+

@@ -1,7 +1,8 @@
 use assert_cmd::prelude::*;
 use assert_fs::prelude::*;
-use common::{find_service_endpoint, setup_cluster};
+use common::{find_ame_endpoint, setup_cluster};
 use fs_extra::dir::CopyOptions;
+use insta::assert_snapshot;
 use rstest::*;
 use serial_test::serial;
 use std::{
@@ -10,13 +11,13 @@ use std::{
 };
 
 static AME_FILE_NAME: &str = "ame.yaml";
-static TARGET_NAMESPACE: &str = "ame-system";
-static AME_SERVICE_NAME: &str = "ame-server-service";
+static INGRESS_NAMESPACE: &str = "ingress-nginx";
+static INGRESS_SERVICE: &str = "ingress-nginx-controller";
 
 async fn test_setup() -> Result<(), Box<dyn std::error::Error>> {
     std::env::set_var(
         "AME_ENDPOINT",
-        find_service_endpoint(TARGET_NAMESPACE, AME_SERVICE_NAME).await?,
+        find_ame_endpoint(INGRESS_NAMESPACE, INGRESS_SERVICE).await?,
     );
 
     Ok(())
@@ -133,6 +134,11 @@ async fn ame_run_task(
     settings.add_filter("warnings\\.warn.*\\n", "");
     settings.add_filter("  \"redacted timestamp", "\"redacted timestamp");
     settings.add_filter("  Score:", "Score:");
+    settings.add_filter("added seed packages.*", "redacted");
+    settings.add_filter("Registered model '.*' already exists.*", "redacted");
+    settings.add_filter("Created version '.'.*\\n", "");
+    settings.add_filter(", version .", ", version %");
+    settings.add_filter("Successfully registered model .*", "redacted");
     let _guard = settings.bind_to_scope();
 
     insta::assert_snapshot!(&String::from_utf8(res.get_output().stdout.clone())?);
@@ -147,7 +153,7 @@ async fn ame_setup_cli() -> Result<(), Box<dyn std::error::Error>> {
 
     let temp_path = temp.to_str().unwrap();
 
-    let service_endpoint = find_service_endpoint(TARGET_NAMESPACE, AME_SERVICE_NAME)
+    let service_endpoint = find_ame_endpoint(INGRESS_NAMESPACE, INGRESS_SERVICE)
         .await
         .unwrap();
 
@@ -179,13 +185,14 @@ async fn fail_bad_server_endpoint() -> Result<(), Box<dyn std::error::Error>> {
     temp_env::with_vars(
         vec![("AME_ENDPOINT", None), ("XDG_CONFIG_HOME", Some(temp_path))],
         || {
-            Command::cargo_bin("cli")
+            let output = Command::cargo_bin("cli")
                 .unwrap()
                 .current_dir(temp_path)
                 .arg("setup")
                 .arg(service_endpoint.clone())
-                .assert()
-                .failure();
+                .assert();
+
+            assert_snapshot!(&String::from_utf8(output.get_output().stdout.clone()).unwrap());
         },
     );
 

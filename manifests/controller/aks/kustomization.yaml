@@ -1,0 +1,12 @@
+resources:
+- ../base/resources
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+images:
+- name: ame-controller
+  newName: ghcr.io/teainspace/ame-controller/main
+  newTag: 5ceb
+namespace: ame-system
+patchesStrategicMerge:
+- ./controller_config.yaml

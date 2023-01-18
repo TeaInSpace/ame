@@ -15,10 +15,12 @@ Installed Python-3.8.10 to /home/ame/.pyenv/versions/3.8.10
 created virtual environment "redacted"
   creator "redacted"
   seeder FromAppData(download=False, pip=bundle, setuptools=bundle, wheel=bundle, via=copy, app_data_dir=/home/ame/.local/share/virtualenv)
-    added seed packages: pip==22.3.1, setuptools==65.6.3, wheel==0.38.4
+    redacted
   activators BashActivator,CShellActivator,FishActivator,NushellActivator,PowerShellActivator,PythonActivator
 "redacted timestamp" INFO mlflow.utils.virtualenv: Installing dependencies
 "redacted timestamp" INFO mlflow.projects.utils: === Created directory /"redacted temporary directory""redacted timestamp" INFO mlflow.projects.backend.local: === Running command 'source /home/ame/.mlflow/envs/"redacted MLflow env ID"activate && python train.py' in "redacted run ID"
+  redacted
+"redacted timestamp" INFO mlflow.tracking._model_registry.client: Waiting up to 300 seconds for model version to finish creation.                     Model name: test_model, version %
 Score: 0.6666666666666666
 Model saved in "redacted run ID"
 "redacted timestamp" INFO mlflow.projects: === Run ("redacted run ID") succeeded ===

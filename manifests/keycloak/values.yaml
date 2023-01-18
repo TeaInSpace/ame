@@ -1,0 +1,18 @@
+extraEnvVars:
+  - name: KEYCLOAK_PROXY_ADDRESS_FORWARDING
+    value: "true"
+ingress:
+  annotations:
+    # keycloak auth tokens can be rather large
+    nginx.ingress.kubernetes.io/proxy-buffer-size: "128k"
+    cert-manager.io/cluster-issuer: "letsencrypt-staging"
+
+  hostname: keycloak.20.4.90.180.nip.io
+  enabled: true
+  tls: true
+  certManager: true
+  path: "/()(.*)"
+  ingressClassName: nginx
+proxy: edge
+service:
+  type: ClusterIP
