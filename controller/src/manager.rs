@@ -62,30 +62,43 @@ pub struct TaskControllerConfig {
 #[kube(status = "TaskStatus", shortname = "task")]
 #[serde(rename_all = "camelCase")]
 pub struct TaskSpec {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
     // Runcommand defines the command AME will use to start this Task.
-    pub runcommand: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub runcommand: Option<String>,
 
     // Projectid defines which project this Task belongs to.
-    pub projectid: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub projectid: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub env: Option<Vec<TaskEnvVar>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub image: Option<String>,
     // Secrets that will be made available to the Task during execution.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub secrets: Option<Vec<TaskSecret>>,
 
     // Pipeline defines a sequence of tasks to execute.
     // If a pipeline is specified the rest of the fields in this
     // specification are ignored.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub pipeline: Option<Vec<PipelineStep>>,
 
     // source defines where AME will pull the project from.
     // This can either be AME's own object storage or a git repository.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub source: Option<ProjectSource>,
 
     // Resources define what resources this Task requires.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub resources: Option<BTreeMap<String, Quantity>>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub task_type: Option<TaskType>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub task_ref: Option<String>,
 }
 
 #[derive(JsonSchema, Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -158,11 +171,14 @@ pub struct PipelineStep {
     secrets: Vec<TaskSecret>,
 }
 
-#[derive(Deserialize, Serialize, Clone, Debug, JsonSchema)]
+#[derive(Deserialize, Serialize, Clone, Debug, JsonSchema, Default)]
 pub struct ProjectSource {
-    gitrepository: Option<String>,
-    gitreference: Option<String>,
-    amestoragepath: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub gitrepository: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub gitreference: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub amestoragepath: Option<String>,
 }
 
 impl Task {
@@ -248,7 +264,15 @@ impl Task {
         volume_name: &str,
         config: &TaskControllerConfig,
     ) -> Result<WorkflowTemplate> {
-        let project_pull_command = format!("s3cmd --no-ssl --region eu-central-1 --host=$MINIO_URL --host-bucket=$MINIO_URL get --recursive s3://{} ./", self.task_files_path());
+        let project_pull_command = if let Some(ProjectSource {
+            gitrepository: Some(ref repo),
+            ..
+        }) = self.spec.source
+        {
+            format!("git clone {repo} .")
+        } else {
+            format!("s3cmd --no-ssl --region eu-central-1 --host=$MINIO_URL --host-bucket=$MINIO_URL get --recursive s3://{} ./", self.task_files_path())
+        };
         let script_src = format!(
             "
             {project_pull_command}
@@ -282,7 +306,7 @@ impl Task {
                 "exec {}
 
                 save_artifacts {}",
-                self.spec.runcommand,
+                self.spec.runcommand.clone().unwrap(),
                 self.task_artifacts_path()
             )
         };
@@ -734,6 +758,47 @@ mod test {
                     "envkey": "KEY2"
                 }
                 ]
+            }
+        }))
+        .unwrap();
+
+        let wf: Workflow = t.generate_workflow(&gen_test_config()).unwrap();
+
+        insta::assert_yaml_snapshot!(&wf);
+    }
+
+    #[test]
+    fn task_can_have_git_src() {
+        let t: Task = serde_json::from_value(json!({
+            "apiVersion": "ame.teainspace.com/v1alpha1",
+            "kind": "Task",
+            "metadata": { "name": "training" },
+            "spec": {
+                "runcommand": "python train.py",
+                "projectid": "myproject",
+                "env": [
+                {
+                    "name": "VAR1",
+                    "value": "val1"
+                },
+                {
+                    "name": "VAR2",
+                    "value": "val2"
+                }
+                ],
+                "secrets": [
+                {
+                    "name": "secret1",
+                    "envkey": "KEY1"
+                },
+                {
+                    "name": "secret2",
+                    "envkey": "KEY2"
+                },
+                ],
+                "source": {
+                    "gitrepository": "gitrepo",
+                },
             }
         }))
         .unwrap();

@@ -4,16 +4,10 @@ expression: "&projects"
 ---
 - projectid: echo
   tasks:
-    - runcommand: python echo.py myoutput
+    - name: echo
+      runcommand: python echo.py myoutput
       projectid: echo
-      env: ~
-      image: ~
-      secrets: ~
-      pipeline: ~
-      source:
-        gitrepository: ~
-        gitreference: ~
-        amestoragepath: ~
+      source: {}
       resources:
         cpu: "2"
         memory: 4Gi

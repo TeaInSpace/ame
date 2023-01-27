@@ -61,6 +61,9 @@ test_server *ARGS:
 server_logs *ARGS:
   kubectl logs -n {{TARGET_NAMESPACE}} -l app=ame-server {{ARGS}}
 
+controller_logs *ARGS:
+  kubectl logs -n {{TARGET_NAMESPACE}} -l app=ame-controller {{ARGS}}
+
 review_snapshots:
   cargo insta review
 

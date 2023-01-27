@@ -42,6 +42,15 @@ pub enum Error {
 
     #[error("Environment variable was not present: {0}")]
     MissingEnvVariable(#[from] VarError),
+
+    #[error("No model deployment was found")]
+    MissingDeployment(),
+
+    #[error("No Mlfow URL was found")]
+    MissingMlflowUrl(),
+
+    #[error("Request error: {0}")]
+    RequestError(#[from] reqwest::Error),
 }
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
@@ -57,3 +66,6 @@ pub use argo::WorkflowPhase;
 
 pub mod project;
 pub mod project_source;
+pub use project_source::GitProjectSource;
+pub use project_source::ProjectSource;
+pub use project_source::ProjectSourceSpec;

@@ -37,6 +37,9 @@ spec:
               image:
                 nullable: true
                 type: string
+              name:
+                nullable: true
+                type: string
               pipeline:
                 items:
                   properties:
@@ -77,6 +80,7 @@ spec:
                 nullable: true
                 type: array
               projectid:
+                nullable: true
                 type: string
               resources:
                 additionalProperties:
@@ -116,6 +120,7 @@ spec:
                 nullable: true
                 type: object
               runcommand:
+                nullable: true
                 type: string
               secrets:
                 items:
@@ -143,15 +148,15 @@ spec:
                     nullable: true
                     type: string
                 type: object
+              taskRef:
+                nullable: true
+                type: string
               taskType:
                 enum:
                 - PipEnv
                 - Mlflow
                 nullable: true
                 type: string
-            required:
-            - projectid
-            - runcommand
             type: object
           status:
             description: The status object of `Task`

@@ -65,6 +65,9 @@ message ProjectSource {
 
 message GitProjectSource {
   string repository = 1;
+  optional string username = 2;
+  optional string secret = 3;
+  optional string sync_interval = 4;
 }
 
 service AmeService {
@@ -74,4 +77,5 @@ service AmeService {
   rpc CreateTaskProjectDirectory(TaskProjectDirectoryStructure) returns (Empty) {}
   rpc UploadProjectFile(stream ProjectFileChunk) returns (Empty) {}
   rpc StreamTaskLogs(TaskLogRequest) returns (stream LogEntry) {}
+  rpc CreateProjectSrc(ProjectSource) returns (Empty) {}
 }

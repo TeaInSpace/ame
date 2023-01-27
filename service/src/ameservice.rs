@@ -33,6 +33,7 @@ pub struct AmeServiceConfig {
 #[derive(Debug, Clone)]
 pub struct Service {
     tasks: Arc<Api<controller::Task>>,
+    project_srcs: Arc<Api<controller::ProjectSource>>,
     storage: Arc<ObjectStorage<S3StorageDriver>>,
     pods: Arc<Api<Pod>>,
 }
@@ -239,6 +240,22 @@ impl AmeService for Service {
 
         Ok(Response::new(ReceiverStream::new(log_receiver)))
     }
+
+    async fn create_project_src(
+        &self,
+        request: Request<ProjectSource>,
+    ) -> Result<Response<Empty>, Status> {
+        self.project_srcs
+            .create(
+                &PostParams::default(),
+                &controller::ProjectSource::try_from(request.into_inner())
+                    .map_err(|e| Status::from_error(Box::new(e)))?,
+            )
+            .await
+            .map_err(|e| Status::from_error(Box::new(e)))?;
+
+        Ok(Response::new(Empty {}))
+    }
 }
 
 impl Service {
@@ -248,11 +265,13 @@ impl Service {
         let client = Client::try_default().await?;
         let target_namespace = "ame-system";
         let tasks = Api::<controller::Task>::namespaced(client.clone(), target_namespace);
-        let pods = Api::<Pod>::namespaced(client, target_namespace);
+        let pods = Api::<Pod>::namespaced(client.clone(), target_namespace);
+        let project_srcs = Api::<controller::ProjectSource>::namespaced(client, target_namespace);
 
         let task_service = Service {
             tasks: Arc::new(tasks),
             pods: Arc::new(pods),
+            project_srcs: Arc::new(project_srcs),
             storage: Arc::new(ObjectStorage::<S3StorageDriver>::new_s3_storage(
                 &cfg.bucket,
                 cfg.s3config,
@@ -290,8 +309,8 @@ impl TryFrom<self::CreateTaskRequest> for controller::Task {
                 ..ObjectMeta::default()
             },
             spec: controller::TaskSpec {
-                projectid: template.projectid,
-                runcommand: template.command,
+                projectid: Some(template.projectid),
+                runcommand: Some(template.command),
                 image: template.image,
                 task_type: template.task_type.map(|t| {
                     if t == 1 {
@@ -307,6 +326,37 @@ impl TryFrom<self::CreateTaskRequest> for controller::Task {
     }
 }
 
+impl TryFrom<ProjectSource> for controller::ProjectSource {
+    type Error = Error;
+
+    fn try_from(project_src: ProjectSource) -> std::result::Result<Self, Self::Error> {
+        let Some(GitProjectSource {
+                repository,
+                username,
+                secret,
+                sync_interval: _,
+                ..
+            }) = project_src.git else {
+                return Err(Error::ConversionError("Could not generate ProjectSource object".to_string()));
+            };
+        Ok(controller::ProjectSource {
+            metadata: ObjectMeta {
+                generate_name: Some("ameprojectsrc".to_string()),
+                ..ObjectMeta::default()
+            },
+            spec: controller::ProjectSourceSpec {
+                git: Some(controller::GitProjectSource {
+                    repository,
+                    username,
+                    secret,
+                    sync_interval: None,
+                }),
+            },
+            status: None,
+        })
+    }
+}
+
 impl From<TaskTemplate> for controller::Task {
     fn from(t: TaskTemplate) -> Self {
         controller::Task {
@@ -315,8 +365,8 @@ impl From<TaskTemplate> for controller::Task {
                 ..ObjectMeta::default()
             },
             spec: controller::TaskSpec {
-                projectid: t.projectid,
-                runcommand: t.command,
+                projectid: Some(t.projectid),
+                runcommand: Some(t.command),
                 image: t.image,
                 task_type: t.task_type.map(|t| {
                     if t == 1 {
@@ -336,8 +386,8 @@ impl From<controller::Task> for TaskTemplate {
     fn from(t: controller::Task) -> Self {
         TaskTemplate {
             name: "".to_string(),
-            command: t.spec.runcommand,
-            projectid: t.spec.projectid,
+            command: t.spec.runcommand.unwrap_or("".to_string()),
+            projectid: t.spec.projectid.unwrap_or("".to_string()),
             image: t.spec.image,
             task_type: t.spec.task_type.map(|t| {
                 if t == controller::TaskType::Mlflow {

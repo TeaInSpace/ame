@@ -40,6 +40,38 @@ spec:
               configMapKeyRef:
                 name: ame-controller-configmap
                 key: executor_image
+          - name: AME_NAMESPACE
+            value: ame-system
+          - name: AME_MLFLOW_URL
+            value: http://mlflow.default.svc.cluster.local:5000
+          - name: AME_MODEL_DEPLOYMENT_INGRESS
+            value: |
+                apiVersion: networking.k8s.io/v1
+                kind: Ingress
+                metadata:
+                  name: grpc-ingress
+                  annotations:
+                    nginx.ingress.kubernetes.io/backend-protocol: "GRPC"
+                    cert-manager.io/cluster-issuer: "letsencrypt-staging"
+                spec:
+                  ingressClassName: nginx
+                  rules:
+                  - host: grpc.20.76.43.59.nip.io   
+                    http:
+                      paths:
+                      - path: /
+                        pathType: ImplementationSpecific
+                        backend:
+                          service:
+                            name: grpc-service
+                            port:
+                              number: 50051
+                  tls: # < placing a host in the TLS config will determine what ends up in the cert's subjectAltNames
+                    - hosts:
+                      - 20.76.43.59.nip.io
+                      secretName: myingress-cert-grpc # < cert-manager will store the created certificate in this secret.
+                      serviceAccountName: ame-controller
+                      terminationGracePeriodSeconds: 10
       serviceAccountName: ame-controller
       terminationGracePeriodSeconds: 10
 ---

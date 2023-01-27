@@ -1,6 +1,7 @@
 use ame_client::ame_service_client::AmeServiceClient;
 use clap::{Parser, Subcommand};
 use cli::{project::Project, CliConfiguration, Result};
+use tonic::Request;
 
 #[derive(Parser)]
 #[command()]
@@ -11,9 +12,22 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    Init { name: String },
-    Run { name: String },
-    Setup { endpoint: String },
+    Init {
+        name: String,
+    },
+    Run {
+        name: String,
+    },
+    Setup {
+        endpoint: String,
+    },
+    #[command(subcommand)]
+    Create(CreateCommands),
+}
+
+#[derive(Subcommand)]
+enum CreateCommands {
+    Projectsrc { repository: String },
 }
 
 #[tokio::main]
@@ -41,6 +55,20 @@ async fn main() -> Result<()> {
             println!("configuration saved!");
 
             AmeServiceClient::connect(CliConfiguration::gather()?.endpoint).await?;
+
+            Ok(())
+        }
+        Commands::Create(CreateCommands::Projectsrc { repository }) => {
+            let mut client = AmeServiceClient::connect(config.endpoint).await?;
+
+            client
+                .create_project_src(Request::new(ame_client::ProjectSource {
+                    git: Some(ame_client::GitProjectSource {
+                        repository: repository.to_string(),
+                        ..ame_client::GitProjectSource::default()
+                    }),
+                }))
+                .await?;
 
             Ok(())
         }
