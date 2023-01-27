@@ -13,5 +13,5 @@ if __name__ == "__main__":
     score = lr.score(X, y)
     print("Score: %s" % score)
     mlflow.log_metric("score", score)
-    mlflow.sklearn.log_model(lr, "model")
+    mlflow.sklearn.log_model(lr, "model", registered_model_name="test_model")
     print("Model saved in run %s" % mlflow.active_run().info.run_uuid)

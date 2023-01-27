@@ -32,23 +32,23 @@ use std::{fs, sync::Arc, time::Duration};
 )]
 #[serde(rename_all = "camelCase")]
 pub struct ProjectSourceSpec {
-    git: Option<GitProjectSource>,
+    pub git: Option<GitProjectSource>,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug, JsonSchema, PartialEq, Eq, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ProjectSourceStatus {
-    syncing: bool,
-    last_synced: Option<Time>,
+    pub syncing: bool,
+    pub last_synced: Option<Time>,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug, JsonSchema, PartialEq, Eq, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct GitProjectSource {
-    repository: String,
-    username: Option<String>,
-    secret: Option<String>,
-    sync_internal: Option<Duration>,
+    pub repository: String,
+    pub username: Option<String>,
+    pub secret: Option<String>,
+    pub sync_interval: Option<Duration>,
 }
 
 #[derive(Envconfig, Clone)]
@@ -83,6 +83,8 @@ impl ProjectSource {
             return Err(Error::MissingProjectSrc("git".to_string()))
         };
 
+        let _ = fs::remove_dir_all("/tmp/".to_string() + &self.name_any());
+
         let git_secret = self.git_secret(secrets).await?;
 
         let mut opts = FetchOptions::new();
@@ -110,18 +112,24 @@ impl ProjectSource {
 
         // TODO: ensure that cloning never clashes with other directories.
         // TODO: How will we handle large repositories?
-        let _repo = builder.clone(&repository, Path::new(&self.name_any()))?;
+        let _repo = builder.clone(
+            &repository,
+            Path::new(&format!("/tmp/{}", &self.name_any())),
+        )?;
 
-        let project = serde_yaml::from_str(&fs::read_to_string(self.name_any() + "/ame.yaml")?)?;
+        let project = serde_yaml::from_str(&fs::read_to_string(format!(
+            "/tmp/{}/ame.yaml",
+            self.name_any()
+        ))?)?;
 
-        fs::remove_dir_all("./".to_string() + &self.name_any())?;
+        fs::remove_dir_all("/tmp/".to_string() + &self.name_any())?;
 
         Ok(vec![project])
     }
 
     fn sync_interval(&self) -> Duration {
         if let Some(GitProjectSource {
-            sync_internal: Some(sync_internal),
+            sync_interval: Some(sync_internal),
             ..
         }) = self.spec.git
         {
@@ -178,6 +186,10 @@ async fn reconcile(src: Arc<ProjectSource>, ctx: Arc<Context>) -> Result<Action>
             spec: project_specs[0].clone(),
             status: None,
         };
+
+        if let Some(GitProjectSource { ref repository, .. }) = src.spec.git {
+            project.add_annotation("gitrepository".to_string(), repository.to_string());
+        }
 
         let project = project.add_owner_reference(oref);
 

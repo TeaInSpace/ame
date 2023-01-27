@@ -44,6 +44,24 @@ rules:
   - tasks/status
   verbs:
   - get
+- apiGroups:
+  - ame.teainspace.com
+  resources:
+  - projectsources 
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ame.teainspace.com
+  resources:
+  - projectsources/status
+  verbs:
+  - get
 - apiGroups: 
   - ""
   resources: 

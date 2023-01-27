@@ -1,0 +1,50 @@
+---
+source: controller/src/project.rs
+expression: "&deployments.get(&model_name).await?.spec"
+---
+progressDeadlineSeconds: 600
+replicas: 1
+revisionHistoryLimit: 10
+selector:
+  matchLabels:
+    ame-model: test
+strategy:
+  rollingUpdate:
+    maxSurge: 25%
+    maxUnavailable: 25%
+  type: RollingUpdate
+template:
+  metadata:
+    labels:
+      ame-model: test
+  spec:
+    containers:
+      - command:
+          - mlflow serve -m test --enable-ml-server
+        env:
+          - name: MLFLOW_TRACKING_URI
+            value: "http://mlflow.default.svc.cluster.local:5000"
+        image: test_img
+        imagePullPolicy: Always
+        name: main
+        ports:
+          - containerPort: 5000
+            protocol: TCP
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /
+            port: 5000
+            scheme: HTTP
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+    dnsPolicy: ClusterFirst
+    restartPolicy: Always
+    schedulerName: default-scheduler
+    securityContext: {}
+    terminationGracePeriodSeconds: 30
+

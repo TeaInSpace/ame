@@ -1,0 +1,20 @@
+---
+source: controller/src/project.rs
+expression: "&services.get(&model_name).await?.spec"
+---
+clusterIP: 10.43.197.162
+clusterIPs:
+  - 10.43.197.162
+internalTrafficPolicy: Cluster
+ipFamilies:
+  - IPv4
+ipFamilyPolicy: SingleStack
+ports:
+  - port: 5000
+    protocol: TCP
+    targetPort: 5000
+selector:
+  ame-model: test
+sessionAffinity: None
+type: ClusterIP
+

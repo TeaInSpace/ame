@@ -1,0 +1,20 @@
+---
+source: controller/src/project.rs
+expression: "&ingresses.get(&model_name).await?.spec"
+---
+ingressClassName: nginx
+rules:
+  - host: testhost
+    http:
+      paths:
+        - backend:
+            service:
+              name: test
+              port:
+                number: 5000
+          pathType: ImplementationSpecific
+tls:
+  - hosts:
+      - testhost
+    secretName: test-tls
+

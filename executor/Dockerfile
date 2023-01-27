@@ -43,6 +43,6 @@ RUN pip install pipenv
 # Task execution.
 RUN pip install s3cmd
 
-RUN pip install mlflow
+RUN pip install mlflow[extras]
 
 WORKDIR /project

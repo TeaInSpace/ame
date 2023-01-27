@@ -29,7 +29,7 @@ spec:
                   secret:
                     nullable: true
                     type: string
-                  syncInternal:
+                  syncInterval:
                     nullable: true
                     properties:
                       nanos:
