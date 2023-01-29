@@ -46,11 +46,17 @@ pub enum Error {
     #[error("No model deployment was found")]
     MissingDeployment(),
 
+    #[error("No matching template found was found: {0} {1}")]
+    MissingTemplate(String, String),
+
     #[error("No Mlfow URL was found")]
     MissingMlflowUrl(),
 
     #[error("Request error: {0}")]
     RequestError(#[from] reqwest::Error),
+
+    #[error("Failed to merge structs: {0}")]
+    MergeError(#[from] serde_merge::error::Error),
 }
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;

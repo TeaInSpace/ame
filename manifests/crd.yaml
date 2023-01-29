@@ -205,6 +205,9 @@ spec:
                 - Mlflow
                 nullable: true
                 type: string
+              templateRef:
+                nullable: true
+                type: string
             type: object
           status:
             description: The status object of `Task`

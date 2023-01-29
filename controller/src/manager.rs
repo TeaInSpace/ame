@@ -1,6 +1,7 @@
 use crate::argo::ArgoScriptTemplate;
 use crate::argo::WorkflowStep;
 use crate::argo::WorkflowTemplate;
+use crate::project;
 use crate::Workflow;
 use crate::WorkflowPhase;
 use crate::{Error, Result};
@@ -36,6 +37,7 @@ use std::sync::Arc;
 use tokio::time::Duration;
 
 use envconfig::Envconfig;
+use serde_merge::omerge;
 
 #[derive(Envconfig, Clone)]
 pub struct TaskControllerConfig {
@@ -99,6 +101,9 @@ pub struct TaskSpec {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub task_ref: Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub template_ref: Option<String>,
 }
 
 #[derive(JsonSchema, Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -221,6 +226,32 @@ pub struct ProjectSource {
     pub gitreference: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub amestoragepath: Option<String>,
+}
+
+async fn resolve_template(
+    name: &str,
+    project_id: &str,
+    projects: Api<project::Project>,
+) -> Result<TaskSpec> {
+    let Some(project) = projects
+        .list(&ListParams::default())
+        .await?
+        .into_iter()
+        .find(|p| p.spec.id == project_id) else {
+        return Err(Error::MissingTemplate(
+            project_id.to_string(),
+            name.to_string(),
+        ));
+        };
+
+    if let Some(template) = project.get_template(name) {
+        Ok(template)
+    } else {
+        Err(Error::MissingTemplate(
+            project_id.to_string(),
+            name.to_string(),
+        ))
+    }
 }
 
 impl Task {
@@ -401,7 +432,7 @@ impl Task {
     }
 
     fn generate_wf_template(
-        &self,
+        &mut self,
         volume_name: &str,
         config: &TaskControllerConfig,
     ) -> Result<WorkflowTemplate> {
@@ -464,7 +495,11 @@ impl Task {
         ))
     }
 
-    fn generate_workflow(&self, config: &TaskControllerConfig) -> Result<Workflow> {
+    fn generate_workflow(
+        &mut self,
+        config: &TaskControllerConfig,
+        _projects: Api<project::Project>,
+    ) -> Result<Workflow> {
         let volume_name = format!("{}-volume", self.name_any());
         let mut volume_resource_requirements = BTreeMap::new();
         volume_resource_requirements.insert("storage".to_string(), Quantity("50Gi".to_string()));
@@ -515,6 +550,30 @@ impl Task {
             .add_owner_reference(oref)
             .clone())
     }
+
+    async fn solve_template(&mut self, projects: Api<project::Project>) -> Result<()> {
+        let TaskSpec {
+            template_ref: Some(ref template_ref),
+            ..
+        } = self.spec else {
+            return Ok(())
+        };
+
+        let (template_name, project_id) = {
+            let vals: Vec<&str> = template_ref.split('.').collect();
+            if vals.len() != 2 {
+                return Err(Error::MissingTemplate("".to_string(), "".to_string()));
+            }
+
+            (vals[1], vals[0])
+        };
+
+        let template = resolve_template(template_name, project_id, projects).await?;
+
+        self.spec = omerge(template, self.spec.clone())?;
+
+        Ok(())
+    }
 }
 
 #[derive(Clone)]
@@ -526,6 +585,7 @@ struct Context {
 async fn reconcile(task: Arc<Task>, ctx: Arc<Context>) -> Result<Action> {
     let tasks = Api::<Task>::namespaced(ctx.client.clone(), &ctx.config.namespace);
     let workflows = Api::<Workflow>::namespaced(ctx.client.clone(), &ctx.config.namespace);
+    let projects = Api::<project::Project>::namespaced(ctx.client.clone(), &ctx.config.namespace);
 
     let task_phase: &TaskPhase = if let Some(status) = &task.status {
         match &status.phase {
@@ -563,12 +623,16 @@ async fn reconcile(task: Arc<Task>, ctx: Arc<Context>) -> Result<Action> {
         return Ok(Action::requeue(Duration::from_secs(50)));
     }
 
-    let correct_wf = &task.generate_workflow(&ctx.config)?;
+    let mut task: Task = Task::clone(&task);
+
+    task.solve_template(projects.clone()).await?;
+
+    let correct_wf = task.generate_workflow(&ctx.config, projects)?;
     let wf = match workflows
         .patch(
             &correct_wf.name_any(),
             &PatchParams::apply("taskmanager.teainspace.com"),
-            &kube::api::Patch::Apply(correct_wf),
+            &kube::api::Patch::Apply(&correct_wf),
         )
         .await
     {
@@ -599,7 +663,7 @@ async fn reconcile(task: Arc<Task>, ctx: Arc<Context>) -> Result<Action> {
         };
 
         if &correct_task_phase != task_phase {
-            let mut new_task = (*task).clone();
+            let mut new_task = task.clone();
             let original_status = new_task.status.unwrap_or(TaskStatus::default());
 
             new_task.metadata.managed_fields = None;
@@ -792,9 +856,9 @@ mod test {
     }
 
     // TODO: Should we test some fields explicitly?
-    #[test]
-    fn task_can_generate_workflow() {
-        let t: Task = serde_json::from_value(json!({
+    #[tokio::test]
+    async fn task_can_generate_workflow() {
+        let mut t: Task = serde_json::from_value(json!({
             "apiVersion": "ame.teainspace.com/v1alpha1",
             "kind": "Task",
             "metadata": { "name": "training" },
@@ -829,14 +893,16 @@ mod test {
         }))
         .unwrap();
 
-        let wf: Workflow = t.generate_workflow(&gen_test_config()).unwrap();
+        let client = Client::try_default().await.unwrap();
+        let projects = Api::<project::Project>::default_namespaced(client);
+        let wf: Workflow = t.generate_workflow(&gen_test_config(), projects).unwrap();
 
         insta::assert_yaml_snapshot!(&wf);
     }
 
-    #[test]
-    fn task_can_override_workflow_image() {
-        let t: Task = serde_json::from_value(json!({
+    #[tokio::test]
+    async fn task_can_override_workflow_image() {
+        let mut t: Task = serde_json::from_value(json!({
             "apiVersion": "ame.teainspace.com/v1alpha1",
             "kind": "Task",
             "metadata": { "name": "training" },
@@ -872,14 +938,16 @@ mod test {
         }))
         .unwrap();
 
-        let wf: Workflow = t.generate_workflow(&gen_test_config()).unwrap();
+        let client = Client::try_default().await.unwrap();
+        let projects = Api::<project::Project>::default_namespaced(client);
+        let wf: Workflow = t.generate_workflow(&gen_test_config(), projects).unwrap();
 
         insta::assert_yaml_snapshot!(&wf);
     }
 
-    #[test]
-    fn task_can_have_git_src() {
-        let t: Task = serde_json::from_value(json!({
+    #[tokio::test]
+    async fn task_can_have_git_src() {
+        let mut t: Task = serde_json::from_value(json!({
             "apiVersion": "ame.teainspace.com/v1alpha1",
             "kind": "Task",
             "metadata": { "name": "training" },
@@ -917,14 +985,16 @@ mod test {
         }))
         .unwrap();
 
-        let wf: Workflow = t.generate_workflow(&gen_test_config()).unwrap();
+        let client = Client::try_default().await.unwrap();
+        let projects = Api::<project::Project>::default_namespaced(client);
+        let wf: Workflow = t.generate_workflow(&gen_test_config(), projects).unwrap();
 
         insta::assert_yaml_snapshot!(&wf);
     }
 
-    #[test]
-    fn task_can_have_vault_secret() {
-        let t: Task = serde_json::from_value(json!({
+    #[tokio::test]
+    async fn task_can_have_vault_secret() {
+        let mut t: Task = serde_json::from_value(json!({
             "apiVersion": "ame.teainspace.com/v1alpha1",
             "kind": "Task",
             "metadata": { "name": "training" },
@@ -961,7 +1031,9 @@ mod test {
         }))
         .unwrap();
 
-        let wf: Workflow = t.generate_workflow(&gen_test_config()).unwrap();
+        let client = Client::try_default().await.unwrap();
+        let projects = Api::<project::Project>::default_namespaced(client);
+        let wf: Workflow = t.generate_workflow(&gen_test_config(), projects).unwrap();
 
         insta::assert_yaml_snapshot!(&wf);
     }
