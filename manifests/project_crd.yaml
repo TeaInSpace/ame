@@ -669,6 +669,9 @@ spec:
                               - Mlflow
                               nullable: true
                               type: string
+                            templateRef:
+                              nullable: true
+                              type: string
                           type: object
                       required:
                       - task
@@ -868,6 +871,9 @@ spec:
                       - Mlflow
                       nullable: true
                       type: string
+                    templateRef:
+                      nullable: true
+                      type: string
                   type: object
                 nullable: true
                 type: array
@@ -1056,6 +1062,9 @@ spec:
                       enum:
                       - PipEnv
                       - Mlflow
+                      nullable: true
+                      type: string
+                    templateRef:
                       nullable: true
                       type: string
                   type: object

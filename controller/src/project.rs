@@ -149,6 +149,20 @@ impl Project {
         }
     }
 
+    pub fn get_template(&self, name: &str) -> Option<TaskSpec> {
+        if let Some(ref templates) = self.spec.templates {
+            templates.clone().into_iter().find(|m| {
+                if let Some(ref tname) = m.name {
+                    tname == name
+                } else {
+                    false
+                }
+            })
+        } else {
+            None
+        }
+    }
+
     pub fn generate_model_training_task(&self, name: &str) -> Result<manager::Task> {
         let Some(model) = self.get_model(name) else {
             return Err(Error::MissingProjectSrc("model".to_string()));
