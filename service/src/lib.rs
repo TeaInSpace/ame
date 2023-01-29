@@ -51,6 +51,9 @@ pub enum Error {
 
     #[error("Got error from formatting: {0}")]
     FormatError(#[from] FromUtf8Error),
+
+    #[error("Failed to find the requested model: {0}")]
+    MissingModel(String),
 }
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 

@@ -59,14 +59,38 @@ spec:
                       type: string
                     secrets:
                       items:
+                        oneOf:
+                        - required:
+                          - AmeSecret
+                        - required:
+                          - VaultSecret
                         properties:
-                          envkey:
-                            type: string
-                          name:
-                            type: string
-                        required:
-                        - envkey
-                        - name
+                          AmeSecret:
+                            properties:
+                              envkey:
+                                type: string
+                              name:
+                                type: string
+                            required:
+                            - envkey
+                            - name
+                            type: object
+                          VaultSecret:
+                            properties:
+                              envkey:
+                                type: string
+                              secretKey:
+                                type: string
+                              secretPath:
+                                type: string
+                              vaultName:
+                                type: string
+                            required:
+                            - envkey
+                            - secretKey
+                            - secretPath
+                            - vaultName
+                            type: object
                         type: object
                       type: array
                     taskname:
@@ -124,14 +148,38 @@ spec:
                 type: string
               secrets:
                 items:
+                  oneOf:
+                  - required:
+                    - AmeSecret
+                  - required:
+                    - VaultSecret
                   properties:
-                    envkey:
-                      type: string
-                    name:
-                      type: string
-                  required:
-                  - envkey
-                  - name
+                    AmeSecret:
+                      properties:
+                        envkey:
+                          type: string
+                        name:
+                          type: string
+                      required:
+                      - envkey
+                      - name
+                      type: object
+                    VaultSecret:
+                      properties:
+                        envkey:
+                          type: string
+                        secretKey:
+                          type: string
+                        secretPath:
+                          type: string
+                        vaultName:
+                          type: string
+                      required:
+                      - envkey
+                      - secretKey
+                      - secretPath
+                      - vaultName
+                      type: object
                   type: object
                 nullable: true
                 type: array

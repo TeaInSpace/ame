@@ -46,16 +46,16 @@ use serde_json::json;
 #[serde(rename_all = "camelCase")]
 pub struct ProjectSpec {
     #[serde(rename = "projectid")]
-    id: String,
+    pub id: String,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    models: Option<Vec<Model>>,
+    pub models: Option<Vec<Model>>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    tasks: Option<Vec<TaskSpec>>,
+    pub tasks: Option<Vec<TaskSpec>>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    templates: Option<Vec<TaskSpec>>,
+    pub templates: Option<Vec<TaskSpec>>,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug, JsonSchema, PartialEq, Eq, Default)]
@@ -139,6 +139,52 @@ impl Project {
 
         self.metadata.annotations = Some(annotations);
         self
+    }
+
+    fn get_model(&self, name: &str) -> Option<Model> {
+        if let Some(ref models) = self.spec.models {
+            models.clone().into_iter().find(|m| m.name == name)
+        } else {
+            None
+        }
+    }
+
+    pub fn generate_model_training_task(&self, name: &str) -> Result<manager::Task> {
+        let Some(model) = self.get_model(name) else {
+            return Err(Error::MissingProjectSrc("model".to_string()));
+        };
+
+        let task_ref = model.training.task.task_ref.clone().unwrap();
+
+        let project_spec = self.spec.clone();
+        let tasks = project_spec.tasks.unwrap();
+        let mut task_spec = tasks
+            .iter()
+            .find(|t| t.name.clone().unwrap() == task_ref)
+            .unwrap()
+            .to_owned();
+
+        let medata = self.metadata.clone();
+
+        let annotations = medata.annotations.unwrap();
+
+        let repo = annotations.get("gitrepository").unwrap();
+
+        task_spec.source = Some(manager::ProjectSource {
+            gitrepository: Some(repo.to_owned()),
+            ..manager::ProjectSource::default()
+        });
+
+        let metadata = ObjectMeta {
+            name: Some(model.name),
+            ..ObjectMeta::default()
+        };
+
+        Ok(manager::Task {
+            metadata: add_owner_reference(metadata, self.controller_owner_ref(&()).unwrap()),
+            spec: task_spec,
+            status: None,
+        })
     }
 }
 
@@ -413,7 +459,7 @@ struct MlflowModelVersion {
 }
 
 async fn reconcile(project: Arc<Project>, ctx: Arc<Context>) -> Result<Action> {
-    println!("reconciling project srcs");
+    println!("reconciling projects");
     let _projects = Api::<Project>::namespaced(ctx.client.clone(), &ctx.config.namespace);
     let deployments = Api::<Deployment>::namespaced(ctx.client.clone(), &ctx.config.namespace);
     let ingresses = Api::<Ingress>::namespaced(ctx.client.clone(), &ctx.config.namespace);
@@ -479,6 +525,8 @@ async fn reconcile(project: Arc<Project>, ctx: Arc<Context>) -> Result<Action> {
                         .await?;
                 }
             };
+
+            println!("updating model deployment");
 
             let mut deployment = model
                 .generate_model_deployment(&ctrl_cfg, model_version?.source)

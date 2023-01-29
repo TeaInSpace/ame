@@ -21,6 +21,10 @@ enum Commands {
     Setup {
         endpoint: String,
     },
+    Train {
+        project: String,
+        model: String,
+    },
     #[command(subcommand)]
     Create(CreateCommands),
 }
@@ -58,6 +62,17 @@ async fn main() -> Result<()> {
 
             Ok(())
         }
+        Commands::Train { project, model } => {
+            let mut client = AmeServiceClient::connect(config.endpoint).await?;
+
+            client
+                .train_model(Request::new(ame_client::TrainRequest {
+                    projectid: project.to_string(),
+                    model_name: model.to_string(),
+                }))
+                .await?;
+            Ok(())
+        }
         Commands::Create(CreateCommands::Projectsrc { repository }) => {
             let mut client = AmeServiceClient::connect(config.endpoint).await?;
 
@@ -65,6 +80,7 @@ async fn main() -> Result<()> {
                 .create_project_src(Request::new(ame_client::ProjectSource {
                     git: Some(ame_client::GitProjectSource {
                         repository: repository.to_string(),
+                        sync_interval: Some("10s".to_string()),
                         ..ame_client::GitProjectSource::default()
                     }),
                 }))

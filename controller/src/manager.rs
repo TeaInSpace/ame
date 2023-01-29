@@ -140,13 +140,55 @@ impl From<&TaskEnvVar> for EnvVar {
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug, JsonSchema)]
-pub struct TaskSecret {
-    name: String,
-    envkey: String,
+pub struct AmeSecret {
+    pub name: String,
+    pub envkey: String,
 }
 
-impl From<&TaskSecret> for EnvVar {
-    fn from(ts: &TaskSecret) -> EnvVar {
+#[derive(Deserialize, Serialize, Clone, Debug, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct VaultSecret {
+    pub vault_name: String,
+    pub secret_key: String,
+    pub secret_path: String,
+    pub envkey: String,
+}
+
+impl VaultSecret {
+    fn annotations(&self, service_account: String) -> BTreeMap<String, String> {
+        let mut annotations = BTreeMap::new();
+
+        annotations.insert(
+            "vault.hashicorp.com/agent-inject".to_string(),
+            "true".to_string(),
+        );
+        annotations.insert("vault.hashicorp.com/role".to_string(), service_account);
+        annotations.insert(
+            "vault.hashicorp.com/agent-inject-secret-config".to_string(),
+            "internal/data/database/config".to_string(),
+        );
+        annotations.insert(
+            "vault.hashicorp.com/agent-inject-template-config".to_string(),
+            format!(
+                "{{{{- with secret \"{}\" -}}}}
+            export {}=\"{{{{ .Data.{} }}}}\"
+          {{{{- end -}}}}",
+                self.secret_path, self.envkey, self.secret_key
+            ),
+        );
+
+        annotations
+    }
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug, JsonSchema)]
+pub enum TaskSecret {
+    AmeSecret(AmeSecret),
+    VaultSecret(VaultSecret),
+}
+
+impl From<&AmeSecret> for EnvVar {
+    fn from(ts: &AmeSecret) -> EnvVar {
         EnvVar {
             name: ts.envkey.clone(),
             value_from: Some(EnvVarSource {
@@ -311,13 +353,51 @@ impl Task {
             )
         };
 
-        format!("
+        let src = format!("
           set -e # It is important that the workflow exits with an error code if execute or save_artifacts fails, so AME can take action based on that information.
 
           {task_exec_cmd}
 
           echo \"0\" >> exit.status
-            ",)
+            ",);
+
+        if self.uses_vault() {
+            format!(
+                "
+                source /vault/secrets/config
+
+                {src}"
+            )
+        } else {
+            src
+        }
+    }
+
+    fn uses_vault(&self) -> bool {
+        if let Some(ref secrets) = self.spec.secrets {
+            secrets
+                .iter()
+                .any(|s| matches!(s, TaskSecret::VaultSecret(_)))
+        } else {
+            false
+        }
+    }
+
+    fn vault_secrets(&self) -> Vec<&VaultSecret> {
+        if let Some(secrets) = &self.spec.secrets {
+            secrets
+                .iter()
+                .filter_map(|s| {
+                    if let TaskSecret::VaultSecret(v) = s {
+                        Some(v)
+                    } else {
+                        None
+                    }
+                })
+                .collect()
+        } else {
+            vec![]
+        }
     }
 
     fn generate_wf_template(
@@ -326,7 +406,17 @@ impl Task {
         config: &TaskControllerConfig,
     ) -> Result<WorkflowTemplate> {
         let secret_env: Vec<EnvVar> = if let Some(secrets) = &self.spec.secrets {
-            secrets.iter().map(EnvVar::from).collect()
+            secrets
+                .iter()
+                .filter_map(|v| {
+                    if let TaskSecret::AmeSecret(secret) = v {
+                        Some(secret)
+                    } else {
+                        None
+                    }
+                })
+                .map(EnvVar::from)
+                .collect()
         } else {
             vec![]
         };
@@ -337,7 +427,7 @@ impl Task {
             secret_env
         };
 
-        Ok(WorkflowTemplate {
+        let mut wf_template = WorkflowTemplate {
             pod_spec_patch: Some(self.generate_pod_spec_patch()?),
             ..self.common_wf_template(
                 self.name_any(),
@@ -353,7 +443,18 @@ impl Task {
                     ..config.clone()
                 },
             )?
-        })
+        };
+
+        if self.uses_vault() {
+            let vault_secrets = self.vault_secrets();
+            for vs in vault_secrets {
+                wf_template = wf_template
+                    .bulk_annotate(vs.annotations("ame-task".to_string()))
+                    .clone();
+            }
+        }
+
+        Ok(wf_template)
     }
 
     fn generate_pod_spec_patch(&self) -> Result<String> {
@@ -375,6 +476,7 @@ impl Task {
 
         Ok(Workflow::default()
             .set_name(self.name_any())
+            .set_service_account("ame-task".to_string())
             .label("ame-task".to_string(), self.name_any())
             .add_template(
                 WorkflowTemplate::new("main".to_string())
@@ -711,13 +813,17 @@ mod test {
                 ],
                 "secrets": [
                 {
+                    "AmeSecret" : {
                     "name": "secret1",
                     "envkey": "KEY1"
+                    }
                 },
                 {
+                    "AmeSecret" : {
                     "name": "secret2",
                     "envkey": "KEY2"
-                }
+                    }
+                },
                 ]
             }
         }))
@@ -750,13 +856,17 @@ mod test {
                 "image": "very-different-image",
                 "secrets": [
                 {
+                    "AmeSecret" : {
                     "name": "secret1",
                     "envkey": "KEY1"
+                    }
                 },
                 {
+                    "AmeSecret" : {
                     "name": "secret2",
                     "envkey": "KEY2"
-                }
+                    }
+                },
                 ]
             }
         }))
@@ -788,17 +898,65 @@ mod test {
                 ],
                 "secrets": [
                 {
+                    "AmeSecret" : {
                     "name": "secret1",
                     "envkey": "KEY1"
+                    }
                 },
                 {
+                    "AmeSecret" : {
                     "name": "secret2",
                     "envkey": "KEY2"
+                    }
                 },
                 ],
                 "source": {
                     "gitrepository": "gitrepo",
                 },
+            }
+        }))
+        .unwrap();
+
+        let wf: Workflow = t.generate_workflow(&gen_test_config()).unwrap();
+
+        insta::assert_yaml_snapshot!(&wf);
+    }
+
+    #[test]
+    fn task_can_have_vault_secret() {
+        let t: Task = serde_json::from_value(json!({
+            "apiVersion": "ame.teainspace.com/v1alpha1",
+            "kind": "Task",
+            "metadata": { "name": "training" },
+            "spec": {
+                "runcommand": "python train.py",
+                "projectid": "myproject",
+                "env": [
+                {
+                    "name": "VAR1",
+                    "value": "val1"
+                },
+                {
+                    "name": "VAR2",
+                    "value": "val2"
+                }
+                ],
+                "secrets": [
+                {
+                    "VaultSecret" : {
+                    "vaultName": "myvault",
+                    "secretKey": "mysecret",
+                    "secretPath": "/my/secret/path",
+                    "envkey": "KEY1",
+                    }
+                },
+                {
+                    "AmeSecret" : {
+                    "name": "secret2",
+                    "envkey": "KEY2"
+                    }
+                },
+                ],
             }
         }))
         .unwrap();

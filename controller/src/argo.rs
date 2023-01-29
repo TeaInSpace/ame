@@ -25,6 +25,7 @@ pub struct WorkflowSpec {
     pub image_pull_secrets: Option<Vec<LocalObjectReference>>,
     pub volume_claim_templates: Option<Vec<PersistentVolumeClaim>>,
     pub volumes: Option<Vec<Volume>>,
+    pub service_account_name: Option<String>,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug, JsonSchema)]
@@ -97,6 +98,27 @@ impl WorkflowTemplate {
             }
         }
 
+        self
+    }
+
+    pub fn bulk_annotate(
+        &mut self,
+        mut new_annos: BTreeMap<String, String>,
+    ) -> &mut WorkflowTemplate {
+        let mut metadata = if let Some(metadata) = self.metadata.clone() {
+            metadata
+        } else {
+            PodMetadata::default()
+        };
+
+        if let Some(mut annotations) = metadata.clone().annotations {
+            annotations.append(&mut new_annos);
+            metadata.annotations = Some(annotations);
+        } else {
+            metadata.annotations = Some(new_annos);
+        }
+
+        self.metadata = Some(metadata);
         self
     }
 }
@@ -213,6 +235,11 @@ impl Workflow {
             None => self.metadata.owner_references = Some(vec![owner_reference]),
         };
 
+        self
+    }
+
+    pub fn set_service_account(&mut self, service_account: String) -> &mut Workflow {
+        self.spec.service_account_name = Some(service_account);
         self
     }
 }

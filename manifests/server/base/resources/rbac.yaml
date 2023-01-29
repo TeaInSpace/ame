@@ -18,6 +18,9 @@ subjects:
 - kind: ServiceAccount
   name: ame-server
   namespace: ame-system
+- kind: ServiceAccount
+  name: ame-task
+  namespace: ame-system
 
 ---
 
@@ -72,3 +75,17 @@ rules:
   - get
   - watch
   - list
+  - patch
+- apiGroups:
+  - ame.teainspace.com
+  resources:
+  - projects
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+

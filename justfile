@@ -10,6 +10,7 @@ EXECUTOR_IMAGE_TAG := AME_REGISTRY + "/" +  EXECUTOR_IMAGE + IMG_TAG
 LOCAL_EXECUTOR_IMAGE_TAG := "main:" + AME_REGISTRY_PORT + "/" + EXECUTOR_IMAGE + ":latest"
 CONTROLLER_IMAGE_TAG := AME_REGISTRY + "/" +  CONTROLLER_IMAGE + IMG_TAG
 TARGET_NAMESPACE := "ame-system"
+TASK_SERVICE_ACCOUNT := "ame-task"
 
 # See https://github.com/rust-lang/rustfix/issues/200#issuecomment-923111872
 export __CARGO_FIX_YOLO := "1"
@@ -104,6 +105,7 @@ k3s:
 
 create_namespace:
   kubectl create ns {{TARGET_NAMESPACE}}
+  kubectl create sa {{TASK_SERVICE_ACCOUNT}}
 
 delete_cluster:
   k3d cluster delete main
@@ -215,6 +217,7 @@ add_helm_repos:
   helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
   helm repo add bitnami https://charts.bitnami.com/bitnami
   helm repo add ncsa https://opensource.ncsa.illinois.edu/charts/
+  helm repo add hashicorp https://helm.releases.hashicorp.com
   helm repo update
 
 deploy_keycloak:
@@ -231,6 +234,30 @@ deploy_nginx:
   helm install ingress-nginx ingress-nginx/ingress-nginx \
   --wait --version 3.34.0 --set-string controller.config.ssl-redirect=false
 
+deploy_vault:
+  helm install vault hashicorp/vault \
+      --set "server.dev.enabled=true" -n vault 
+
+configure_vault:
+   #!/bin/sh
+   kubectl exec -n vault -it vault-0 -- vault auth enable kubernetes
+   kubectl exec -n vault -it vault-0 -- bin/sh -c 'vault write auth/kubernetes/config \
+      kubernetes_host="https://$KUBERNETES_PORT_443_TCP_ADDR:443"'
+
+   kubectl exec -n vault -it vault-0 -- vault policy write {{TASK_SERVICE_ACCOUNT}} - <<EOF
+   path "internal/data/database/config" {
+   capabilities = ["read"]
+   }
+   EOF
+
+   kubectl exec -n vault -it vault-0 -- vault write auth/kubernetes/role/{{TASK_SERVICE_ACCOUNT}} \
+   bound_service_account_names={{TASK_SERVICE_ACCOUNT}} \
+   bound_service_account_namespaces={{TARGET_NAMESPACE}} \
+   policies=ame-task \
+   ttl=24h
+
+   kubectl exec -n vault -it vault-0 -- vault secrets enable -path=internal kv-v2
+   kubectl exec -n vault -it vault-0 -- vault kv put internal/data/database/config username="db-readonly-username" password="db-secret-password"
 
 install_cert_manager:
 	kubectl create ns cert-manager --dry-run=client -o yaml | kubectl apply -f -
