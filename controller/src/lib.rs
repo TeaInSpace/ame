@@ -65,6 +65,8 @@ pub use argo::Workflow;
 pub use argo::WorkflowPhase;
 
 pub mod project;
+pub use project::*;
+
 pub mod project_source;
 pub use project_source::GitProjectSource;
 pub use project_source::ProjectSource;

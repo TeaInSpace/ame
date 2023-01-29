@@ -70,6 +70,11 @@ message GitProjectSource {
   optional string sync_interval = 4;
 }
 
+message TrainRequest {
+  string projectid = 1;
+  string model_name = 2;
+}
+
 service AmeService {
   rpc GetTask(TaskIdentifier) returns (TaskTemplate) {}
   rpc CreateTask(CreateTaskRequest) returns (TaskIdentifier) {}
@@ -78,4 +83,5 @@ service AmeService {
   rpc UploadProjectFile(stream ProjectFileChunk) returns (Empty) {}
   rpc StreamTaskLogs(TaskLogRequest) returns (stream LogEntry) {}
   rpc CreateProjectSrc(ProjectSource) returns (Empty) {}
+  rpc TrainModel(TrainRequest) returns (Empty) {}
 }

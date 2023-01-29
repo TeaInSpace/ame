@@ -34,12 +34,33 @@ pub struct AmeServiceConfig {
 pub struct Service {
     tasks: Arc<Api<controller::Task>>,
     project_srcs: Arc<Api<controller::ProjectSource>>,
+    projects: Arc<Api<controller::Project>>,
     storage: Arc<ObjectStorage<S3StorageDriver>>,
     pods: Arc<Api<Pod>>,
 }
 
 #[tonic::async_trait]
 impl AmeService for Service {
+    async fn train_model(&self, request: Request<TrainRequest>) -> Result<Response<Empty>, Status> {
+        let tr = request.into_inner();
+
+        let Some(project) = self.projects.list(&ListParams::default()).await.unwrap().into_iter().find(|p| p.spec.id == tr.projectid) else {
+            return Err(Status::from_error(Box::new(Error::MissingModel(tr.model_name.clone()))));
+        };
+
+        self.tasks
+            .create(
+                &PostParams::default(),
+                &project
+                    .generate_model_training_task(&tr.model_name)
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        Ok(Response::new(Empty {}))
+    }
+
     async fn get_task(
         &self,
         request: Request<TaskIdentifier>,
@@ -266,12 +287,15 @@ impl Service {
         let target_namespace = "ame-system";
         let tasks = Api::<controller::Task>::namespaced(client.clone(), target_namespace);
         let pods = Api::<Pod>::namespaced(client.clone(), target_namespace);
-        let project_srcs = Api::<controller::ProjectSource>::namespaced(client, target_namespace);
+        let project_srcs =
+            Api::<controller::ProjectSource>::namespaced(client.clone(), target_namespace);
+        let projects = Api::<controller::Project>::namespaced(client, target_namespace);
 
         let task_service = Service {
             tasks: Arc::new(tasks),
             pods: Arc::new(pods),
             project_srcs: Arc::new(project_srcs),
+            projects: Arc::new(projects),
             storage: Arc::new(ObjectStorage::<S3StorageDriver>::new_s3_storage(
                 &cfg.bucket,
                 cfg.s3config,
