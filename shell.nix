@@ -21,6 +21,7 @@ pkgs.mkShell {
     python310Packages.mlflow
     kubernetes-helm
     grpcurl
+    sass
   ];
 
   # Certain Rust tools won't work without this
