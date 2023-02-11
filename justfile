@@ -49,7 +49,7 @@ check:
   cargo +nightly fmt --check 
   cargo +nightly clippy --workspace --tests --all -- -D warnings
   cargo outdated
-  cargo +nightly udeps --all-targets --workspace --show-unused-transitive
+  cargo +nightly udeps --all-targets --workspace --show-unused-transitive --exclude web # TODO: solve false positives for web package.
 
 test *ARGS:
   cargo test --workspace {{ARGS}}
