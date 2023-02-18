@@ -94,6 +94,14 @@ pub mod grpc {
                 }),
             }
         }
+        pub fn from_git_repo(repo: String) -> Self {
+            Self {
+                git: Some(GitProjectSource {
+                    repository: repo,
+                    ..GitProjectSource::default()
+                }),
+            }
+        }
     }
 }
 
