@@ -9,6 +9,7 @@ message TaskIdentifier {
 enum TaskType {
   Pipenv = 0;
   Mlflow = 1;
+  Poetry = 2;
 }
 
 message TaskTemplate {

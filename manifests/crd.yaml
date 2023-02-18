@@ -203,6 +203,7 @@ spec:
                 enum:
                 - PipEnv
                 - Mlflow
+                - Poetry
                 nullable: true
                 type: string
               templateRef:
