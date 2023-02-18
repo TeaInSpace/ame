@@ -29,21 +29,9 @@ spec:
                   secret:
                     nullable: true
                     type: string
-                  syncInterval:
+                  sync_interval:
                     nullable: true
-                    properties:
-                      nanos:
-                        format: uint32
-                        minimum: 0.0
-                        type: integer
-                      secs:
-                        format: uint64
-                        minimum: 0.0
-                        type: integer
-                    required:
-                    - nanos
-                    - secs
-                    type: object
+                    type: string
                   username:
                     nullable: true
                     type: string
@@ -54,15 +42,31 @@ spec:
           status:
             nullable: true
             properties:
-              lastSynced:
-                description: Time is a wrapper around time.Time which supports correct marshaling to YAML and JSON.  Wrappers are provided for many of the factory methods that the time package offers.
-                format: date-time
+              issues:
+                items:
+                  properties:
+                    explanation:
+                      nullable: true
+                      type: string
+                    issue_type:
+                      format: int32
+                      type: integer
+                  required:
+                  - issue_type
+                  type: object
+                type: array
+              last_synced:
                 nullable: true
                 type: string
-              syncing:
-                type: boolean
+              reason:
+                nullable: true
+                type: string
+              state:
+                format: int32
+                type: integer
             required:
-            - syncing
+            - issues
+            - state
             type: object
         required:
         - spec

@@ -1,8 +1,14 @@
 use assert_cmd::prelude::*;
 use assert_fs::prelude::*;
-use common::{find_ame_endpoint, setup_cluster};
+use controller::secrets::SecretCtrl;
+use controller::{
+    common::{find_ame_endpoint, private_repo_gh_pat, setup_cluster},
+    project_source_ctrl::ProjectSrcCtrl,
+};
 use fs_extra::dir::CopyOptions;
+
 use insta::assert_snapshot;
+use kube::Client;
 use rstest::*;
 use serial_test::serial;
 use std::{
@@ -13,6 +19,8 @@ use std::{
 static AME_FILE_NAME: &str = "ame.yaml";
 static INGRESS_NAMESPACE: &str = "ingress-nginx";
 static INGRESS_SERVICE: &str = "ingress-nginx-controller";
+static AME_NAMESPACE: &str = "ame-system";
+static PRIVATE_GH_REPO_SECRET_KEY: &str = "org-secret";
 
 async fn test_setup() -> Result<(), Box<dyn std::error::Error>> {
     std::env::set_var(
@@ -195,6 +203,103 @@ async fn fail_bad_server_endpoint() -> Result<(), Box<dyn std::error::Error>> {
             assert_snapshot!(&String::from_utf8(output.get_output().stdout.clone()).unwrap());
         },
     );
+
+    Ok(())
+}
+
+#[fixture]
+async fn kube_client() -> Result<Client, kube::Error> {
+    Client::try_default().await
+}
+
+#[rstest]
+#[case::public_repo(vec!["https://github.com/TeaInSpace/ame-demo.git"], true)]
+#[case::none_existent_repo(vec!["https://github.com/TeaInSpace/fake-repo.git"], false)]
+#[case::private_repo(vec!["https://github.com/TeaInSpace/ame-test-private.git", "-s", PRIVATE_GH_REPO_SECRET_KEY, "-u", "jmintb"], true)]
+#[case::fake_secret(vec!["https://github.com/TeaInSpace/ame-test-private.git", "-s", "secretdoestexist", "-u", "jmintb"], false)]
+#[tokio::test]
+#[serial]
+#[ignore]
+async fn can_create_project_source(
+    #[case] args: Vec<&str>,
+    #[case] should_succeed: bool,
+    #[future] kube_client: Result<Client, kube::Error>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let mut settings = insta::Settings::clone_current();
+    settings.add_filter("([⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏].*)", "");
+    let _guard = settings.bind_to_scope();
+
+    test_setup().await?;
+
+    let secret_ctrl = SecretCtrl::new(kube_client.await?, AME_NAMESPACE);
+
+    secret_ctrl
+        .store_secret_if_empty(PRIVATE_GH_REPO_SECRET_KEY, private_repo_gh_pat()?)
+        .await?;
+
+    let mut cmd = Command::cargo_bin("cli")?;
+
+    let output = cmd
+        .arg("projectsrc")
+        .arg("create")
+        .args(args.clone())
+        .assert();
+
+    /*
+    assert_snapshot!(
+        format!(
+            "can_create_project_source::case::{:?}::{:?}",
+            args, should_succeed
+        ),
+        &String::from_utf8(output.get_output().stdout.clone())?
+    );
+    */
+
+    if should_succeed {
+        output.success();
+    } else {
+        output.failure();
+    }
+
+    let src_ctrl = ProjectSrcCtrl::try_namespaced(AME_NAMESPACE).await?;
+    src_ctrl.delete_project_src_for_repo(args[0]).await?;
+
+    secret_ctrl
+        .delete_secret(PRIVATE_GH_REPO_SECRET_KEY)
+        .await?;
+
+    Ok(())
+}
+
+#[tokio::test]
+#[serial]
+#[ignore]
+async fn cannot_create_multiple_sources_for_the_same_repo() -> Result<(), Box<dyn std::error::Error>>
+{
+    test_setup().await?;
+    let repo = "https://github.com/TeaInSpace/ame-demo.git";
+    let project_src_ctrl = ProjectSrcCtrl::new(kube_client().await?, AME_NAMESPACE);
+
+    let _ = project_src_ctrl.delete_project_src_for_repo(repo).await;
+
+    let mut cmd = Command::cargo_bin("cli")?;
+
+    let _output = cmd
+        .arg("projectsrc")
+        .arg("create")
+        .arg(repo)
+        .assert()
+        .success();
+
+    cmd = Command::cargo_bin("cli")?;
+    let _output = cmd
+        .arg("projectsrc")
+        .arg("create")
+        .arg(repo)
+        .assert()
+        .failure();
+
+    project_src_ctrl.delete_project_src_for_repo(repo).await?;
 
     Ok(())
 }

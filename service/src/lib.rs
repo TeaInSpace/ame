@@ -54,6 +54,12 @@ pub enum Error {
 
     #[error("Failed to find the requested model: {0}")]
     MissingModel(String),
+
+    #[error("Invalid project source: {0}")]
+    InvalidProjectSrc(String),
+
+    #[error("Failed to find project source for repository: {0}")]
+    MissingProjectSrc(String),
 }
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
@@ -89,10 +95,10 @@ pub async fn health_check<S: NamedService>(
 
 #[cfg(test)]
 mod test {
-    use super::ameservice::{TaskIdentifier, TaskProjectDirectoryStructure};
     use super::storage::{AmeFile, ObjectStorage, ObjectStorageDriver, S3Config, S3StorageDriver};
     use super::Result;
-    use common::find_service_endpoint;
+    use ame::grpc::{TaskIdentifier, TaskProjectDirectoryStructure};
+    use controller::common::find_service_endpoint;
     use serial_test::serial;
 
     async fn get_fresh_storage() -> Result<ObjectStorage<S3StorageDriver>> {

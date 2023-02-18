@@ -1,5 +1,5 @@
-use crate::ameservice::{TaskIdentifier, TaskProjectDirectoryStructure};
 use crate::Result;
+use ame::grpc::{TaskIdentifier, TaskProjectDirectoryStructure};
 use async_trait::async_trait;
 use envconfig::Envconfig;
 use s3::{bucket::Bucket, creds::Credentials, BucketConfiguration, Region};

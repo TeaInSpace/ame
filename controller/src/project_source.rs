@@ -1,13 +1,18 @@
 use crate::project::{Project, ProjectSpec};
+use crate::secrets::SecretCtrl;
 use crate::{Error, Result};
+use ame::grpc::GitProjectSource;
+use ame::grpc::ProjectSourceState;
+use ame::grpc::ProjectSourceStatus;
+use duration_string::DurationString;
 use envconfig::Envconfig;
 use futures::{future::BoxFuture, FutureExt, StreamExt};
 use git2::build::RepoBuilder;
 use git2::{Cred, FetchOptions};
 use k8s_openapi::api::core::v1::Secret;
-use k8s_openapi::apimachinery::pkg::apis::meta::v1::{OwnerReference, Time};
-use k8s_openapi::chrono::{DateTime, Utc};
-use k8s_openapi::ByteString;
+use k8s_openapi::apimachinery::pkg::apis::meta::v1::OwnerReference;
+use k8s_openapi::chrono::DateTime;
+
 use kube::{
     api::{Api, ListParams, PatchParams, ResourceExt},
     client::Client,
@@ -20,6 +25,7 @@ use serde::{Deserialize, Serialize};
 use std::path::Path;
 use std::time::SystemTime;
 use std::{fs, sync::Arc, time::Duration};
+use tracing::{info, warn};
 
 #[derive(CustomResource, Deserialize, Serialize, Clone, Debug, JsonSchema, Default)]
 #[kube(
@@ -32,23 +38,8 @@ use std::{fs, sync::Arc, time::Duration};
 )]
 #[serde(rename_all = "camelCase")]
 pub struct ProjectSourceSpec {
-    pub git: Option<GitProjectSource>,
-}
-
-#[derive(Deserialize, Serialize, Clone, Debug, JsonSchema, PartialEq, Eq, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct ProjectSourceStatus {
-    pub syncing: bool,
-    pub last_synced: Option<Time>,
-}
-
-#[derive(Deserialize, Serialize, Clone, Debug, JsonSchema, PartialEq, Eq, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct GitProjectSource {
-    pub repository: String,
-    pub username: Option<String>,
-    pub secret: Option<String>,
-    pub sync_interval: Option<Duration>,
+    #[serde(flatten)]
+    pub cfg: ame::grpc::ProjectSourceCfg,
 }
 
 #[derive(Envconfig, Clone)]
@@ -59,19 +50,12 @@ pub struct ProjectSrcCtrlCfg {
 
 impl ProjectSource {
     async fn git_secret(&self, secrets: Api<Secret>) -> Result<Option<String>> {
-        let Some(GitProjectSource {  secret: Some(secret_name), .. }) = self.spec.clone().git else {
-            return Ok(None);
-        };
-
-        let Some(secret_data) = secrets.get(&secret_name).await?.data else {
-            return Err(Error::MissingSecret(secret_name));
-        };
-
-        if let Some(ByteString(v)) = secret_data.get("secret").to_owned() {
-            Ok(Some(String::from_utf8(v.to_owned()).unwrap()))
-        } else {
-            Err(Error::MissingSecretKey(secret_name))
-        }
+        let Some(GitProjectSource {  secret: Some(secret_name), .. }) = self.spec.clone().cfg.git else {
+        return Ok(None);
+    };
+        Ok(Some(
+            SecretCtrl::from(secrets).get_secret(&secret_name).await?,
+        ))
     }
 
     async fn extract_projects(&self, secrets: Api<Secret>) -> Result<Vec<ProjectSpec>> {
@@ -79,7 +63,7 @@ impl ProjectSource {
         repository,
         username,
         ..
-        }) = self.spec.clone().git else {
+        }) = self.spec.clone().cfg.git else {
             return Err(Error::MissingProjectSrc("git".to_string()))
         };
 
@@ -127,28 +111,29 @@ impl ProjectSource {
         Ok(vec![project])
     }
 
-    fn sync_interval(&self) -> Duration {
+    fn sync_interval(&self) -> Result<Duration> {
         if let Some(GitProjectSource {
             sync_interval: Some(sync_internal),
             ..
-        }) = self.spec.git
+        }) = &self.spec.cfg.git
         {
-            sync_internal
+            Ok(DurationString::try_from(sync_internal.clone())
+                .map_err(Error::InvalidDuration)?
+                .into())
         } else {
-            Duration::from_secs(5 * 60)
+            Ok(Duration::from_secs(5 * 60))
         }
     }
 
     fn requires_sync(&self) -> Result<bool> {
         if let Some(ProjectSourceStatus {
-            last_synced: Some(Time(last_synced)),
+            last_synced: Some(ref last_synced),
             ..
         }) = self.status
         {
-            Ok(
-                std::time::SystemTime::now().duration_since(SystemTime::from(last_synced))?
-                    > self.sync_interval(),
-            )
+            Ok(std::time::SystemTime::now()
+                .duration_since(SystemTime::from(DateTime::parse_from_rfc2822(last_synced)?))?
+                > self.sync_interval()?)
         } else {
             Ok(true)
         }
@@ -161,7 +146,8 @@ struct Context {
 }
 
 async fn reconcile(src: Arc<ProjectSource>, ctx: Arc<Context>) -> Result<Action> {
-    println!("reconciling project srcs");
+    info!("Reconciling {}", src.name_any());
+
     let _srcs = Api::<ProjectSource>::namespaced(ctx.client.clone(), &ctx.config.namespace);
     let projects = Api::<Project>::namespaced(ctx.client.clone(), &ctx.config.namespace);
     let oref = if let Some(refe) = src.controller_owner_ref(&()) {
@@ -171,8 +157,32 @@ async fn reconcile(src: Arc<ProjectSource>, ctx: Arc<Context>) -> Result<Action>
     };
 
     let secrets = Api::<Secret>::namespaced(ctx.client.clone(), &ctx.config.namespace);
+
+    let mut patch: ProjectSource = _srcs.get_status(&src.name_any()).await?;
+    patch.metadata.managed_fields = None;
+
     if src.requires_sync()? {
-        let project_specs = src.extract_projects(secrets).await?;
+        let project_specs = match src.extract_projects(secrets).await {
+            Ok(specs) => specs,
+            Err(e) => {
+                let status = ProjectSourceStatus {
+                    state: ProjectSourceState::Error.into(),
+                    reason: Some(e.to_string()),
+                    ..patch.status.unwrap_or(ProjectSourceStatus::default())
+                };
+
+                patch.status = Some(status);
+
+                _srcs
+                    .patch_status(
+                        &src.name_any(),
+                        &PatchParams::apply("ame-controller"),
+                        &kube::api::Patch::Apply(patch),
+                    )
+                    .await?;
+                return Ok(Action::requeue(Duration::from_secs(50)));
+            }
+        };
 
         if project_specs.is_empty() {
             return Ok(Action::requeue(Duration::from_secs(50)));
@@ -187,7 +197,7 @@ async fn reconcile(src: Arc<ProjectSource>, ctx: Arc<Context>) -> Result<Action>
             status: None,
         };
 
-        if let Some(GitProjectSource { ref repository, .. }) = src.spec.git {
+        if let Some(GitProjectSource { ref repository, .. }) = src.spec.cfg.git {
             project.add_annotation("gitrepository".to_string(), repository.to_string());
         }
 
@@ -200,41 +210,40 @@ async fn reconcile(src: Arc<ProjectSource>, ctx: Arc<Context>) -> Result<Action>
                 &kube::api::Patch::Apply(project),
             )
             .await?;
-
-        let mut patch: ProjectSource = _srcs.get_status(&src.name_any()).await?;
-
-        let last_synced = Some(Time(DateTime::<Utc>::from(
-            DateTime::parse_from_rfc3339(&humantime::format_rfc3339(SystemTime::now()).to_string())
-                .unwrap(),
-        )));
-
-        patch.metadata.managed_fields = None;
-        if let Some(mut status) = patch.clone().status {
-            status.last_synced = last_synced;
-
-            patch.status = Some(status);
-        } else {
-            patch.status = Some(ProjectSourceStatus {
-                last_synced,
-                ..ProjectSourceStatus::default()
-            })
-        }
-
-        _srcs
-            .patch_status(
-                &src.name_any(),
-                &PatchParams::apply("ame-controller"),
-                &kube::api::Patch::Apply(patch),
-            )
-            .await?;
     }
 
-    Ok(Action::requeue(Duration::from_secs(10)))
+    let last_synced = Some(humantime::format_rfc3339(SystemTime::now()).to_string());
+    let mut patch: ProjectSource = _srcs.get_status(&src.name_any()).await?;
+    patch.metadata.managed_fields = None;
+
+    if let Some(mut status) = patch.clone().status {
+        status.last_synced = last_synced;
+        status.reason = Some("project has been synced".to_string());
+        status.state = ProjectSourceState::Synchronized.into();
+        patch.status = Some(status);
+    } else {
+        patch.status = Some(ProjectSourceStatus {
+            last_synced,
+            reason: Some("project has been synced".to_string()),
+            state: ProjectSourceState::Synchronized.into(),
+            ..ProjectSourceStatus::default()
+        })
+    }
+
+    _srcs
+        .patch_status(
+            &src.name_any(),
+            &PatchParams::apply("ame-controller"),
+            &kube::api::Patch::Apply(patch),
+        )
+        .await?;
+
+    Ok(Action::requeue(Duration::from_secs(5 * 60)))
 }
 
-fn error_policy(src: Arc<ProjectSource>, error: &Error, _ctx: Arc<Context>) -> Action {
-    println!("error: {}, for src: {}", error, src.name_any());
-    Action::requeue(Duration::from_secs(5))
+fn error_policy(_src: Arc<ProjectSource>, error: &Error, _ctx: Arc<Context>) -> Action {
+    warn!("failed to reconcile: {:?}", error);
+    Action::requeue(Duration::from_secs(5 * 60))
 }
 
 pub async fn start_project_source_controller(config: ProjectSrcCtrlCfg) -> BoxFuture<'static, ()> {
@@ -263,24 +272,19 @@ pub async fn start_project_source_controller(config: ProjectSrcCtrlCfg) -> BoxFu
 #[cfg(test)]
 mod test {
 
-    use std::collections::BTreeMap;
+    use crate::common::private_repo_gh_pat;
 
     use super::*;
+    use crate::secrets::SecretCtrl;
     use assert_fs::prelude::*;
     use futures::StreamExt;
     use futures::TryStreamExt;
     use k8s_openapi::api::core::v1::Secret;
     use kube::api::DeleteParams;
-    use kube::api::Patch;
+
     use kube::{api::PostParams, core::WatchEvent};
     use serde_json::json;
     use serial_test::serial;
-
-    // This is an access token for https://github.com/TeaInSpace/ame-test-private intended for
-    // testing that AME can pull in projects from private repositories.
-    fn gh_pat() -> Result<String> {
-        Ok(std::env::var("AME_TEST_GH_TOKEN")?)
-    }
 
     fn test_project_src() -> Result<ProjectSource> {
         Ok(serde_json::from_value(json!({
@@ -385,26 +389,14 @@ mod test {
         let client = Client::try_default().await?;
         let project_srcs = Api::<ProjectSource>::default_namespaced(client.clone());
         let projects = Api::<Project>::default_namespaced(client.clone());
-        let secrets = Api::<Secret>::default_namespaced(client.clone());
+
+        let secret_ctrl = SecretCtrl::new(client, "default");
 
         let secret_name = "ghsecret";
-        let mut secret_map = BTreeMap::new();
-        secret_map.insert("secret".to_string(), gh_pat()?);
-
-        secrets
-            .patch(
-                secret_name,
-                &PatchParams::apply("ame-controller-test"),
-                &Patch::Apply(Secret {
-                    metadata: ObjectMeta {
-                        name: Some(secret_name.to_string()),
-                        ..ObjectMeta::default()
-                    },
-                    string_data: Some(secret_map),
-                    ..Secret::default()
-                }),
-            )
-            .await?;
+        secret_ctrl
+            .store_secret_if_empty(secret_name, private_repo_gh_pat().unwrap())
+            .await
+            .unwrap();
 
         let _handle = tokio::spawn(
             start_project_source_controller(ProjectSrcCtrlCfg {

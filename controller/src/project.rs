@@ -6,7 +6,7 @@ use std::{
 
 use crate::{manager, Error, Result, TaskSpec};
 
-use ame_client::LogEntry;
+use ame::grpc::LogEntry;
 use futures::{future::BoxFuture, FutureExt, StreamExt};
 use k8s_openapi::{
     api::{
