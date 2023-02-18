@@ -11,7 +11,7 @@ patching file Misc/NEWS.d/next/Build/2021-10-11-16-27-38.bpo-45405.iSfdW5.rst
 patching file configure
 patching file configure.ac
 Installed Python-3.8.10 to /home/ame/.pyenv/versions/3.8.10
-"redacted timestamp" INFO mlflow.utils.virtualenv: Creating a new environment /home/ame/.mlflow/envs/mlflow-ba49d5c683fae3c4cdbe6b1fb8ca971330b218f4
+"redacted timestamp" INFO mlflow.utils.virtualenv: Creating a new environment in /home/ame/.mlflow/envs/"redacted MLflow env ID"python
 created virtual environment "redacted"
   creator "redacted"
   seeder FromAppData(download=False, pip=bundle, setuptools=bundle, wheel=bundle, via=copy, app_data_dir=/home/ame/.local/share/virtualenv)

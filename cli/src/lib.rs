@@ -1,6 +1,6 @@
 pub mod project;
 
-use ame_client::client_builder::AmeServiceClientCfg;
+use ame_client::client_builder::{build_ame_client, AmeClient, AmeServiceClientCfg};
 use envconfig::Envconfig;
 
 use http::uri::InvalidUri;
@@ -55,6 +55,7 @@ pub enum Error {
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
+pub mod projectsrc;
 pub mod secrets;
 
 #[derive(Clone, Default, Deserialize, Serialize, Envconfig, PartialEq, Debug)]
@@ -102,6 +103,15 @@ impl CliConfiguration {
             endpoint,
             ..CliConfiguration::default()
         }
+    }
+
+    pub async fn ame_client(&self) -> Result<AmeClient> {
+        Ok(build_ame_client(AmeServiceClientCfg {
+            disable_tls_cert_check: true, // TODO: the CLI needs some configuration for this.
+            endpoint: self.endpoint.parse().unwrap(),
+            id_token: self.id_token.clone(),
+        })
+        .await?)
     }
 }
 

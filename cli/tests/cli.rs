@@ -417,3 +417,117 @@ async fn can_train_validate_and_deploy_model() -> Result<(), Box<dyn std::error:
 
     Ok(())
 }
+
+#[ignore]
+#[tokio::test]
+#[serial]
+async fn can_delete_project_src() -> Result<(), Box<dyn std::error::Error>> {
+    let repo = "https://github.com/TeaInSpace/ame-demo.git";
+    let project_src_ctrl = ProjectSrcCtrl::new(kube_client().await?, AME_NAMESPACE);
+
+    project_src_ctrl
+        .create_project_src(&ame::grpc::ProjectSourceCfg::from_git_repo(
+            repo.to_string(),
+        ))
+        .await?;
+
+    let mut cmd = Command::cargo_bin("cli")?;
+    cmd.arg("projectsrc")
+        .arg("delete")
+        .arg(repo)
+        .assert()
+        .success();
+
+    assert_eq!(project_src_ctrl.list_project_src().await?.len(), 0);
+
+    Ok(())
+}
+
+#[ignore]
+#[tokio::test]
+#[serial]
+async fn can_list_project_srcs() -> Result<(), Box<dyn std::error::Error>> {
+    let repos = vec![
+        "https://github.com/TeaInSpace/ame-demo.git",
+        "https://github.com/TeaInSpace/ame-template-demo.git",
+    ];
+    let project_src_ctrl = ProjectSrcCtrl::new(kube_client().await?, AME_NAMESPACE);
+
+    for repo in &repos {
+        project_src_ctrl
+            .create_project_src(&ame::grpc::ProjectSourceCfg::from_git_repo(
+                repo.to_string(),
+            ))
+            .await?;
+    }
+
+    let mut cmd = Command::cargo_bin("cli")?;
+    let output = cmd.arg("projectsrc").arg("list").assert().success();
+
+    assert_snapshot!(&String::from_utf8(output.get_output().stdout.clone())?);
+
+    for repo in &repos {
+        project_src_ctrl.delete_project_src_for_repo(repo).await?;
+    }
+
+    Ok(())
+}
+
+#[ignore]
+#[tokio::test]
+#[serial]
+async fn can_edit_project_src() -> Result<(), Box<dyn std::error::Error>> {
+    let repo = "https://github.com/TeaInSpace/ame-demo.git";
+    let project_src_ctrl = ProjectSrcCtrl::new(kube_client().await?, AME_NAMESPACE);
+
+    let secret = "somesecret";
+    let username = "myuser";
+
+    project_src_ctrl
+        .create_project_src(&ame::grpc::ProjectSourceCfg::from_git_repo(
+            repo.to_string(),
+        ))
+        .await?;
+
+    let mut cmd = Command::cargo_bin("cli")?;
+    cmd.arg("projectsrc")
+        .arg("edit")
+        .arg(repo)
+        .arg("--secret")
+        .arg(secret)
+        .arg("--user")
+        .arg(username)
+        .assert()
+        .success();
+
+    assert_eq!(project_src_ctrl.list_project_src().await?.len(), 1);
+
+    let project_src = project_src_ctrl.get_project_src_for_repo(repo).await?;
+
+    assert_eq!(
+        project_src
+            .spec
+            .cfg
+            .git
+            .as_ref()
+            .unwrap()
+            .secret
+            .as_ref()
+            .expect("expect secret to exist"),
+        secret
+    );
+    assert_eq!(
+        project_src
+            .spec
+            .cfg
+            .git
+            .unwrap()
+            .username
+            .expect("expect username to exist"),
+        username
+    );
+
+    project_src_ctrl.delete_project_src_for_repo(repo).await?;
+
+    Ok(())
+}

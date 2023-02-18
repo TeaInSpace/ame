@@ -11,18 +11,28 @@ use tonic::Request;
 
 use crate::{CliConfiguration, Result};
 
+/// Manage secrets in  secret store.
 #[derive(Subcommand)]
 pub enum SecretCommand {
+    /// Create a secret
+    ///
+    /// The key will be used to identify the secret, when used with other
+    ///  resources.
+    ///
+    /// You will be prompted to input the secret value, how ever the value will not be
+    /// displayed for security.
     Create {
+        /// Key used to identify the secret.
         key: Option<String>,
-        #[arg(short, long)]
-        value: Option<String>,
     },
 
+    /// Delete a secret
     Delete {
+        /// Key used to identify the secret.
         key: Option<String>,
     },
 
+    /// List all secrets
     List,
 }
 
@@ -35,7 +45,7 @@ pub async fn exec_secret_command(cfg: CliConfiguration, cmd: &SecretCommand) -> 
     .await?;
 
     match cmd {
-        SecretCommand::Create { key, value } => {
+        SecretCommand::Create { key } => {
             let secret = AmeSecret {
                 key: key.clone().unwrap_or_else(|| {
                     Input::new()
@@ -43,12 +53,10 @@ pub async fn exec_secret_command(cfg: CliConfiguration, cmd: &SecretCommand) -> 
                         .interact()
                         .unwrap()
                 }),
-                value: value.clone().unwrap_or_else(|| {
-                    Password::new()
-                        .with_prompt("Please provide the secret value")
-                        .interact()
-                        .unwrap()
-                }),
+                value: Password::new()
+                    .with_prompt("Please provide the secret value")
+                    .interact()
+                    .unwrap(),
             };
 
             let mut spinner = Spinner::new(
