@@ -1,0 +1,559 @@
+start-axum v0.1.0 (/home/jmintb/Sync/lab/tea-in-space/test)
+├── cfg-if v1.0.0
+├── console_error_panic_hook v0.1.7
+│   ├── cfg-if v1.0.0
+│   └── wasm-bindgen v0.2.84
+│       ├── cfg-if v1.0.0
+│       └── wasm-bindgen-macro v0.2.84 (proc-macro)
+│           ├── quote v1.0.26
+│           │   └── proc-macro2 v1.0.52
+│           │       └── unicode-ident v1.0.8
+│           └── wasm-bindgen-macro-support v0.2.84
+│               ├── proc-macro2 v1.0.52 (*)
+│               ├── quote v1.0.26 (*)
+│               ├── syn v1.0.109
+│               │   ├── proc-macro2 v1.0.52 (*)
+│               │   ├── quote v1.0.26 (*)
+│               │   └── unicode-ident v1.0.8
+│               ├── wasm-bindgen-backend v0.2.84
+│               │   ├── bumpalo v3.12.0
+│               │   ├── log v0.4.17
+│               │   │   └── cfg-if v1.0.0
+│               │   ├── once_cell v1.17.1
+│               │   ├── proc-macro2 v1.0.52 (*)
+│               │   ├── quote v1.0.26 (*)
+│               │   ├── syn v1.0.109 (*)
+│               │   └── wasm-bindgen-shared v0.2.84
+│               └── wasm-bindgen-shared v0.2.84
+├── console_log v0.2.2
+│   ├── log v0.4.17
+│   │   └── cfg-if v1.0.0
+│   └── web-sys v0.3.61
+│       ├── js-sys v0.3.61
+│       │   └── wasm-bindgen v0.2.84 (*)
+│       └── wasm-bindgen v0.2.84 (*)
+├── http v0.2.9
+│   ├── bytes v1.4.0
+│   ├── fnv v1.0.7
+│   └── itoa v1.0.6
+├── leptos v0.2.3
+│   ├── cfg-if v1.0.0
+│   ├── leptos_config v0.2.3
+│   │   ├── config v0.13.3
+│   │   │   ├── async-trait v0.1.66 (proc-macro)
+│   │   │   │   ├── proc-macro2 v1.0.52 (*)
+│   │   │   │   ├── quote v1.0.26 (*)
+│   │   │   │   └── syn v1.0.109 (*)
+│   │   │   ├── json5 v0.4.1
+│   │   │   │   ├── pest v2.5.6
+│   │   │   │   │   ├── thiserror v1.0.39
+│   │   │   │   │   │   └── thiserror-impl v1.0.39 (proc-macro)
+│   │   │   │   │   │       ├── proc-macro2 v1.0.52 (*)
+│   │   │   │   │   │       ├── quote v1.0.26 (*)
+│   │   │   │   │   │       └── syn v1.0.109 (*)
+│   │   │   │   │   └── ucd-trie v0.1.5
+│   │   │   │   ├── pest_derive v2.5.6 (proc-macro)
+│   │   │   │   │   ├── pest v2.5.6 (*)
+│   │   │   │   │   └── pest_generator v2.5.6
+│   │   │   │   │       ├── pest v2.5.6 (*)
+│   │   │   │   │       ├── pest_meta v2.5.6
+│   │   │   │   │       │   ├── once_cell v1.17.1
+│   │   │   │   │       │   └── pest v2.5.6 (*)
+│   │   │   │   │       │   [build-dependencies]
+│   │   │   │   │       │   └── sha2 v0.10.6
+│   │   │   │   │       │       ├── cfg-if v1.0.0
+│   │   │   │   │       │       ├── cpufeatures v0.2.5
+│   │   │   │   │       │       └── digest v0.10.6
+│   │   │   │   │       │           ├── block-buffer v0.10.4
+│   │   │   │   │       │           │   └── generic-array v0.14.6
+│   │   │   │   │       │           │       └── typenum v1.16.0
+│   │   │   │   │       │           │       [build-dependencies]
+│   │   │   │   │       │           │       └── version_check v0.9.4
+│   │   │   │   │       │           └── crypto-common v0.1.6
+│   │   │   │   │       │               ├── generic-array v0.14.6 (*)
+│   │   │   │   │       │               └── typenum v1.16.0
+│   │   │   │   │       ├── proc-macro2 v1.0.52 (*)
+│   │   │   │   │       ├── quote v1.0.26 (*)
+│   │   │   │   │       └── syn v1.0.109 (*)
+│   │   │   │   └── serde v1.0.156
+│   │   │   │       └── serde_derive v1.0.156 (proc-macro)
+│   │   │   │           ├── proc-macro2 v1.0.52 (*)
+│   │   │   │           ├── quote v1.0.26 (*)
+│   │   │   │           └── syn v1.0.109 (*)
+│   │   │   ├── lazy_static v1.4.0
+│   │   │   ├── nom v7.1.3
+│   │   │   │   ├── memchr v2.5.0
+│   │   │   │   └── minimal-lexical v0.2.1
+│   │   │   ├── pathdiff v0.2.1
+│   │   │   ├── ron v0.7.1
+│   │   │   │   ├── base64 v0.13.1
+│   │   │   │   ├── bitflags v1.3.2
+│   │   │   │   └── serde v1.0.156 (*)
+│   │   │   ├── rust-ini v0.18.0
+│   │   │   │   ├── cfg-if v1.0.0
+│   │   │   │   └── ordered-multimap v0.4.3
+│   │   │   │       ├── dlv-list v0.3.0
+│   │   │   │       └── hashbrown v0.12.3
+│   │   │   │           └── ahash v0.7.6
+│   │   │   │               ├── getrandom v0.2.8
+│   │   │   │               │   ├── cfg-if v1.0.0
+│   │   │   │               │   └── libc v0.2.140
+│   │   │   │               └── once_cell v1.17.1
+│   │   │   │               [build-dependencies]
+│   │   │   │               └── version_check v0.9.4
+│   │   │   ├── serde v1.0.156 (*)
+│   │   │   ├── serde_json v1.0.94
+│   │   │   │   ├── itoa v1.0.6
+│   │   │   │   ├── ryu v1.0.13
+│   │   │   │   └── serde v1.0.156 (*)
+│   │   │   ├── toml v0.5.11
+│   │   │   │   └── serde v1.0.156 (*)
+│   │   │   └── yaml-rust v0.4.5
+│   │   │       └── linked-hash-map v0.5.6
+│   │   ├── fs v0.0.5
+│   │   │   ├── bytes v0.4.12
+│   │   │   │   ├── byteorder v1.4.3
+│   │   │   │   └── iovec v0.1.4
+│   │   │   │       └── libc v0.2.140
+│   │   │   ├── futures v0.1.31
+│   │   │   └── futures-cpupool v0.1.8
+│   │   │       ├── futures v0.1.31
+│   │   │       └── num_cpus v1.15.0
+│   │   │           └── libc v0.2.140
+│   │   ├── regex v1.7.1
+│   │   │   ├── aho-corasick v0.7.20
+│   │   │   │   └── memchr v2.5.0
+│   │   │   ├── memchr v2.5.0
+│   │   │   └── regex-syntax v0.6.28
+│   │   ├── serde v1.0.156 (*)
+│   │   ├── thiserror v1.0.39 (*)
+│   │   └── typed-builder v0.14.0 (proc-macro)
+│   │       ├── proc-macro2 v1.0.52 (*)
+│   │       ├── quote v1.0.26 (*)
+│   │       └── syn v1.0.109 (*)
+│   ├── leptos_dom v0.2.3
+│   │   ├── async-recursion v1.0.2 (proc-macro)
+│   │   │   ├── proc-macro2 v1.0.52 (*)
+│   │   │   ├── quote v1.0.26 (*)
+│   │   │   └── syn v1.0.109 (*)
+│   │   ├── cfg-if v1.0.0
+│   │   ├── drain_filter_polyfill v0.1.3
+│   │   ├── educe v0.4.20 (proc-macro)
+│   │   │   ├── enum-ordinalize v3.1.12 (proc-macro)
+│   │   │   │   ├── num-bigint v0.4.3
+│   │   │   │   │   ├── num-integer v0.1.45
+│   │   │   │   │   │   └── num-traits v0.2.15
+│   │   │   │   │   │       [build-dependencies]
+│   │   │   │   │   │       └── autocfg v1.1.0
+│   │   │   │   │   │   [build-dependencies]
+│   │   │   │   │   │   └── autocfg v1.1.0
+│   │   │   │   │   └── num-traits v0.2.15 (*)
+│   │   │   │   │   [build-dependencies]
+│   │   │   │   │   └── autocfg v1.1.0
+│   │   │   │   ├── num-traits v0.2.15 (*)
+│   │   │   │   ├── proc-macro2 v1.0.52 (*)
+│   │   │   │   ├── quote v1.0.26 (*)
+│   │   │   │   └── syn v1.0.109 (*)
+│   │   │   │   [build-dependencies]
+│   │   │   │   └── rustc_version v0.4.0
+│   │   │   │       └── semver v1.0.17
+│   │   │   ├── proc-macro2 v1.0.52 (*)
+│   │   │   ├── quote v1.0.26 (*)
+│   │   │   └── syn v1.0.109 (*)
+│   │   ├── futures v0.3.27
+│   │   │   ├── futures-channel v0.3.27
+│   │   │   │   ├── futures-core v0.3.27
+│   │   │   │   └── futures-sink v0.3.27
+│   │   │   ├── futures-core v0.3.27
+│   │   │   ├── futures-executor v0.3.27
+│   │   │   │   ├── futures-core v0.3.27
+│   │   │   │   ├── futures-task v0.3.27
+│   │   │   │   └── futures-util v0.3.27
+│   │   │   │       ├── futures-channel v0.3.27 (*)
+│   │   │   │       ├── futures-core v0.3.27
+│   │   │   │       ├── futures-io v0.3.27
+│   │   │   │       ├── futures-macro v0.3.27 (proc-macro)
+│   │   │   │       │   ├── proc-macro2 v1.0.52 (*)
+│   │   │   │       │   ├── quote v1.0.26 (*)
+│   │   │   │       │   └── syn v1.0.109 (*)
+│   │   │   │       ├── futures-sink v0.3.27
+│   │   │   │       ├── futures-task v0.3.27
+│   │   │   │       ├── memchr v2.5.0
+│   │   │   │       ├── pin-project-lite v0.2.9
+│   │   │   │       ├── pin-utils v0.1.0
+│   │   │   │       └── slab v0.4.8
+│   │   │   │           [build-dependencies]
+│   │   │   │           └── autocfg v1.1.0
+│   │   │   ├── futures-io v0.3.27
+│   │   │   ├── futures-sink v0.3.27
+│   │   │   ├── futures-task v0.3.27
+│   │   │   └── futures-util v0.3.27 (*)
+│   │   ├── html-escape v0.2.13
+│   │   │   └── utf8-width v0.1.6
+│   │   ├── indexmap v1.9.2
+│   │   │   └── hashbrown v0.12.3 (*)
+│   │   │   [build-dependencies]
+│   │   │   └── autocfg v1.1.0
+│   │   ├── itertools v0.10.5
+│   │   │   └── either v1.8.1
+│   │   ├── js-sys v0.3.61 (*)
+│   │   ├── leptos_reactive v0.2.3
+│   │   │   ├── base64 v0.21.0
+│   │   │   ├── cfg-if v1.0.0
+│   │   │   ├── futures v0.3.27 (*)
+│   │   │   ├── js-sys v0.3.61 (*)
+│   │   │   ├── serde v1.0.156 (*)
+│   │   │   ├── serde-wasm-bindgen v0.5.0
+│   │   │   │   ├── js-sys v0.3.61 (*)
+│   │   │   │   ├── serde v1.0.156 (*)
+│   │   │   │   └── wasm-bindgen v0.2.84 (*)
+│   │   │   ├── serde_json v1.0.94 (*)
+│   │   │   ├── slotmap v1.0.6
+│   │   │   │   └── serde v1.0.156 (*)
+│   │   │   │   [build-dependencies]
+│   │   │   │   └── version_check v0.9.4
+│   │   │   ├── thiserror v1.0.39 (*)
+│   │   │   ├── tracing v0.1.37
+│   │   │   │   ├── cfg-if v1.0.0
+│   │   │   │   ├── pin-project-lite v0.2.9
+│   │   │   │   ├── tracing-attributes v0.1.23 (proc-macro)
+│   │   │   │   │   ├── proc-macro2 v1.0.52 (*)
+│   │   │   │   │   ├── quote v1.0.26 (*)
+│   │   │   │   │   └── syn v1.0.109 (*)
+│   │   │   │   └── tracing-core v0.1.30
+│   │   │   │       └── once_cell v1.17.1
+│   │   │   ├── wasm-bindgen v0.2.84 (*)
+│   │   │   ├── wasm-bindgen-futures v0.4.34
+│   │   │   │   ├── cfg-if v1.0.0
+│   │   │   │   ├── js-sys v0.3.61 (*)
+│   │   │   │   └── wasm-bindgen v0.2.84 (*)
+│   │   │   └── web-sys v0.3.61 (*)
+│   │   ├── once_cell v1.17.1
+│   │   ├── pad-adapter v0.1.1
+│   │   ├── paste v1.0.12 (proc-macro)
+│   │   ├── rustc-hash v1.1.0
+│   │   ├── serde_json v1.0.94 (*)
+│   │   ├── smallvec v1.10.0
+│   │   ├── tracing v0.1.37 (*)
+│   │   ├── wasm-bindgen v0.2.84 (*)
+│   │   ├── wasm-bindgen-futures v0.4.34 (*)
+│   │   └── web-sys v0.3.61 (*)
+│   ├── leptos_macro v0.2.3 (proc-macro)
+│   │   ├── attribute-derive v0.5.0
+│   │   │   ├── attribute-derive-macro v0.5.0 (proc-macro)
+│   │   │   │   ├── collection_literals v1.0.1
+│   │   │   │   ├── interpolator v0.4.0
+│   │   │   │   ├── proc-macro-error v1.0.4
+│   │   │   │   │   ├── proc-macro-error-attr v1.0.4 (proc-macro)
+│   │   │   │   │   │   ├── proc-macro2 v1.0.52 (*)
+│   │   │   │   │   │   └── quote v1.0.26 (*)
+│   │   │   │   │   │   [build-dependencies]
+│   │   │   │   │   │   └── version_check v0.9.4
+│   │   │   │   │   ├── proc-macro2 v1.0.52 (*)
+│   │   │   │   │   ├── quote v1.0.26 (*)
+│   │   │   │   │   └── syn v1.0.109 (*)
+│   │   │   │   │   [build-dependencies]
+│   │   │   │   │   └── version_check v0.9.4
+│   │   │   │   ├── proc-macro-utils v0.5.1
+│   │   │   │   │   ├── proc-macro2 v1.0.52 (*)
+│   │   │   │   │   └── smallvec v1.10.0
+│   │   │   │   ├── proc-macro2 v1.0.52 (*)
+│   │   │   │   ├── quote v1.0.26 (*)
+│   │   │   │   ├── quote-use v0.6.0 (proc-macro)
+│   │   │   │   │   ├── derive-where v1.1.0 (proc-macro)
+│   │   │   │   │   │   ├── proc-macro2 v1.0.52 (*)
+│   │   │   │   │   │   ├── quote v1.0.26 (*)
+│   │   │   │   │   │   └── syn v1.0.109 (*)
+│   │   │   │   │   ├── proc-macro-error v1.0.4 (*)
+│   │   │   │   │   ├── proc-macro2 v1.0.52 (*)
+│   │   │   │   │   ├── quote v1.0.26 (*)
+│   │   │   │   │   └── syn v1.0.109 (*)
+│   │   │   │   └── syn v1.0.109 (*)
+│   │   │   ├── proc-macro2 v1.0.52 (*)
+│   │   │   ├── quote v1.0.26 (*)
+│   │   │   └── syn v1.0.109 (*)
+│   │   ├── cfg-if v1.0.0
+│   │   ├── convert_case v0.6.0
+│   │   │   └── unicode-segmentation v1.10.1
+│   │   ├── html-escape v0.2.13 (*)
+│   │   ├── itertools v0.10.5 (*)
+│   │   ├── leptos_dom v0.2.3 (*)
+│   │   ├── leptos_hot_reload v0.2.3
+│   │   │   ├── anyhow v1.0.69
+│   │   │   ├── camino v1.1.4
+│   │   │   ├── indexmap v1.9.2
+│   │   │   │   └── hashbrown v0.12.3
+│   │   │   │   [build-dependencies]
+│   │   │   │   └── autocfg v1.1.0
+│   │   │   ├── parking_lot v0.12.1
+│   │   │   │   ├── lock_api v0.4.9
+│   │   │   │   │   └── scopeguard v1.1.0
+│   │   │   │   │   [build-dependencies]
+│   │   │   │   │   └── autocfg v1.1.0
+│   │   │   │   └── parking_lot_core v0.9.7
+│   │   │   │       ├── cfg-if v1.0.0
+│   │   │   │       ├── libc v0.2.140
+│   │   │   │       └── smallvec v1.10.0
+│   │   │   ├── proc-macro2 v1.0.52 (*)
+│   │   │   ├── quote v1.0.26 (*)
+│   │   │   ├── serde v1.0.156 (*)
+│   │   │   ├── syn v1.0.109 (*)
+│   │   │   ├── syn-rsx v0.9.0
+│   │   │   │   ├── proc-macro2 v1.0.52 (*)
+│   │   │   │   ├── quote v1.0.26 (*)
+│   │   │   │   ├── syn v1.0.109 (*)
+│   │   │   │   └── thiserror v1.0.39 (*)
+│   │   │   └── walkdir v2.3.3
+│   │   │       └── same-file v1.0.6
+│   │   ├── leptos_reactive v0.2.3
+│   │   │   ├── base64 v0.21.0
+│   │   │   ├── cfg-if v1.0.0
+│   │   │   ├── futures v0.3.27 (*)
+│   │   │   ├── js-sys v0.3.61 (*)
+│   │   │   ├── serde v1.0.156 (*)
+│   │   │   ├── serde-wasm-bindgen v0.5.0 (*)
+│   │   │   ├── serde_json v1.0.94 (*)
+│   │   │   ├── slotmap v1.0.6 (*)
+│   │   │   ├── thiserror v1.0.39 (*)
+│   │   │   ├── tracing v0.1.37 (*)
+│   │   │   ├── wasm-bindgen v0.2.84 (*)
+│   │   │   ├── wasm-bindgen-futures v0.4.34 (*)
+│   │   │   └── web-sys v0.3.61
+│   │   │       ├── js-sys v0.3.61 (*)
+│   │   │       └── wasm-bindgen v0.2.84 (*)
+│   │   ├── prettyplease v0.1.25
+│   │   │   ├── proc-macro2 v1.0.52 (*)
+│   │   │   └── syn v1.0.109 (*)
+│   │   ├── proc-macro-error v1.0.4 (*)
+│   │   ├── proc-macro2 v1.0.52 (*)
+│   │   ├── quote v1.0.26 (*)
+│   │   ├── server_fn_macro v0.2.3
+│   │   │   ├── const_format v0.2.30
+│   │   │   │   └── const_format_proc_macros v0.2.29 (proc-macro)
+│   │   │   │       ├── proc-macro2 v1.0.52 (*)
+│   │   │   │       ├── quote v1.0.26 (*)
+│   │   │   │       └── unicode-xid v0.2.4
+│   │   │   ├── proc-macro-error v1.0.4 (*)
+│   │   │   ├── proc-macro2 v1.0.52 (*)
+│   │   │   ├── quote v1.0.26 (*)
+│   │   │   ├── serde v1.0.156 (*)
+│   │   │   ├── serde_json v1.0.94 (*)
+│   │   │   ├── serde_urlencoded v0.7.1
+│   │   │   │   ├── form_urlencoded v1.1.0
+│   │   │   │   │   └── percent-encoding v2.2.0
+│   │   │   │   ├── itoa v1.0.6
+│   │   │   │   ├── ryu v1.0.13
+│   │   │   │   └── serde v1.0.156 (*)
+│   │   │   ├── syn v1.0.109 (*)
+│   │   │   └── xxhash-rust v0.8.6
+│   │   ├── syn v1.0.109 (*)
+│   │   ├── syn-rsx v0.9.0 (*)
+│   │   └── uuid v1.3.0
+│   │       └── getrandom v0.2.8 (*)
+│   ├── leptos_reactive v0.2.3 (*)
+│   ├── leptos_server v0.2.3
+│   │   ├── lazy_static v1.4.0
+│   │   ├── leptos_dom v0.2.3 (*)
+│   │   ├── leptos_reactive v0.2.3 (*)
+│   │   ├── serde v1.0.156 (*)
+│   │   ├── serde_urlencoded v0.7.1 (*)
+│   │   ├── server_fn v0.2.3
+│   │   │   ├── cfg-if v1.0.0
+│   │   │   ├── ciborium v0.2.0
+│   │   │   │   ├── ciborium-io v0.2.0
+│   │   │   │   ├── ciborium-ll v0.2.0
+│   │   │   │   │   ├── ciborium-io v0.2.0
+│   │   │   │   │   └── half v1.8.2
+│   │   │   │   └── serde v1.0.156 (*)
+│   │   │   ├── const_format v0.2.30 (*)
+│   │   │   ├── form_urlencoded v1.1.0 (*)
+│   │   │   ├── once_cell v1.17.1
+│   │   │   ├── proc-macro2 v1.0.52
+│   │   │   │   └── unicode-ident v1.0.8
+│   │   │   ├── quote v1.0.26 (*)
+│   │   │   ├── reqwest v0.11.14
+│   │   │   │   ├── base64 v0.21.0
+│   │   │   │   ├── bytes v1.4.0
+│   │   │   │   ├── encoding_rs v0.8.32
+│   │   │   │   │   └── cfg-if v1.0.0
+│   │   │   │   ├── futures-core v0.3.27
+│   │   │   │   ├── futures-util v0.3.27 (*)
+│   │   │   │   ├── h2 v0.3.16
+│   │   │   │   │   ├── bytes v1.4.0
+│   │   │   │   │   ├── fnv v1.0.7
+│   │   │   │   │   ├── futures-core v0.3.27
+│   │   │   │   │   ├── futures-sink v0.3.27
+│   │   │   │   │   ├── futures-util v0.3.27 (*)
+│   │   │   │   │   ├── http v0.2.9 (*)
+│   │   │   │   │   ├── indexmap v1.9.2 (*)
+│   │   │   │   │   ├── slab v0.4.8 (*)
+│   │   │   │   │   ├── tokio v1.26.0
+│   │   │   │   │   │   ├── bytes v1.4.0
+│   │   │   │   │   │   ├── libc v0.2.140
+│   │   │   │   │   │   ├── memchr v2.5.0
+│   │   │   │   │   │   ├── mio v0.8.6
+│   │   │   │   │   │   │   ├── libc v0.2.140
+│   │   │   │   │   │   │   └── log v0.4.17 (*)
+│   │   │   │   │   │   ├── pin-project-lite v0.2.9
+│   │   │   │   │   │   └── socket2 v0.4.9
+│   │   │   │   │   │       └── libc v0.2.140
+│   │   │   │   │   │   [build-dependencies]
+│   │   │   │   │   │   └── autocfg v1.1.0
+│   │   │   │   │   ├── tokio-util v0.7.7
+│   │   │   │   │   │   ├── bytes v1.4.0
+│   │   │   │   │   │   ├── futures-core v0.3.27
+│   │   │   │   │   │   ├── futures-sink v0.3.27
+│   │   │   │   │   │   ├── pin-project-lite v0.2.9
+│   │   │   │   │   │   ├── tokio v1.26.0 (*)
+│   │   │   │   │   │   └── tracing v0.1.37 (*)
+│   │   │   │   │   └── tracing v0.1.37 (*)
+│   │   │   │   ├── http v0.2.9 (*)
+│   │   │   │   ├── http-body v0.4.5
+│   │   │   │   │   ├── bytes v1.4.0
+│   │   │   │   │   ├── http v0.2.9 (*)
+│   │   │   │   │   └── pin-project-lite v0.2.9
+│   │   │   │   ├── hyper v0.14.25
+│   │   │   │   │   ├── bytes v1.4.0
+│   │   │   │   │   ├── futures-channel v0.3.27 (*)
+│   │   │   │   │   ├── futures-core v0.3.27
+│   │   │   │   │   ├── futures-util v0.3.27 (*)
+│   │   │   │   │   ├── h2 v0.3.16 (*)
+│   │   │   │   │   ├── http v0.2.9 (*)
+│   │   │   │   │   ├── http-body v0.4.5 (*)
+│   │   │   │   │   ├── httparse v1.8.0
+│   │   │   │   │   ├── httpdate v1.0.2
+│   │   │   │   │   ├── itoa v1.0.6
+│   │   │   │   │   ├── pin-project-lite v0.2.9
+│   │   │   │   │   ├── socket2 v0.4.9 (*)
+│   │   │   │   │   ├── tokio v1.26.0 (*)
+│   │   │   │   │   ├── tower-service v0.3.2
+│   │   │   │   │   ├── tracing v0.1.37 (*)
+│   │   │   │   │   └── want v0.3.0
+│   │   │   │   │       ├── log v0.4.17 (*)
+│   │   │   │   │       └── try-lock v0.2.4
+│   │   │   │   ├── hyper-tls v0.5.0
+│   │   │   │   │   ├── bytes v1.4.0
+│   │   │   │   │   ├── hyper v0.14.25 (*)
+│   │   │   │   │   ├── native-tls v0.2.11
+│   │   │   │   │   │   ├── log v0.4.17 (*)
+│   │   │   │   │   │   ├── openssl v0.10.46
+│   │   │   │   │   │   │   ├── bitflags v1.3.2
+│   │   │   │   │   │   │   ├── cfg-if v1.0.0
+│   │   │   │   │   │   │   ├── foreign-types v0.3.2
+│   │   │   │   │   │   │   │   └── foreign-types-shared v0.1.1
+│   │   │   │   │   │   │   ├── libc v0.2.140
+│   │   │   │   │   │   │   ├── once_cell v1.17.1
+│   │   │   │   │   │   │   ├── openssl-macros v0.1.0 (proc-macro)
+│   │   │   │   │   │   │   │   ├── proc-macro2 v1.0.52 (*)
+│   │   │   │   │   │   │   │   ├── quote v1.0.26 (*)
+│   │   │   │   │   │   │   │   └── syn v1.0.109 (*)
+│   │   │   │   │   │   │   └── openssl-sys v0.9.81
+│   │   │   │   │   │   │       └── libc v0.2.140
+│   │   │   │   │   │   │       [build-dependencies]
+│   │   │   │   │   │   │       ├── autocfg v1.1.0
+│   │   │   │   │   │   │       ├── cc v1.0.79
+│   │   │   │   │   │   │       └── pkg-config v0.3.26
+│   │   │   │   │   │   ├── openssl-probe v0.1.5
+│   │   │   │   │   │   └── openssl-sys v0.9.81 (*)
+│   │   │   │   │   ├── tokio v1.26.0 (*)
+│   │   │   │   │   └── tokio-native-tls v0.3.1
+│   │   │   │   │       ├── native-tls v0.2.11 (*)
+│   │   │   │   │       └── tokio v1.26.0 (*)
+│   │   │   │   ├── ipnet v2.7.1
+│   │   │   │   ├── log v0.4.17 (*)
+│   │   │   │   ├── mime v0.3.16
+│   │   │   │   ├── native-tls v0.2.11 (*)
+│   │   │   │   ├── once_cell v1.17.1
+│   │   │   │   ├── percent-encoding v2.2.0
+│   │   │   │   ├── pin-project-lite v0.2.9
+│   │   │   │   ├── serde v1.0.156 (*)
+│   │   │   │   ├── serde_urlencoded v0.7.1 (*)
+│   │   │   │   ├── tokio v1.26.0 (*)
+│   │   │   │   ├── tokio-native-tls v0.3.1 (*)
+│   │   │   │   ├── tower-service v0.3.2
+│   │   │   │   └── url v2.3.1
+│   │   │   │       ├── form_urlencoded v1.1.0 (*)
+│   │   │   │       ├── idna v0.3.0
+│   │   │   │       │   ├── unicode-bidi v0.3.11
+│   │   │   │       │   └── unicode-normalization v0.1.22
+│   │   │   │       │       └── tinyvec v1.6.0
+│   │   │   │       │           └── tinyvec_macros v0.1.1
+│   │   │   │       └── percent-encoding v2.2.0
+│   │   │   ├── serde v1.0.156 (*)
+│   │   │   ├── serde_json v1.0.94 (*)
+│   │   │   ├── serde_urlencoded v0.7.1 (*)
+│   │   │   ├── server_fn_macro_default v0.2.3 (proc-macro)
+│   │   │   │   ├── proc-macro2 v1.0.52 (*)
+│   │   │   │   ├── server_fn_macro v0.2.3 (*)
+│   │   │   │   └── syn v1.0.109 (*)
+│   │   │   ├── syn v1.0.109
+│   │   │   │   ├── proc-macro2 v1.0.52 (*)
+│   │   │   │   ├── quote v1.0.26 (*)
+│   │   │   │   └── unicode-ident v1.0.8
+│   │   │   ├── thiserror v1.0.39 (*)
+│   │   │   └── xxhash-rust v0.8.6
+│   │   └── thiserror v1.0.39 (*)
+│   ├── server_fn v0.2.3 (*)
+│   ├── tracing v0.1.37 (*)
+│   └── typed-builder v0.14.0 (proc-macro) (*)
+├── leptos_meta v0.2.3
+│   ├── cfg-if v1.0.0
+│   ├── leptos v0.2.3 (*)
+│   ├── tracing v0.1.37 (*)
+│   ├── typed-builder v0.14.0 (proc-macro) (*)
+│   ├── wasm-bindgen v0.2.84 (*)
+│   └── web-sys v0.3.61 (*)
+├── leptos_router v0.2.3
+│   ├── cfg-if v1.0.0
+│   ├── common_macros v0.1.1
+│   ├── gloo-net v0.2.6
+│   │   ├── futures-channel v0.3.27 (*)
+│   │   ├── futures-core v0.3.27
+│   │   ├── futures-sink v0.3.27
+│   │   ├── gloo-utils v0.1.6
+│   │   │   ├── js-sys v0.3.61 (*)
+│   │   │   ├── serde v1.0.156 (*)
+│   │   │   ├── serde_json v1.0.94 (*)
+│   │   │   ├── wasm-bindgen v0.2.84 (*)
+│   │   │   └── web-sys v0.3.61 (*)
+│   │   ├── js-sys v0.3.61 (*)
+│   │   ├── pin-project v1.0.12
+│   │   │   └── pin-project-internal v1.0.12 (proc-macro)
+│   │   │       ├── proc-macro2 v1.0.52 (*)
+│   │   │       ├── quote v1.0.26 (*)
+│   │   │       └── syn v1.0.109 (*)
+│   │   ├── serde v1.0.156 (*)
+│   │   ├── serde_json v1.0.94 (*)
+│   │   ├── thiserror v1.0.39 (*)
+│   │   ├── wasm-bindgen v0.2.84 (*)
+│   │   ├── wasm-bindgen-futures v0.4.34 (*)
+│   │   └── web-sys v0.3.61 (*)
+│   ├── js-sys v0.3.61 (*)
+│   ├── lazy_static v1.4.0
+│   ├── leptos v0.2.3 (*)
+│   ├── linear-map v1.2.0
+│   ├── log v0.4.17 (*)
+│   ├── percent-encoding v2.2.0
+│   ├── serde v1.0.156 (*)
+│   ├── serde_urlencoded v0.7.1 (*)
+│   ├── thiserror v1.0.39 (*)
+│   ├── tracing v0.1.37 (*)
+│   ├── wasm-bindgen v0.2.84 (*)
+│   ├── wasm-bindgen-futures v0.4.34 (*)
+│   └── web-sys v0.3.61 (*)
+├── log v0.4.17 (*)
+├── simple_logger v4.0.0
+│   ├── colored v2.0.0
+│   │   ├── atty v0.2.14
+│   │   │   └── libc v0.2.140
+│   │   └── lazy_static v1.4.0
+│   ├── log v0.4.17 (*)
+│   └── time v0.3.20
+│       ├── itoa v1.0.6
+│       ├── libc v0.2.140
+│       ├── num_threads v0.1.6
+│       ├── time-core v0.1.0
+│       └── time-macros v0.2.8 (proc-macro)
+│           └── time-core v0.1.0
+├── thiserror v1.0.39 (*)
+└── wasm-bindgen v0.2.84 (*)

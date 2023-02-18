@@ -1,10 +1,14 @@
 use std::{
     collections::{BTreeMap, HashMap},
+    default::Default,
     sync::Arc,
     time::Duration,
 };
 
-use crate::{manager, Error, Result, TaskSpec};
+use crate::{
+    manager::{self, TaskPhase},
+    Error, Result, TaskSpec,
+};
 
 use ame::grpc::LogEntry;
 use futures::{future::BoxFuture, FutureExt, StreamExt};
@@ -26,14 +30,16 @@ use k8s_openapi::{
     },
 };
 use kube::{
-    api::{ListParams, Patch, PatchParams},
+    api::{ListParams, Patch, PatchParams, PostParams},
     core::ObjectMeta,
     runtime::{controller::Action, Controller},
     Api, Client, CustomResource, Resource, ResourceExt,
 };
+use reqwest::Url;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use tracing::{debug, error, log::info};
 
 #[derive(CustomResource, Deserialize, Serialize, Clone, Debug, JsonSchema, Default)]
 #[kube(
@@ -65,7 +71,48 @@ pub struct ProjectSpec {
 #[derive(Deserialize, Serialize, Clone, Debug, JsonSchema, PartialEq, Eq, Default)]
 pub struct ProjectStatus {
     #[serde(skip_serializing_if = "Option::is_none")]
-    models: Option<Vec<ModelStatus>>,
+    pub models: Option<BTreeMap<String, ModelStatus>>,
+}
+
+impl ProjectStatus {
+    fn set_model_status(&mut self, name: &str, status: ModelStatus) {
+        if let Some(ref mut statuses) = self.models {
+            statuses.insert(name.to_string(), status);
+        } else {
+            let mut statuses: BTreeMap<String, ModelStatus> = BTreeMap::new();
+            statuses.insert(name.to_string(), status);
+            self.models = Some(statuses);
+        }
+    }
+
+    fn set_model_validation(&mut self, name: &str, validation: ModelValidationStatus) {
+        let mut default = ModelStatus::default();
+        let mut status = self.get_model_status(name).unwrap_or(&mut default).clone();
+
+        status.validation = Some(validation);
+
+        self.set_model_status(name, status);
+    }
+
+    pub fn get_model_status(&mut self, name: &str) -> Option<&mut ModelStatus> {
+        self.models.as_mut().and_then(|models| models.get_mut(name))
+    }
+
+    fn set_latest_valid_model_version(&mut self, name: &str, version: String) {
+        let mut status = self
+            .get_model_status(name)
+            .map(|s| s.to_owned())
+            .unwrap_or_default();
+
+        status.latest_valid_model_version = Some(version);
+        self.set_model_status(name, status)
+    }
+
+    fn get_latest_valid_model_version(&mut self, name: &str) -> Option<String> {
+        self.get_model_status(name)
+            .as_ref()
+            .and_then(|model_status| model_status.latest_valid_model_version.clone())
+    }
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug, JsonSchema, Default)]
@@ -78,6 +125,9 @@ pub struct Model {
     training: TrainingCfg,
     #[serde(skip_serializing_if = "Option::is_none")]
     deployment: Option<ModelDeployment>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    validation_task: Option<TaskSpec>,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug, JsonSchema, Default)]
@@ -113,16 +163,67 @@ pub enum ModelType {
 #[derive(Deserialize, Serialize, Clone, Debug, JsonSchema, PartialEq, Eq, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ModelStatus {
-    name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    latest_model_version: Option<Time>,
+    pub latest_model_version: Option<Time>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    last_trained: Option<Time>,
+    pub latest_validated_model_version: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    last_deployed: Option<Time>,
+    pub last_trained: Option<Time>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub last_deployed: Option<Time>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub validation: Option<ModelValidationStatus>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub latest_valid_model_version: Option<String>,
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug, JsonSchema, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum ModelValidationStatus {
+    UnValidated {}, // we cannot use a unit type here: see https://docs.rs/kube/latest/kube/derive.CustomResource.html#enums
+    Validating { task: String, model_version: String },
+    FailedValidation { model_version: String },
+    Validated { model_version: String },
+}
+
+impl Default for ModelValidationStatus {
+    fn default() -> Self {
+        ModelValidationStatus::UnValidated {}
+    }
 }
 
 impl Project {
+    fn gen_validation_task(&self, model: &Model) -> Result<manager::Task> {
+        let Some(mut spec) =match model.validation_task.as_ref() {
+            Some(TaskSpec {
+                task_ref: Some(name),
+                ..
+            }) => self.find_task_spec(name),
+            Some(task_spec) => Some(task_spec),
+            None => None
+        }.map(|ts| ts.to_owned()) else {
+            return Err(Error::MissingValidationTask(model.name.clone()));
+        };
+
+        if let Some(repo) = self.annotations().get("gitrepository") {
+            spec.source = Some(manager::ProjectSource {
+                gitrepository: Some(repo.to_owned()),
+                ..manager::ProjectSource::default()
+            });
+        }
+
+        let metadata = ObjectMeta {
+            generate_name: Some(format!("validate-{}", model.name.clone())),
+            ..ObjectMeta::default()
+        };
+
+        Ok(manager::Task {
+            metadata,
+            spec,
+            status: None,
+        })
+    }
+
     pub fn add_owner_reference(&mut self, owner_reference: OwnerReference) -> &mut Project {
         match &mut self.metadata.owner_references {
             Some(refs) => refs.push(owner_reference),
@@ -167,6 +268,14 @@ impl Project {
         }
     }
 
+    fn find_task_spec(&self, name: &str) -> Option<&manager::TaskSpec> {
+        self.spec.tasks.as_ref().and_then(|tasks| {
+            tasks
+                .iter()
+                .find(|task| task.name.as_ref().map(|n| n == name).unwrap_or(false))
+        })
+    }
+
     pub fn generate_model_training_task(&self, name: &str) -> Result<manager::Task> {
         let Some(model) = self.get_model(name) else {
             return Err(Error::MissingProjectSrc("model".to_string()));
@@ -194,7 +303,7 @@ impl Project {
         });
 
         let metadata = ObjectMeta {
-            name: Some(model.name),
+            generate_name: Some(model.name),
             ..ObjectMeta::default()
         };
 
@@ -321,6 +430,40 @@ impl Model {
         })
     }
 
+    async fn get_model_version(
+        &self,
+        ctrl_cfg: &ProjectCtrlCfg,
+        version: &str,
+    ) -> Result<MlflowModelVersion> {
+        let Some(ref mlflow_url) = ctrl_cfg.mlflow_url else {
+            return Err(Error::MissingMlflowUrl());
+        };
+
+        let model_version = {
+            let mut body = HashMap::new();
+            body.insert("name", self.name.clone());
+            body.insert("version", version.to_string());
+            let url = Url::parse_with_params(
+                &format!("{mlflow_url}/api/2.0/mlflow/model-versions/get"),
+                &[
+                    ("name", self.name.clone()),
+                    ("version", version.to_string()),
+                ],
+            )
+            .unwrap();
+
+            let client = reqwest::Client::new();
+            client
+                .get(url)
+                .send()
+                .await?
+                .json::<MlflowModelVersionResponse>()
+                .await?
+                .model_version
+        };
+        Ok(model_version)
+    }
+
     async fn get_latest_model_version(
         &self,
         ctrl_cfg: &ProjectCtrlCfg,
@@ -333,7 +476,7 @@ impl Model {
             let mut body = HashMap::new();
             body.insert("name", self.name.clone());
             let client = reqwest::Client::new();
-            let MlflowModelVersionRes {model_versions } = client
+            let MlflowModelVersionsRes{model_versions } = client
                 .post(format!(
                     "{mlflow_url}/api/2.0/mlflow/registered-models/get-latest-versions"
                 ))
@@ -467,8 +610,13 @@ struct Context {
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Default)]
-struct MlflowModelVersionRes {
+struct MlflowModelVersionsRes {
     model_versions: Vec<MlflowModelVersion>,
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Default)]
+struct MlflowModelVersionResponse {
+    model_version: MlflowModelVersion,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Default)]
@@ -482,7 +630,7 @@ struct MlflowModelVersion {
 }
 
 async fn reconcile(project: Arc<Project>, ctx: Arc<Context>) -> Result<Action> {
-    println!("reconciling projects");
+    info!("reconciling projects");
     let _projects = Api::<Project>::namespaced(ctx.client.clone(), &ctx.config.namespace);
     let deployments = Api::<Deployment>::namespaced(ctx.client.clone(), &ctx.config.namespace);
     let ingresses = Api::<Ingress>::namespaced(ctx.client.clone(), &ctx.config.namespace);
@@ -495,6 +643,8 @@ async fn reconcile(project: Arc<Project>, ctx: Arc<Context>) -> Result<Action> {
         OwnerReference::default()
     };
 
+    let mut status = project.status.clone().unwrap_or_default();
+
     if let Some(models) = project.spec.clone().models {
         for model in models {
             let model_version = model.get_latest_model_version(&ctrl_cfg).await;
@@ -505,7 +655,7 @@ async fn reconcile(project: Arc<Project>, ctx: Arc<Context>) -> Result<Action> {
                 ..
             }) = model.clone().deployment
             {
-                println!("creating autotrain task {model_version:?}");
+                info!("creating autotrain task {model_version:?}");
                 if model_version.is_err() {
                     let task_ref = model.training.task.task_ref.clone().unwrap();
 
@@ -549,10 +699,150 @@ async fn reconcile(project: Arc<Project>, ctx: Arc<Context>) -> Result<Action> {
                 }
             };
 
-            println!("updating model deployment");
+            debug!(
+                "check model validation status {:?} {:?}",
+                model_version, model.validation_task
+            );
+
+            if model.validation_task.is_some() && model_version.is_ok() {
+                let validation = status
+                    .clone()
+                    .get_model_status(&model.name)
+                    .and_then(|s| s.validation.as_ref())
+                    .unwrap_or(&ModelValidationStatus::UnValidated {})
+                    .clone();
+
+                debug!("update model validation state");
+
+                match validation {
+                    ModelValidationStatus::UnValidated {} => {
+                        debug!(
+                            "model {} with version {} needs to be validated",
+                            &model.name,
+                            model_version
+                                .as_ref()
+                                .map(|m| m.version.clone())
+                                .unwrap_or("'no version found'".to_string())
+                        );
+
+                        let mut validation_task = project.gen_validation_task(&model)?; // TODO: the ? here could cause unwanted early exits.
+                        validation_task.owner_references_mut().push(oref.clone());
+
+                        let validation_task = tasks_cli
+                            .create(&PostParams::default(), &validation_task)
+                            .await?;
+
+                        status.set_model_validation(
+                            &model.name,
+                            ModelValidationStatus::Validating {
+                                task: validation_task.name_any(),
+                                model_version: model_version.as_ref().unwrap().version.clone(),
+                            },
+                        );
+                    }
+                    ModelValidationStatus::Validating {
+                        task,
+                        model_version,
+                    } => {
+                        // TODO: handle early cancelation if a new model version appears before
+                        // this validation completes.
+
+                        debug!("debug status: validating");
+
+                        let Ok(task_status) = tasks_cli.get_status(&task).await else {
+                            debug!("failed to find status for task {task}, resetting model status to unvalidatd");
+                            status.set_model_validation(&model.name, ModelValidationStatus::UnValidated {  });
+                            continue;
+                        };
+
+                        debug!("validation task status: {task_status:?}");
+
+                        if let Some(task_status) = task_status.status {
+                            match task_status.phase {
+                                Some(TaskPhase::Succeeded) => {
+                                    status.set_latest_valid_model_version(
+                                        &model.name,
+                                        model_version.clone(),
+                                    );
+                                    status.set_model_validation(
+                                        &model.name,
+                                        ModelValidationStatus::Validated {
+                                            model_version: model_version.to_string(),
+                                        },
+                                    );
+                                }
+                                Some(TaskPhase::Failed) => status.set_model_validation(
+                                    &model.name,
+                                    ModelValidationStatus::FailedValidation {
+                                        model_version: model_version.to_string(),
+                                    },
+                                ),
+                                _ => (),
+                            };
+
+                            debug!("set model validations status: {status:?}");
+                        }
+                    }
+
+                    ModelValidationStatus::Validated {
+                        model_version: validatd_version,
+                    } => {
+                        if *validatd_version == model_version.as_ref().unwrap().version {
+                            debug!("new model version requires validation");
+                            let mut validation_task = project.gen_validation_task(&model)?; // TODO: the ? here could cause unwanted early exits.
+                            validation_task.owner_references_mut().push(oref.clone());
+
+                            let validation_task = tasks_cli
+                                .create(&PostParams::default(), &validation_task)
+                                .await?;
+
+                            status.set_model_validation(
+                                &model.name,
+                                ModelValidationStatus::Validating {
+                                    task: validation_task.name_any(),
+                                    model_version: model_version.as_ref().unwrap().version.clone(),
+                                },
+                            );
+
+                            continue;
+                        }
+                    }
+                    ModelValidationStatus::FailedValidation {
+                        model_version: validatd_version,
+                    } => {
+                        if *validatd_version != model_version.as_ref().unwrap().version {
+                            debug!("failed to validate");
+                            let mut validation_task = project.gen_validation_task(&model)?; // TODO: the ? here could cause unwanted early exits.
+                            validation_task.owner_references_mut().push(oref.clone());
+
+                            let validation_task = tasks_cli
+                                .create(&PostParams::default(), &validation_task)
+                                .await?;
+
+                            status.set_model_validation(
+                                &model.name,
+                                ModelValidationStatus::Validating {
+                                    task: validation_task.name_any(),
+                                    model_version: model_version.as_ref().unwrap().version.clone(),
+                                },
+                            );
+                        }
+                        continue;
+                    }
+                }
+            }
+
+            debug!("preparing model deployment");
+
+            let Some(latest_version) = status.get_latest_valid_model_version(&model.name) else {
+                debug!("no valid model version to deploy");
+                continue;
+            };
+
+            let mlflow_version = model.get_model_version(&ctrl_cfg, &latest_version).await?;
 
             let mut deployment = model
-                .generate_model_deployment(&ctrl_cfg, model_version?.source)
+                .generate_model_deployment(&ctrl_cfg, mlflow_version.source)
                 .await?;
             let mut service = model.generate_model_service(&ctrl_cfg)?;
             let mut ingress = model.generate_model_ingress(&ctrl_cfg)?;
@@ -574,12 +864,32 @@ async fn reconcile(project: Arc<Project>, ctx: Arc<Context>) -> Result<Action> {
         }
     }
 
+    debug!("patching status");
+
+    let mut patch = Project {
+        metadata: project.metadata.clone(),
+        spec: ProjectSpec::default(),
+        status: Some(status),
+    };
+
+    patch.meta_mut().managed_fields = None;
+
+    _projects
+        .patch_status(
+            &project.name_any(),
+            &PatchParams::apply("ame").force(),
+            &Patch::Apply(patch),
+        )
+        .await?;
+
+    debug!("requeing");
+
     Ok(Action::requeue(Duration::from_secs(300)))
 }
 
 fn error_policy(src: Arc<Project>, error: &Error, _ctx: Arc<Context>) -> Action {
-    println!("error: {}, for project: {}", error, src.name_any());
-    Action::requeue(Duration::from_secs(5))
+    error!("error: {}, for project: {}", error, src.name_any());
+    Action::requeue(Duration::from_secs(60))
 }
 
 pub async fn start_project_controller(config: ProjectCtrlCfg) -> BoxFuture<'static, ()> {

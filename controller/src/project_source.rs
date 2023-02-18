@@ -25,7 +25,7 @@ use serde::{Deserialize, Serialize};
 use std::path::Path;
 use std::time::SystemTime;
 use std::{fs, sync::Arc, time::Duration};
-use tracing::{info, warn};
+use tracing::{error, info};
 
 #[derive(CustomResource, Deserialize, Serialize, Clone, Debug, JsonSchema, Default)]
 #[kube(
@@ -242,7 +242,7 @@ async fn reconcile(src: Arc<ProjectSource>, ctx: Arc<Context>) -> Result<Action>
 }
 
 fn error_policy(_src: Arc<ProjectSource>, error: &Error, _ctx: Arc<Context>) -> Action {
-    warn!("failed to reconcile: {:?}", error);
+    error!("failed to reconcile: {:?}", error);
     Action::requeue(Duration::from_secs(5 * 60))
 }
 

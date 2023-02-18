@@ -68,6 +68,12 @@ pub enum Error {
 
     #[error("got error from AME's secret store: {0}")]
     SecretError(#[from] SecretError),
+
+    #[error("failed to find model status for: {0}")]
+    MissingModelStatus(String),
+
+    #[error("failed to find validation task status for model: {0}")]
+    MissingValidationTask(String),
 }
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;

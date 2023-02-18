@@ -389,7 +389,10 @@ impl Task {
                 "exec {}
 
                 save_artifacts {}",
-                self.spec.runcommand.clone().unwrap(),
+                self.spec
+                    .runcommand
+                    .clone()
+                    .unwrap_or("missing command".to_string()), // TODO: handle missing commands
                 self.task_artifacts_path()
             )
         };
