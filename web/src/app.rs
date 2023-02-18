@@ -21,7 +21,7 @@ use tonic::Request;
 use tonic_web_wasm_client::Client;
 
 pub fn gen_client(_endpoint: String) -> AmeClient {
-    let ame_endpoint = "http://ame.local:32117".to_string();
+    let ame_endpoint = "http://ame.local:32386".to_string();
     build_ame_client(AmeServiceClientCfg {
         id_token: None,
         endpoint: ame_endpoint,
