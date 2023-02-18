@@ -44,5 +44,6 @@ RUN pip install pipenv
 RUN pip install s3cmd
 
 RUN pip install mlflow[extras]
+RUN pip install poetry
 
 WORKDIR /project

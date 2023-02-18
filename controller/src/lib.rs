@@ -120,12 +120,10 @@ impl TryFrom<self::CreateTaskRequest> for Task {
                 projectid: Some(template.projectid),
                 runcommand: Some(template.command),
                 image: template.image,
-                task_type: template.task_type.map(|t| {
-                    if t == 1 {
-                        TaskType::Mlflow
-                    } else {
-                        TaskType::PipEnv
-                    }
+                task_type: template.task_type.map(|t| match t {
+                    2 => TaskType::Poetry,
+                    1 => TaskType::Mlflow,
+                    _ => TaskType::PipEnv,
                 }),
                 ..TaskSpec::default()
             },
@@ -179,10 +177,11 @@ impl From<Task> for TaskTemplate {
             command: t.spec.runcommand.unwrap_or("".to_string()),
             projectid: t.spec.projectid.unwrap_or("".to_string()),
             image: t.spec.image,
-            task_type: t
-                .spec
-                .task_type
-                .map(|t| if t == TaskType::Mlflow { 1 } else { 0 }),
+            task_type: t.spec.task_type.map(|t| match t {
+                TaskType::Mlflow => 1,
+                TaskType::Poetry => 2,
+                TaskType::PipEnv => 0,
+            }),
         }
     }
 }

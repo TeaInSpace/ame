@@ -110,6 +110,7 @@ pub struct TaskSpec {
 pub enum TaskType {
     PipEnv,
     Mlflow,
+    Poetry,
 }
 
 /// The status object of `Task`
@@ -384,6 +385,21 @@ impl Task {
 
              mlflow run ."
                 .to_string()
+        } else if let Some(TaskType::Poetry) = self.spec.task_type {
+            format!(
+                "
+                          poetry install
+
+                          poetry run {}
+
+                         save_artifacts {}
+                ",
+                self.spec
+                    .runcommand
+                    .clone()
+                    .unwrap_or("missing command".to_string()), // TODO: handle missing commands
+                self.task_artifacts_path()
+            )
         } else {
             format!(
                 "exec {}

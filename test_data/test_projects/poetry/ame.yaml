@@ -1,0 +1,10 @@
+projectid: poetry
+tasks:
+ - name: training
+   projectid: poetry
+   task_type: 2
+   resources:
+     cpu: "4"
+     memory: 8Gi
+   command: python nn.py
+   source: {}
