@@ -1,5 +1,5 @@
+use ame::grpc::ame_service_server::AmeServiceServer;
 use envconfig::Envconfig;
-use service::ameservice::ame_service_server::AmeServiceServer;
 use service::ameservice::AmeServiceConfig;
 use service::ameservice::Service;
 use service::health_check;
@@ -34,9 +34,13 @@ async fn main() -> Result<()> {
     let addr = "0.0.0.0:3342".parse()?;
     tracing::info!("Serving at: {}", addr);
 
+    let websvc = tonic_web::config()
+        .allow_all_origins()
+        .enable(AmeServiceServer::new(svc));
+
     Server::builder()
         .accept_http1(true)
-        .add_service(tonic_web::enable(AmeServiceServer::new(svc)))
+        .add_service(websvc)
         .add_service(health_service)
         .serve(addr)
         .await?;
@@ -48,20 +52,21 @@ async fn main() -> Result<()> {
 mod test {
     use std::time::Duration;
 
-    use common::{find_service_endpoint, setup_cluster};
+    use controller::common::{find_service_endpoint, setup_cluster};
     use kube::api::PostParams;
     use kube::ResourceExt;
     use kube::{Api, Client};
 
-    use service::ameservice::{CreateTaskRequest, TaskIdentifier, TaskTemplate};
+    use ame::grpc::{CreateTaskRequest, TaskIdentifier, TaskTemplate};
     use tokio::net::TcpListener;
     use tonic::transport::Channel;
     use tonic::Request;
 
     use super::AmeServiceConfig;
     use super::*;
+
+    use ame::grpc::ame_service_client::AmeServiceClient;
     use serial_test::serial;
-    use service::ameservice::ame_service_client::AmeServiceClient;
     use service::storage::S3Config;
     use service::Result;
 
@@ -206,7 +211,8 @@ mod test {
 
         assert_eq!(
             task_in_cluster.spec.image,
-            controller::Task::try_from(create_task_req.clone())?
+            controller::Task::try_from(create_task_req.clone())
+                .unwrap()
                 .spec
                 .image
         );

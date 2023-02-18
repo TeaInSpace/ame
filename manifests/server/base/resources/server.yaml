@@ -71,7 +71,7 @@ spec:
                 name: ame-minio-secret
                 key: MINIO_ROOT_PASSWORD
           - name: RUST_LOG
-            value: debug
+            value: service=trace,kube=trace
 
       serviceAccountName: ame-server
       terminationGracePeriodSeconds: 10
@@ -84,6 +84,10 @@ metadata:
   annotations:
     nginx.ingress.kubernetes.io/backend-protocol: "GRPC"
     cert-manager.io/cluster-issuer: "selfsigned-cluster-issuer"
+    nginx.ingress.kubernetes.io/cors-allow-origin: "*"
+    nginx.ingress.kubernetes.io/enable-cors: "false"
+    nginx.ingress.kubernetes.io/cors-allow-headers: "DNT, Keep-Alive, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Range, Authorization, x-grpc-web"
+
 spec:
   ingressClassName: nginx
   rules:

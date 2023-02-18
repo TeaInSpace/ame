@@ -1,0 +1,28 @@
+image:
+  tag: "v7.4.0"
+ingress:
+  tls: # < placing a host in the TLS config will determine what ends up in the cert's subjectAltNames
+    - hosts:
+      - ame.local
+      secretName: oauth2-tls-cert # < cert-manager w-ll store the created certificate in this secret.
+  enabled: true
+  className: nginx
+  path: /oauth2
+  hosts:
+    - ame.local
+  annotations:
+    cert-manager.io/cluster-issuer: "selfsigned-cluster-issuer"
+    nginx.ingress.kubernetes.io/proxy-buffer-size: "16k"
+
+config:
+  clientID: oauth2proxy-client
+  clientSecret: "2cdPvqkzRcsyF9YmIGAqH3voDqzc18Jv"
+  cookieSecret: "UlpPOE8wWUo3cmZtRGxDRllXUmd2bEhaN1VXcGxFclI="
+extraArgs:
+  provider: keycloak-oidc
+  redirect-url: https://ame.local/oauth2/callback
+  oidc-issuer-url: https://keycloak.ame.local/realms/ame 
+  ssl-insecure-skip-verify: true
+  set-authorization-header: true
+  skip-jwt-bearer-tokens: true
+

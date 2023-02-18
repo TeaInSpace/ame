@@ -55,6 +55,8 @@ pub enum Error {
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
+pub mod secrets;
+
 #[derive(Clone, Default, Deserialize, Serialize, Envconfig, PartialEq, Debug)]
 pub struct CliConfiguration {
     #[envconfig(from = "AME_ENDPOINT")]

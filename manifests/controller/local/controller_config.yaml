@@ -3,4 +3,4 @@ kind: ConfigMap
 metadata:
   name: ame-controller-configmap
 data:
-  executor_image: main:42391/ame-executor:latest
+  executor_image: main20:43363/ame-executor:latest

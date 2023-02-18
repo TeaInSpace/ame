@@ -71,11 +71,14 @@ rules:
   - pods
   - pods/log
   - pods/status
+  - secrets
   verbs:
   - get
   - watch
   - list
   - patch
+  - create
+  - delete
 - apiGroups:
   - ame.teainspace.com
   resources:

@@ -1,0 +1,6 @@
+---
+source: cli/tests/cli.rs
+expression: "&String::from_utf8(output.get_output().stdout.clone())?"
+---
+⠋ Creating project source⠙ Creating project source[2K  Failed to create project source with reason: failed to synchronize: Received error from kube API: ApiError: secrets "org-secret" is forbidden: User "system:serviceaccount:ame-system:ame-controller" cannot get resource "secrets" in API group "" in the namespace "ame-system": Forbidden (ErrorResponse { status: "Failure", message: "secrets \"org-secret\" is forbidden: User \"system:serviceaccount:ame-system:ame-controller\" cannot get resource \"secrets\" in API group \"\" in the namespace \"ame-system\"", reason: "Forbidden", code: 403 })
+

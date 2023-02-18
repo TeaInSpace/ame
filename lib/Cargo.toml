@@ -1,0 +1,42 @@
+[package]
+name = "ame"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+http = {version = "0.2.9" }
+hyper = { version = "0.14.24", features = ["client"], optional = true }
+leptos = { git = "https://github.com/leptos-rs/leptos", default-features = false, features = ["serde"], optional = true }
+prost = "0.11.7"
+thiserror = "1.0.38"
+tokio-rustls = { version = "0.23.4", features = ["dangerous_configuration"], optional = true  }
+tonic = { version = "0.8.3", default-features = false }
+tower  = {version = "0.4.13", optional = true}
+tower-http = { version = "0.4.0", features = ["auth"], optional = true }
+tonic-web-wasm-client = {version = "0.3.2", optional = true}
+url = "2.3.1"
+http-body = "0.4.5"
+tokio = "1.25.0"
+tokio-stream = "0.1.12"
+async-stream = "0.3.4"
+futures-util = "0.3.26"
+futures = "0.3.26"
+kube = {version = "0.80.0", optional = true}
+async-trait = "0.1.64"
+schemars = "0.8.11"
+serde = "1.0"
+serde_json = "1.0.91"
+serde_merge = {version = "0.1.3", optional = true}
+
+[features]
+web-components = ["dep:leptos", "dep:tonic-web-wasm-client", "dep:hyper"]
+native-client = ["dep:hyper", "dep:tokio-rustls", "dep:tower", "dep:tower-http"]
+ame-control = ["dep:kube", "dep:serde_merge"]
+
+
+[build-dependencies]
+tonic-build = { version = "0.8.4", default-features = false, features = [
+    "prost",
+] }

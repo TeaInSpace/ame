@@ -14,7 +14,7 @@ cfg-if = "1"
 leptos = { git = "https://github.com/leptos-rs/leptos", default-features = false, features = ["serde"] }
 leptos_axum = { git = "https://github.com/leptos-rs/leptos", optional = true }
 leptos_meta = { git = "https://github.com/leptos-rs/leptos", default-features = false }
-leptos_router = { git = "https://github.com/leptos-rs/leptos", default-features = false }
+leptos_router = { git = "https://github.com/leptos-rs/leptos", default-features = false, features = ["csr"] }
 log = "0.4"
 simple_logger = "4"
 tokio = { version = "1.25.0", optional = true }
@@ -30,11 +30,10 @@ tonic = { version = "0.8.3", default-features = false, features = [
     "prost",
     "codegen",
 ] }
+ame = { version = "0.1.0", path = "../lib", features = ["web-components"], default-features = false }
+futures-util = "0.3.26"
+url = "2.3.1"
 
-[build-dependencies]
-tonic-build = { version = "0.8.4", default-features = false, features = [
-    "prost",
-] }
 
 [features]
 hydrate = ["leptos/hydrate", "leptos_meta/hydrate", "leptos_router/hydrate"]

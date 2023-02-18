@@ -1,12 +1,11 @@
-use std::time::Duration;
-
-use controller::{Task, Workflow};
+use crate::{Task, Workflow};
 use either::Either;
 use k8s_openapi::api::core::v1::{LoadBalancerStatus, Service, ServiceSpec, ServiceStatus};
 use kube::{
     api::{DeleteParams, ListParams},
     Api, Client,
 };
+use std::time::Duration;
 
 pub async fn find_ame_endpoint(
     namespace: &str,
@@ -87,7 +86,7 @@ pub async fn find_service_endpoint(
 /// This function will generate clients and clear all Task and `Workflow` objects in the cluster.
 pub async fn setup_cluster(
     namespace: &str,
-) -> Result<(Api<controller::Task>, Api<controller::Workflow>), Box<dyn std::error::Error>> {
+) -> Result<(Api<Task>, Api<Workflow>), Box<dyn std::error::Error>> {
     let client = Client::try_default().await?;
     let tasks = Api::<Task>::namespaced(client.clone(), namespace);
     let workflows = Api::<Workflow>::namespaced(client.clone(), namespace);
@@ -120,4 +119,10 @@ pub async fn setup_cluster(
     };
 
     Ok((tasks, workflows))
+}
+
+// This is an access token for https://github.com/TeaInSpace/ame-test-private intended for
+// testing that AME can pull in projects from private repositories.
+pub fn private_repo_gh_pat() -> Result<String, Box<dyn std::error::Error>> {
+    Ok(std::env::var("AME_TEST_GH_TOKEN")?)
 }

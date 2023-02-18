@@ -27,15 +27,18 @@ path = "src/project_crdgen.rs"
 name = "controller"
 path = "src/lib.rs"
 
+
 [dependencies]
-ame_client = { version = "0.1.0", path = "../client" }
+ame = { version = "0.1.0", path = "../lib", features = ["ame-control"] }
+async-trait = "0.1.66"
+duration-string = "0.2.0"
 either = "1.8.0"
 envconfig = "0.10.0"
 futures = "0.3.25"
 git2 = "0.15.0"
 humantime = "2.1.0"
-k8s-openapi = { version = "0.16.0", features = ["v1_23", "schemars" ] }
-kube = { version = "0.76.0", features = ["runtime", "client", "derive"] }
+k8s-openapi = { version = "0.17.0", features = ["v1_23", "schemars" ] }
+kube = { version = "0.80.0", features = ["runtime", "client", "derive"] }
 reqwest = { version = "0.11.14", features = ["json"] }
 schemars = "0.8.11"
 serde = {version = "1.0.147", features = ["derive"]}
@@ -47,10 +50,13 @@ similar = "2.2.1"
 similar-asserts = "1.4.2"
 thiserror = "1.0.37"
 tokio = { version = "1.21.2", features = ["macros", "rt-multi-thread"] }
+tonic = "0.8.3"
 tracing = "0.1.37"
+tracing-subscriber = { version = "0.3.16", features = ["env-filter"] }
 
 [dev-dependencies]
 assert_fs = "1.0.10"
 insta = {version = "1.21.0", features = ["yaml"] }
 predicates = "2.1.4"
 serial_test = "0.9.0"
+k8s-openapi = { version = "0.17.0", features = ["v1_23", "schemars" ] }

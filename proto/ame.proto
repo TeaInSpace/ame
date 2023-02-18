@@ -59,7 +59,7 @@ message LogEntry {
   bytes contents = 1;
 }
 
-message ProjectSource {
+message ProjectSourceCfg {
   optional GitProjectSource git = 1;
 }
 
@@ -70,9 +70,91 @@ message GitProjectSource {
   optional string sync_interval = 4;
 }
 
+enum ProjectSourceState {
+  Pending = 0;
+  Synchronising = 1;
+  Synchronized = 2;
+  Error = 3;
+}
+
+enum ProjectSourceIssueType {
+  Unknown = 0;
+  AuthFailure = 1;
+  RepositoryNotFound = 2;
+  AmeProjectNotFound = 3;
+  GitSecretNotFound = 4;
+}
+
+message ProjectSourceStatus {
+  optional string last_synced = 1;
+  ProjectSourceState state = 2;
+  optional string reason = 3;
+  repeated ProjectSourceIssue issues = 4;
+}
+
+message ProjectSourceIssue {
+  ProjectSourceIssueType issue_type = 1;
+  optional string explanation = 2;
+}
+
+message ProjectSourceId {
+  string name = 1;
+}
+
 message TrainRequest {
   string projectid = 1;
   string model_name = 2;
+}
+
+message AmeSecret {
+  string key = 1;
+  string value = 2;
+}
+
+message AmeSecretId {
+  string key = 1;
+}
+
+message AmeSecrets {
+  repeated AmeSecretId secrets = 1;
+}
+
+message ResourceCfg {
+  oneof cfg {
+    ProjectSourceCfg projectSrcCfg = 1;
+  }
+}
+
+message ResourceId {
+  oneof id {
+    ProjectSourceId projectSrcId = 1;
+  }
+}
+
+
+message ProjectSourceListParams {}
+
+message ResourceListParams {
+  oneof params {
+    ProjectSourceListParams projectSourceListParams = 1;
+  }
+}
+
+message ResourceIds {
+  repeated ResourceId ids = 1;
+}
+
+message ListProjectSrcsResponse {
+  repeated ProjectSourceCfg cfgs = 2;
+}
+
+message ProjectSrcPatchRequest {
+  ProjectSourceId id = 1;
+  ProjectSourceCfg cfg = 2;
+}
+
+message ProjectSrcIdRequest {
+  string repo = 1;
 }
 
 service AmeService {
@@ -82,6 +164,18 @@ service AmeService {
   rpc CreateTaskProjectDirectory(TaskProjectDirectoryStructure) returns (Empty) {}
   rpc UploadProjectFile(stream ProjectFileChunk) returns (Empty) {}
   rpc StreamTaskLogs(TaskLogRequest) returns (stream LogEntry) {}
-  rpc CreateProjectSrc(ProjectSource) returns (Empty) {}
+  rpc CreateProjectSrc(ProjectSourceCfg) returns (ProjectSourceId) {}
+  rpc DeleteProjectSrc(ProjectSourceId) returns (Empty) {}
   rpc TrainModel(TrainRequest) returns (Empty) {}
+  rpc WatchProjectSrc(ProjectSourceId) returns (stream ProjectSourceStatus) {}
+  rpc CreateSecret(AmeSecret) returns (Empty) {}
+  rpc DeleteSecret(AmeSecretId) returns (Empty) {}
+  rpc ListSecrets(Empty) returns (AmeSecrets) {} 
+  rpc UpdateProjectSrc(ProjectSrcPatchRequest) returns (Empty) {}
+  rpc CreateResource(ResourceCfg) returns (ResourceId) {}
+  rpc ListResource(ResourceListParams) returns (ResourceIds) {}
+  rpc GetProjectSrcCfg(ProjectSourceId) returns (ProjectSourceCfg) {}
+  rpc GetProjectSrcStatus(ProjectSourceId) returns (ProjectSourceStatus) {}
+  rpc GetProjectSrcId(ProjectSrcIdRequest) returns (ProjectSourceId) {}
+  rpc ListProjectSrcs(ProjectSourceListParams) returns (ListProjectSrcsResponse) {} 
 }

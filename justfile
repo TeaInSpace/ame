@@ -28,7 +28,6 @@ tools:
   rustup component add rustfmt --toolchain nightly
   cargo install --locked cargo-spellcheck
   cargo install --locked typos-cli
-  cargo install --locked cargo-insta
   cargo install --locked cargo-audit
   cargo install --locked cargo-outdated
   cargo install --locked cargo-udeps
@@ -36,19 +35,19 @@ tools:
 fix: fmt
   cargo fix --workspace --allow-dirty --tests --allow-staged
   cargo +nightly clippy --workspace --fix --allow-dirty --allow-staged --tests --all -- -D warnings
-  typos ./ -w
+  typos --exclude **/primer.css ./ -w
   cargo spellcheck fix
 
 fmt:
   cargo +nightly fmt 
 
 check:
-  cargo spellcheck check
-  typos ./
+  cargo spellcheck check 
+  typos --exclude **/primer.css ./
   cargo audit
   cargo +nightly fmt --check 
   cargo +nightly clippy --workspace --tests --all -- -D warnings
-  cargo outdated
+  # cargo outdated --exclude leptos
   cargo +nightly udeps --all-targets --workspace --show-unused-transitive --exclude web # TODO: solve false positives for web package.
 
 test *ARGS:
@@ -68,6 +67,9 @@ server_logs *ARGS:
 
 controller_logs *ARGS:
   kubectl logs -n {{TARGET_NAMESPACE}} -l app=ame-controller {{ARGS}}
+
+watch_web:
+  cargo leptos watch
 
 review_snapshots:
   cargo insta review
@@ -94,7 +96,7 @@ setup_cli:
  cargo run -p cli setup http://$(kubectl get svc -n {{TARGET_NAMESPACE}} ame-server-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}'):3342
 
 setup_cli_ingress:
- cargo run -p cli setup https://$(kubectl get ingress -n {{TARGET_NAMESPACE}} ame-server -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+ cargo run -p cli setup https://ame.local:$(kubectl get service -n ingress-nginx ingress-nginx-controller -o jsonpath='{.spec.ports[1].nodePort}')
 
 
 # Local cluster utilities
@@ -141,7 +143,7 @@ ensure_host_entry IP HOST:
  sudo sed -i "s/.* {{HOST}}.*/{{IP}} {{HOST}}/" /etc/hosts
  else
  echo "Adding new entry to entry/hosts"
- echo "{{IP}} {{HOST}}" | sudo tee -a /etc/hosts
+ sudo sed -i '$a\ {{IP}} {{HOST}}' /etc/hosts
  fi
 
 install_argo_workflows:
@@ -332,3 +334,6 @@ install_cert_manager:
 
 add_mc_alias:
   mc alias set minio http://$(kubectl get service ame-minio -n ame-system -o jsonpath='{.status.loadBalancer.ingress[0].ip}'):9000 minio minio123
+
+start_chromium_without_sec:
+	chromium --disable-web-security --user-data-dir=$HOME/Downloads --ignore-certificate-errors
