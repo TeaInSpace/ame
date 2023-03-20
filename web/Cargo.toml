@@ -11,10 +11,10 @@ axum = { version = "0.6.4", optional = true }
 console_error_panic_hook = "0.1"
 console_log = "0.2"
 cfg-if = "1"
-leptos = { git = "https://github.com/leptos-rs/leptos", default-features = false, features = ["serde"] }
-leptos_axum = { git = "https://github.com/leptos-rs/leptos", optional = true }
-leptos_meta = { git = "https://github.com/leptos-rs/leptos", default-features = false }
-leptos_router = { git = "https://github.com/leptos-rs/leptos", default-features = false, features = ["csr"] }
+leptos = { version = "0.2", default-features = false, features = ["serde", "stable"] }
+leptos_axum = { version = "0.2", optional = true }
+leptos_meta = { version = "0.2", default-features = false }
+leptos_router = { version= "0.2", default-features = false, features = ["csr", "stable"] }
 log = "0.4"
 simple_logger = "4"
 tokio = { version = "1.25.0", optional = true }
