@@ -8,7 +8,7 @@ edition = "2021"
 [dependencies]
 http = {version = "0.2.9" }
 hyper = { version = "0.14.24", features = ["client"], optional = true }
-leptos = { git = "https://github.com/leptos-rs/leptos", default-features = false, features = ["serde"], optional = true }
+leptos = { version = "0.2", default-features = false, features = ["serde", "stable"], optional = true }
 prost = "0.11.7"
 thiserror = "1.0.38"
 tokio-rustls = { version = "0.23.4", features = ["dangerous_configuration"], optional = true  }
