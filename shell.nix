@@ -22,6 +22,7 @@ pkgs.mkShell {
     kubernetes-helm
     grpcurl
     sass
+    rust-analyzer
   ];
 
   # Certain Rust tools won't work without this

@@ -5,7 +5,7 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 images:
 - name: ame-controller
-  newName: main20:43363/ame-controller
+  newName: main:39875/ame-controller
   newTag: latest
 namespace: ame-system
 patchesStrategicMerge:

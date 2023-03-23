@@ -1,7 +1,10 @@
+use crate::add_owner_reference;
 use crate::argo::ArgoScriptTemplate;
 use crate::argo::WorkflowStep;
 use crate::argo::WorkflowTemplate;
+use crate::local_name;
 use crate::project;
+use crate::DataSet;
 use crate::Workflow;
 use crate::WorkflowPhase;
 use crate::{Error, Result};
@@ -9,6 +12,7 @@ use futures::future::BoxFuture;
 use futures::FutureExt;
 use futures::StreamExt;
 
+use futures::future::join_all;
 use k8s_openapi::api::core::v1::EnvVar;
 use k8s_openapi::api::core::v1::EnvVarSource;
 
@@ -20,7 +24,9 @@ use k8s_openapi::api::core::v1::ResourceRequirements;
 use k8s_openapi::api::core::v1::SecretKeySelector;
 use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::OwnerReference;
+use kube::api::Patch;
 use kube::api::PatchParams;
+use kube::core::object::HasStatus;
 use kube::core::ObjectMeta;
 use kube::error::ErrorResponse;
 use kube::{
@@ -35,6 +41,9 @@ use serde_json::json;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 use tokio::time::Duration;
+use tracing::debug;
+use tracing::error;
+use tracing::info;
 
 use envconfig::Envconfig;
 use serde_merge::omerge;
@@ -104,6 +113,9 @@ pub struct TaskSpec {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub template_ref: Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub data_set: Option<Vec<String>>,
 }
 
 #[derive(JsonSchema, Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -118,11 +130,18 @@ pub enum TaskType {
 pub struct TaskStatus {
     pub phase: Option<TaskPhase>,
     pub reason: Option<String>,
+    pub data_set_tasks: Option<BTreeMap<String, DataSetStatus>>,
 }
 
-#[derive(Deserialize, Serialize, Clone, Debug, JsonSchema, PartialEq, Eq)]
+#[derive(Deserialize, Serialize, Clone, Debug, JsonSchema, PartialEq, Eq, Default)]
+pub struct DataSetStatus {
+    pub phase: TaskPhase,
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug, JsonSchema, PartialEq, Eq, Default)]
 pub enum TaskPhase {
     Running,
+    #[default]
     Pending,
     Failed,
     Succeeded,
@@ -337,7 +356,14 @@ impl Task {
         &self,
         volume_name: &str,
         config: &TaskControllerConfig,
+        data_sets: Option<Vec<DataSet>>,
     ) -> Result<WorkflowTemplate> {
+        let data_set_download_command = data_sets.map(|data_sets| data_sets.into_iter().map(|ds| {
+            format!("s3cmd --no-ssl --region eu-central-1 --host=$MINIO_URL --host-bucket=$MINIO_URL get --recursive s3://ame/tasks/{}/artifacts/{} ./
+
+                ", local_name(ds.name), ds.path )
+            }).collect::<String>());
+
         let project_pull_command = if let Some(ProjectSource {
             gitrepository: Some(ref repo),
             ..
@@ -359,10 +385,13 @@ impl Task {
         };
         let script_src = format!(
             "
+            {}
+
             {project_pull_command}
 
                        echo \"0\" >> exit.status
-                        "
+                        ",
+            data_set_download_command.unwrap_or_default()
         );
         self.common_wf_template("setup".to_string(), script_src, volume_name, None, config)
     }
@@ -402,7 +431,10 @@ impl Task {
             )
         } else {
             format!(
-                "exec {}
+                "
+                pipenv sync
+
+                pipenv run {}
 
                 save_artifacts {}",
                 self.spec
@@ -528,6 +560,7 @@ impl Task {
         &mut self,
         config: &TaskControllerConfig,
         _projects: Api<project::Project>,
+        data_sets: Option<Vec<DataSet>>,
     ) -> Result<Workflow> {
         let volume_name = format!("{}-volume", self.name_any());
         let mut volume_resource_requirements = BTreeMap::new();
@@ -546,9 +579,11 @@ impl Task {
                 WorkflowTemplate::new("main".to_string())
                     .add_parallel_step(vec![WorkflowStep {
                         name: "setup".to_string(),
-                        inline: Some(Box::new(
-                            self.generate_setup_template(&volume_name, config)?,
-                        )),
+                        inline: Some(Box::new(self.generate_setup_template(
+                            &volume_name,
+                            config,
+                            data_sets,
+                        )?)),
                     }])
                     .add_parallel_step(vec![WorkflowStep {
                         name: "main".to_string(),
@@ -578,6 +613,134 @@ impl Task {
             })
             .add_owner_reference(oref)
             .clone())
+    }
+
+    async fn get_datasets(&self, projects: Api<project::Project>) -> Result<Vec<DataSet>> {
+        let TaskSpec {
+            data_set: Some(data_sets),
+            ..
+        } = self.spec.clone() else {
+            return Ok(vec![])
+        };
+
+        let (remote_data_sets, _local_data_sets): (Vec<String>, Vec<String>) = data_sets
+            .clone()
+            .into_iter()
+            .partition(|ds| ds.contains('.'));
+
+        // TODO: this is very brittle
+        let projects_ids: Vec<String> = remote_data_sets
+            .clone()
+            .into_iter()
+            .map(|ds| ds.split('.').map(String::from).collect::<Vec<String>>()[0].clone())
+            .collect();
+
+        // TODO: this will break if datasets reference there own project.
+        //
+
+        debug!("looking for project vals");
+
+        let project_vals: Vec<project::Project> = join_all(projects_ids.into_iter().map(|p| {
+            let projects = projects.clone();
+            async move {
+                projects
+                    .list(&ListParams::default())
+                    .await?
+                    .into_iter()
+                    .find(|project| project.spec.id == p)
+                    .ok_or(Error::MissingProject(p.to_string()))
+            }
+        }))
+        .await
+        .into_iter()
+        .collect::<Result<Vec<project::Project>>>()?;
+
+        debug!("mapping remote datasets");
+
+        // TODO: this is very brittle, we need more checks to ensure nothing went wrong.
+        let data_sets: Vec<DataSet> = data_sets
+            .clone()
+            .into_iter()
+            .map(|ref ds| {
+                project_vals
+                    .clone()
+                    .into_iter()
+                    .find_map(|pds| pds.get_data_set(ds.to_string()))
+                    .ok_or(Error::MissingDataSets(ds.to_string()))
+            })
+            .collect::<Result<Vec<DataSet>>>()?;
+
+        debug!("mapping local datasets");
+
+        if data_sets.len() != data_sets.len() {
+            return Err(Error::MissingDataSets(self.name_any())); // TODO: find a proper way of describing this error.
+        }
+
+        Ok(data_sets)
+    }
+
+    async fn get_data_set_tasks(&self, projects: Api<project::Project>) -> Result<Vec<Task>> {
+        let TaskSpec {
+            data_set: Some(data_sets),
+            ..
+        } = self.spec.clone() else {
+            return Ok(vec![])
+        };
+
+        let (remote_data_sets, _local_data_sets): (Vec<String>, Vec<String>) = data_sets
+            .clone()
+            .into_iter()
+            .partition(|ds| ds.contains('.'));
+
+        // TODO: this is very brittle
+        let projects_ids: Vec<String> = remote_data_sets
+            .clone()
+            .into_iter()
+            .map(|ds| ds.split('.').map(String::from).collect::<Vec<String>>()[0].clone())
+            .collect();
+
+        // TODO: this will break if datasets reference there own project.
+        //
+
+        debug!("looking for project vals");
+
+        let project_vals: Vec<project::Project> = join_all(projects_ids.into_iter().map(|p| {
+            let projects = projects.clone();
+            async move {
+                projects
+                    .list(&ListParams::default())
+                    .await?
+                    .into_iter()
+                    .find(|project| project.spec.id == p)
+                    .ok_or(Error::MissingProject(p.to_string()))
+            }
+        }))
+        .await
+        .into_iter()
+        .collect::<Result<Vec<project::Project>>>()?;
+
+        debug!("mapping remote datasets");
+
+        // TODO: this is very brittle, we need more checks to ensure nothing went wrong.
+        let data_set_tasks: Vec<Task> = data_sets
+            .clone()
+            .into_iter()
+            .map(|ref ds| {
+                project_vals
+                    .clone()
+                    .into_iter()
+                    .find_map(|pds| pds.generate_data_set_task(ds.to_string()))
+                    .ok_or(Error::MissingDataSets(ds.to_string()))
+            })
+            .collect::<Result<Vec<Task>>>()?;
+
+        debug!("mapping local datasets");
+
+        if data_set_tasks.len() != data_sets.len() {
+            return Err(Error::MissingDataSets(self.name_any())); // TODO: find a proper way of describing this error.
+        }
+
+        Ok(data_set_tasks)
     }
 
     async fn solve_template(&mut self, projects: Api<project::Project>) -> Result<()> {
@@ -616,30 +779,25 @@ async fn reconcile(task: Arc<Task>, ctx: Arc<Context>) -> Result<Action> {
     let workflows = Api::<Workflow>::namespaced(ctx.client.clone(), &ctx.config.namespace);
     let projects = Api::<project::Project>::namespaced(ctx.client.clone(), &ctx.config.namespace);
 
-    let task_phase: &TaskPhase = if let Some(status) = &task.status {
-        match &status.phase {
-            Some(p) => p,
-            None => &TaskPhase::Pending,
-        }
-    } else {
-        &TaskPhase::Pending
-    };
+    let mut task: Task = Task::clone(&task);
 
-    if task_phase == &TaskPhase::Failed || task_phase == &TaskPhase::Succeeded {
-        return Ok(Action::requeue(Duration::from_secs(50)));
-    }
+    let data_sets = task.clone().spec.data_set;
 
-    if task_phase == &TaskPhase::Pending && task.status.is_none() {
+    let mut mut_task = task.clone();
+
+    let Some(ref mut status) = mut_task.status_mut() else {
         let mut new_task = Task {
             metadata: task.metadata.clone(),
             spec: TaskSpec::default(),
             status: Some(TaskStatus {
                 phase: Some(TaskPhase::Pending),
                 reason: None,
+                data_set_tasks: None,
             }),
         };
 
         new_task.metadata.managed_fields = None;
+
 
         tasks
             .patch_status(
@@ -650,13 +808,126 @@ async fn reconcile(task: Arc<Task>, ctx: Arc<Context>) -> Result<Action> {
             .await?;
 
         return Ok(Action::requeue(Duration::from_secs(50)));
+    };
+
+    let task_phase = status.clone().phase.unwrap_or_default();
+    if task_phase == TaskPhase::Failed || task_phase == TaskPhase::Succeeded {
+        return Ok(Action::requeue(Duration::from_secs(50)));
     }
 
-    let mut task: Task = Task::clone(&task);
+    if let Some(_data_sets) = data_sets.as_ref() {
+        debug!("reconciling datasets");
+
+        // TODO: how do we make this idempotent?
+        let data_sets = task.get_data_set_tasks(projects.clone()).await?;
+
+        let data_set_statuses: Vec<(String, DataSetStatus)> =
+            join_all(data_sets.iter().map(|data_task: &Task| async {
+                let mut data_task = data_task.to_owned();
+
+                data_task.metadata = add_owner_reference(
+                    data_task.metadata.clone(),
+                    task.controller_owner_ref(&()).unwrap_or_default(),
+                );
+
+                let data_task: Task = tasks
+                    .patch(
+                        &data_task.name_any(),
+                        &PatchParams::apply("ame-controller"),
+                        &Patch::Apply(&data_task),
+                    )
+                    .await?;
+
+                Ok((
+                    data_task.name_any(),
+                    DataSetStatus {
+                        phase: data_task
+                            .status
+                            .and_then(|status| status.phase)
+                            .unwrap_or_default(),
+                    },
+                )) as crate::Result<(String, DataSetStatus)>
+            }))
+            .await
+            .into_iter()
+            .collect::<Result<_>>()?;
+
+        let mut data_set_status_map: BTreeMap<String, DataSetStatus> = BTreeMap::new();
+
+        for (name, status) in data_set_statuses.clone() {
+            data_set_status_map.insert(name, status);
+        }
+
+        // TODO: what if status is None?
+        match &mut status.data_set_tasks {
+            None => {
+                status.data_set_tasks = Some(data_set_status_map);
+            }
+            Some(data_set_tasks) => {
+                for (k, v) in data_set_status_map.into_iter() {
+                    data_set_tasks.insert(k, v);
+                }
+            }
+        };
+
+        if data_set_statuses
+            .clone()
+            .into_iter()
+            .any(|(_name, dst)| dst.phase == TaskPhase::Failed)
+        {
+            status.phase = Some(TaskPhase::Failed);
+            status.reason = Some("one or more data sources have failed".to_string());
+
+            task.meta_mut().managed_fields = None;
+
+            let res = tasks
+                .patch_status(
+                    &task.name_any(),
+                    &PatchParams::apply("taskmanager.teainspace.com"),
+                    &kube::api::Patch::Apply(task),
+                )
+                .await;
+
+            info!("one or more data sources have failed");
+
+            if let Err(e) = res {
+                return Err(Error::KubeApiError(e));
+            }
+
+            return Ok(Action::requeue(Duration::from_secs(50)));
+        }
+
+        if data_set_statuses
+            .into_iter()
+            .any(|(_, dst)| dst.phase != TaskPhase::Succeeded)
+        {
+            status.phase = Some(TaskPhase::Pending);
+            status.reason = Some("one or more data sources are not ready".to_string());
+            // TODO: should we really be setting managed_fields to None?
+            task.meta_mut().managed_fields = None;
+            let res = tasks
+                .patch_status(
+                    &task.name_any(),
+                    &PatchParams::apply("taskmanager.teainspace.com"),
+                    &kube::api::Patch::Apply(task),
+                )
+                .await;
+
+            info!("one or more data sources are not ready");
+
+            if let Err(e) = res {
+                return Err(Error::KubeApiError(e));
+            }
+
+            return Ok(Action::requeue(Duration::from_secs(50)));
+        }
+    }
 
     task.solve_template(projects.clone()).await?;
 
-    let correct_wf = task.generate_workflow(&ctx.config, projects)?;
+    let data_sets = task.get_datasets(projects.clone()).await?;
+
+    let correct_wf = task.generate_workflow(&ctx.config, projects, Some(data_sets))?;
     let wf = match workflows
         .patch(
             &correct_wf.name_any(),
@@ -691,7 +962,7 @@ async fn reconcile(task: Arc<Task>, ctx: Arc<Context>) -> Result<Action> {
             WorkflowPhase::Error => TaskPhase::Error,
         };
 
-        if &correct_task_phase != task_phase {
+        if correct_task_phase != task_phase {
             let mut new_task = task.clone();
             let original_status = new_task.status.unwrap_or(TaskStatus::default());
 
@@ -722,7 +993,7 @@ async fn reconcile(task: Arc<Task>, ctx: Arc<Context>) -> Result<Action> {
 }
 
 fn error_policy(task: Arc<Task>, error: &Error, _ctx: Arc<Context>) -> Action {
-    println!("error: {}, for task: {}", error, task.name_any());
+    error!("error: {}, for task: {}", error, task.name_any());
     Action::requeue(Duration::from_secs(5))
 }
 
@@ -741,8 +1012,9 @@ pub async fn start_task_controller(config: TaskControllerConfig) -> BoxFuture<'s
 
     let workflows = Api::<Workflow>::namespaced(client, &context.config.namespace);
 
-    Controller::new(tasks, ListParams::default())
+    Controller::new(tasks.clone(), ListParams::default())
         .owns(workflows, ListParams::default())
+        .owns(tasks, ListParams::default())
         .run(reconcile, error_policy, context)
         .filter_map(|x| async move { std::result::Result::ok(x) })
         .for_each(|_| futures::future::ready(()))
@@ -924,7 +1196,17 @@ mod test {
 
         let client = Client::try_default().await.unwrap();
         let projects = Api::<project::Project>::default_namespaced(client);
-        let wf: Workflow = t.generate_workflow(&gen_test_config(), projects).unwrap();
+        let wf: Workflow = t
+            .generate_workflow(
+                &gen_test_config(),
+                projects,
+                Some(vec![DataSet {
+                    name: "mydataset".to_string(),
+                    task: TaskSpec::default(),
+                    path: "path_to_data".to_string(),
+                }]),
+            )
+            .unwrap();
 
         insta::assert_yaml_snapshot!(&wf);
     }
@@ -969,7 +1251,9 @@ mod test {
 
         let client = Client::try_default().await.unwrap();
         let projects = Api::<project::Project>::default_namespaced(client);
-        let wf: Workflow = t.generate_workflow(&gen_test_config(), projects).unwrap();
+        let wf: Workflow = t
+            .generate_workflow(&gen_test_config(), projects, None)
+            .unwrap();
 
         insta::assert_yaml_snapshot!(&wf);
     }
@@ -1016,7 +1300,9 @@ mod test {
 
         let client = Client::try_default().await.unwrap();
         let projects = Api::<project::Project>::default_namespaced(client);
-        let wf: Workflow = t.generate_workflow(&gen_test_config(), projects).unwrap();
+        let wf: Workflow = t
+            .generate_workflow(&gen_test_config(), projects, None)
+            .unwrap();
 
         insta::assert_yaml_snapshot!(&wf);
     }
@@ -1062,7 +1348,9 @@ mod test {
 
         let client = Client::try_default().await.unwrap();
         let projects = Api::<project::Project>::default_namespaced(client);
-        let wf: Workflow = t.generate_workflow(&gen_test_config(), projects).unwrap();
+        let wf: Workflow = t
+            .generate_workflow(&gen_test_config(), projects, None)
+            .unwrap();
 
         insta::assert_yaml_snapshot!(&wf);
     }

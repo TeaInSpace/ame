@@ -101,10 +101,18 @@ impl ProjectSource {
             Path::new(&format!("/tmp/{}", &self.name_any())),
         )?;
 
-        let project = serde_yaml::from_str(&fs::read_to_string(format!(
-            "/tmp/{}/ame.yaml",
-            self.name_any()
-        ))?)?;
+        let ame_file = if let Ok(ame_file) =
+            fs::read_to_string(format!("/tmp/{}/ame.yaml", self.name_any()))
+        {
+            ame_file
+        } else if let Ok(ame_file) = fs::read_to_string(format!("/tmp/{}/ame.yml", self.name_any()))
+        {
+            ame_file
+        } else {
+            return Err(Error::MissingAmeFile(self.name_any()));
+        };
+
+        let project: ProjectSpec = serde_yaml::from_str(&ame_file)?;
 
         fs::remove_dir_all("/tmp/".to_string() + &self.name_any())?;
 
