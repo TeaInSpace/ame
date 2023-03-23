@@ -66,12 +66,50 @@ pub struct ProjectSpec {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub log_entry: Option<LogEntry>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub data_sets: Option<Vec<DataSet>>,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug, JsonSchema, PartialEq, Eq, Default)]
 pub struct ProjectStatus {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub models: Option<BTreeMap<String, ModelStatus>>,
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug, JsonSchema, Default)]
+pub struct DataSet {
+    pub name: String,
+    pub task: TaskSpec,
+    pub path: String,
+}
+
+pub fn local_name(name: String) -> String {
+    if name.contains('.') {
+        name.split('.')
+            .map(String::from)
+            .collect::<Vec<String>>()
+            .get(1)
+            .unwrap_or(&name.to_string())
+            .to_owned()
+    } else {
+        name
+    }
+}
+
+impl DataSet {
+    pub fn gen_task(&self) -> crate::Task {
+        crate::Task {
+            metadata: ObjectMeta {
+                // TODO: what are the impliciations of using a fixed name here instead of
+                // generating a random one?
+                name: Some(self.name.clone()),
+                ..ObjectMeta::default()
+            },
+            spec: self.task.clone(),
+            status: None,
+        }
+    }
 }
 
 impl ProjectStatus {
@@ -193,6 +231,29 @@ impl Default for ModelValidationStatus {
 }
 
 impl Project {
+    pub fn get_data_set(&self, data_set_name: String) -> Option<DataSet> {
+        let data_set_name = local_name(data_set_name);
+        self.clone()
+            .spec
+            .data_sets
+            .and_then(|data_sets| data_sets.into_iter().find(|ds| ds.name == data_set_name))
+    }
+
+    pub fn generate_data_set_task(&self, data_set_name: String) -> Option<manager::Task> {
+        let Some(mut task) = self.get_data_set(data_set_name).map(|ds| ds.gen_task()) else {
+            return None;
+        };
+
+        if let Some(repo) = self.annotations().get("gitrepository") {
+            task.spec.source = Some(manager::ProjectSource {
+                gitrepository: Some(repo.to_owned()),
+                ..manager::ProjectSource::default()
+            });
+        }
+
+        Some(task)
+    }
+
     fn gen_validation_task(&self, model: &Model) -> Result<manager::Task> {
         let Some(mut spec) =match model.validation_task.as_ref() {
             Some(TaskSpec {
@@ -315,7 +376,10 @@ impl Project {
     }
 }
 
-fn add_owner_reference(mut metadata: ObjectMeta, owner_reference: OwnerReference) -> ObjectMeta {
+pub fn add_owner_reference(
+    mut metadata: ObjectMeta,
+    owner_reference: OwnerReference,
+) -> ObjectMeta {
     match &mut metadata.owner_references {
         Some(refs) => refs.push(owner_reference),
         None => metadata.owner_references = Some(vec![owner_reference]),

@@ -21,6 +21,11 @@ spec:
         properties:
           spec:
             properties:
+              dataSet:
+                items:
+                  type: string
+                nullable: true
+                type: array
               env:
                 items:
                   properties:
@@ -214,6 +219,22 @@ spec:
             description: The status object of `Task`
             nullable: true
             properties:
+              data_set_tasks:
+                additionalProperties:
+                  properties:
+                    phase:
+                      enum:
+                      - Running
+                      - Pending
+                      - Failed
+                      - Succeeded
+                      - Error
+                      type: string
+                  required:
+                  - phase
+                  type: object
+                nullable: true
+                type: object
               phase:
                 enum:
                 - Running

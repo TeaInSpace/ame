@@ -74,6 +74,18 @@ pub enum Error {
 
     #[error("failed to find validation task status for model: {0}")]
     MissingValidationTask(String),
+
+    #[error("failed to find project id for task: {0}")]
+    MissingProjectId(String),
+
+    #[error("failed to find project with id: {0}")]
+    MissingProject(String),
+
+    #[error("failed to find data for task with name : {0}")]
+    MissingDataSets(String),
+
+    #[error("failed to find AME file project source with name : {0}")]
+    MissingAmeFile(String),
 }
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;

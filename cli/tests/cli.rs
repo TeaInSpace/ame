@@ -315,11 +315,13 @@ async fn cannot_create_multiple_sources_for_the_same_repo() -> Result<(), Box<dy
 #[tokio::test]
 #[serial]
 #[ignore]
-async fn can_train_validate_and_deploy_model() -> Result<(), Box<dyn std::error::Error>> {
+async fn can_use_data_set_train_validate_and_deploy_model() -> Result<(), Box<dyn std::error::Error>>
+{
     test_setup().await?;
 
     // The template repo is required as the  ame-demo requires it to train.
     let template_repo = "https://github.com/TeaInSpace/ame-template-demo.git";
+    let data_set_repo = "https://github.com/TeaInSpace/ame-dataset-demo.git";
     let repo = "https://github.com/TeaInSpace/ame-demo.git";
     let model_name = "logreg"; // this name from the ame-demo repo.
     let project_src_ctrl = ProjectSrcCtrl::new(kube_client().await?, AME_NAMESPACE);
@@ -327,8 +329,22 @@ async fn can_train_validate_and_deploy_model() -> Result<(), Box<dyn std::error:
     let kube_client = kube_client().await?;
     let deployments: Api<Deployment> = Api::namespaced(kube_client.clone(), AME_NAMESPACE);
     let projects: Api<Project> = Api::namespaced(kube_client.clone(), AME_NAMESPACE);
+    // TODO: whyid this no throw an error with AME_FILE_NAME.
+    let secret_ctrl = SecretCtrl::try_default(AME_NAMESPACE).await?;
+    let s3_secret = "zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG";
+
+    secret_ctrl
+        .store_secret("s3secretkey", s3_secret.to_string())
+        .await?;
 
     let _ = project_src_ctrl.delete_project_src_for_repo(repo).await;
+    let _ = project_src_ctrl
+        .delete_project_src_for_repo(data_set_repo)
+        .await;
+    let _ = project_src_ctrl
+        .delete_project_src_for_repo(template_repo)
+        .await;
+
     let mut cmd = Command::cargo_bin("cli")?;
 
     let _output = cmd
@@ -336,7 +352,16 @@ async fn can_train_validate_and_deploy_model() -> Result<(), Box<dyn std::error:
         .arg("create")
         .arg(template_repo)
         .assert()
-        .failure();
+        .success();
+
+    let mut cmd = Command::cargo_bin("cli")?;
+
+    let _output = cmd
+        .arg("projectsrc")
+        .arg("create")
+        .arg(data_set_repo)
+        .assert()
+        .success();
 
     let mut cmd = Command::cargo_bin("cli")?;
 
@@ -345,7 +370,7 @@ async fn can_train_validate_and_deploy_model() -> Result<(), Box<dyn std::error:
         .arg("create")
         .arg(repo)
         .assert()
-        .failure();
+        .success();
 
     // Note that the model will start training now if now version is present.
     // We will need to check for this in future tests.
@@ -358,7 +383,7 @@ async fn can_train_validate_and_deploy_model() -> Result<(), Box<dyn std::error:
             .await?
             .items
             .len(),
-        2
+        3
     );
 
     // No deployment for the model should be present.
@@ -411,6 +436,9 @@ async fn can_train_validate_and_deploy_model() -> Result<(), Box<dyn std::error:
     }
 
     project_src_ctrl.delete_project_src_for_repo(repo).await?;
+    project_src_ctrl
+        .delete_project_src_for_repo(data_set_repo)
+        .await?;
     project_src_ctrl
         .delete_project_src_for_repo(template_repo)
         .await?;

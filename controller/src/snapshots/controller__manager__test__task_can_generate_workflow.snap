@@ -60,7 +60,7 @@ spec:
                 volumeMounts:
                   - mountPath: /project
                     name: training-volume
-                source: "\n            s3cmd --no-ssl --region eu-central-1 --host=$MINIO_URL --host-bucket=$MINIO_URL get --recursive s3://ame/tasks/training/projectfiles/ ./\n\n                       echo \"0\" >> exit.status\n                        "
+                source: "\n            s3cmd --no-ssl --region eu-central-1 --host=$MINIO_URL --host-bucket=$MINIO_URL get --recursive s3://ame/tasks/mydataset/artifacts/path_to_data ./\n\n                \n\n            s3cmd --no-ssl --region eu-central-1 --host=$MINIO_URL --host-bucket=$MINIO_URL get --recursive s3://ame/tasks/training/projectfiles/ ./\n\n                       echo \"0\" >> exit.status\n                        "
               podSpecPatch: ~
         - - name: main
             inline:
@@ -115,7 +115,7 @@ spec:
                 volumeMounts:
                   - mountPath: /project
                     name: training-volume
-                source: "\n          set -e # It is important that the workflow exits with an error code if execute or save_artifacts fails, so AME can take action based on that information.\n\n          exec python train.py\n\n                save_artifacts ame/tasks/training/artifacts/\n\n          echo \"0\" >> exit.status\n            "
+                source: "\n          set -e # It is important that the workflow exits with an error code if execute or save_artifacts fails, so AME can take action based on that information.\n\n          \n                pipenv sync\n\n                pipenv run python train.py\n\n                save_artifacts ame/tasks/training/artifacts/\n\n          echo \"0\" >> exit.status\n            "
               podSpecPatch: "{\"containers\":[{\"name\":\"main\", \"resources\":{\"limits\":null}}]}"
       securityContext: ~
       script: ~
