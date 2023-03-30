@@ -1,7 +1,8 @@
-use ame_client::{
-    auth::browser_login,
-    client_builder::{build_ame_client, AmeServiceClientCfg},
-    TaskIdentifier,
+use ame::{
+    client::{auth::browser_login, native_client::build_ame_client},
+    grpc::TaskIdentifier,
+    grpc::TrainRequest,
+    AmeServiceClientCfg,
 };
 use clap::{Parser, Subcommand};
 use cli::{
@@ -125,7 +126,7 @@ async fn main() -> Result<()> {
             .await?;
 
             client
-                .train_model(Request::new(ame_client::TrainRequest {
+                .train_model(Request::new(TrainRequest {
                     projectid: project.to_string(),
                     model_name: model.to_string(),
                 }))

@@ -1,11 +1,12 @@
 use std::time::Duration;
 
-use ame_client::GitProjectSource;
-use ame_client::ProjectSourceCfg;
-use ame_client::ProjectSourceListParams;
-use ame_client::ProjectSourceState;
-use ame_client::ProjectSrcIdRequest;
-use ame_client::ProjectSrcPatchRequest;
+use ame::grpc::GitProjectSource;
+use ame::grpc::ProjectSourceCfg;
+use ame::grpc::ProjectSourceListParams;
+use ame::grpc::ProjectSourceState;
+use ame::grpc::ProjectSourceStatus;
+use ame::grpc::ProjectSrcIdRequest;
+use ame::grpc::ProjectSrcPatchRequest;
 use clap::Subcommand;
 use colored::Colorize;
 use futures_util::StreamExt;
@@ -121,8 +122,8 @@ impl ProjectSrcCommands {
                 user,
             } => {
                 let id = client
-                    .create_project_src(Request::new(ame_client::ProjectSourceCfg {
-                        git: Some(ame_client::GitProjectSource {
+                    .create_project_src(Request::new(ProjectSourceCfg {
+                        git: Some(GitProjectSource {
                             repository: repository.to_string(),
                             sync_interval: Some("10s".to_string()),
                             secret: secret.clone(),
@@ -210,8 +211,8 @@ impl ProjectSrcCommands {
                 client
                     .update_project_src(Request::new(ProjectSrcPatchRequest {
                         id: Some(id.clone()),
-                        cfg: Some(ame_client::ProjectSourceCfg {
-                            git: Some(ame_client::GitProjectSource {
+                        cfg: Some(ProjectSourceCfg {
+                            git: Some(GitProjectSource {
                                 repository: repository.to_string(),
                                 sync_interval: Some("10s".to_string()),
                                 secret: secret.clone(),
@@ -233,7 +234,7 @@ impl ProjectSrcCommands {
                     .into_inner();
 
                 while let Some(entry) = strm.next().await {
-                    if let Ok(ame_client::ProjectSourceStatus { state, reason, .. }) = entry {
+                    if let Ok(ProjectSourceStatus { state, reason, .. }) = entry {
                         match ProjectSourceState::from_i32(state) {
                             Some(ProjectSourceState::Synchronized) => {
                                 sp.stop_and_persist(

@@ -61,14 +61,21 @@ version = "0.1.0"
 dependencies = [
  "async-stream",
  "async-trait",
+ "cfg-if",
  "futures 0.3.27",
  "futures-util",
  "http",
  "http-body",
  "hyper",
+ "hyper-rustls",
  "kube",
  "leptos",
+ "oauth2",
+ "open",
+ "openidconnect",
  "prost",
+ "reqwest",
+ "rustls-native-certs",
  "schemars",
  "serde",
  "serde_json",
@@ -82,34 +89,6 @@ dependencies = [
  "tonic-web-wasm-client",
  "tower",
  "tower-http 0.4.0",
- "url",
-]
-
-[[package]]
-name = "ame_client"
-version = "0.1.0"
-dependencies = [
- "futures-core",
- "http",
- "http-body",
- "hyper",
- "hyper-rustls",
- "hyper-timeout",
- "oauth2",
- "open",
- "openidconnect",
- "prost",
- "proto",
- "reqwest",
- "rustls-native-certs",
- "schemars",
- "serde",
- "serde_json",
- "thiserror",
- "tokio-rustls",
- "tonic",
- "tower",
- "tower-http 0.3.5",
  "url",
 ]
 
@@ -588,7 +567,6 @@ name = "cli"
 version = "0.1.0"
 dependencies = [
  "ame",
- "ame_client",
  "assert_cmd",
  "assert_fs",
  "async-stream",
@@ -610,7 +588,6 @@ dependencies = [
  "k8s-openapi",
  "kube",
  "oauth2",
- "open",
  "openidconnect",
  "rand",
  "reqwest",
@@ -2549,12 +2526,11 @@ checksum = "b7e5500299e16ebb147ae15a00a942af264cf3688f47923b8fc2cd5858f23ad3"
 
 [[package]]
 name = "open"
-version = "3.2.0"
+version = "4.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2078c0039e6a54a0c42c28faa984e115fb4c2d5bf2208f77d1961002df8576f8"
+checksum = "075c5203b3a2b698bc72c6c10b1f6263182135751d5013ea66e8a4b3d0562a43"
 dependencies = [
  "pathdiff",
- "windows-sys 0.42.0",
 ]
 
 [[package]]
@@ -2961,19 +2937,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "379119666929a1afd7a043aa6cf96fa67a6dce9af60c88095a4686dbce4c9c88"
 dependencies = [
  "prost",
-]
-
-[[package]]
-name = "proto"
-version = "0.1.0"
-dependencies = [
- "prost",
- "prost-build",
- "schemars",
- "serde",
- "serde_json",
- "tonic",
- "tonic-build",
 ]
 
 [[package]]

@@ -1,5 +1,4 @@
-use crate::Result;
-
+use crate::{AmeServiceClientCfg, Result};
 use hyper::{client::HttpConnector, Uri};
 
 use tokio_rustls::rustls::{client::ServerCertVerifier, ClientConfig};
@@ -7,7 +6,7 @@ use tokio_rustls::rustls::{client::ServerCertVerifier, ClientConfig};
 use tower::util::BoxService;
 use tower_http::auth::AddAuthorizationLayer;
 
-use crate::ame_service_client::AmeServiceClient;
+use crate::grpc::ame_service_client::AmeServiceClient;
 
 struct Verifier;
 
@@ -58,7 +57,7 @@ pub async fn build_ame_client(cfg: AmeServiceClientCfg) -> Result<AmeClient> {
     let mut http = HttpConnector::new();
     http.enforce_http(false);
 
-    let id_token = if let Some(id_token) = cfg.id_token {
+    let id_token = if let Some(id_token) = cfg.id_token.clone() {
         id_token
     } else {
         "".to_string()
@@ -83,8 +82,8 @@ pub async fn build_ame_client(cfg: AmeServiceClientCfg) -> Result<AmeClient> {
         .layer(AddAuthorizationLayer::bearer(&id_token))
         .map_request(move |mut req: http::Request<tonic::body::BoxBody>| {
             let uri = Uri::builder()
-                .scheme(cfg.endpoint.scheme().unwrap().clone())
-                .authority(cfg.endpoint.authority().unwrap().clone())
+                .scheme(cfg.scheme().unwrap())
+                .authority(cfg.authority().unwrap())
                 .path_and_query(req.uri().path_and_query().unwrap().clone())
                 .build()
                 .unwrap();

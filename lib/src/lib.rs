@@ -1,3 +1,11 @@
+use error::AmeError;
+
+#[cfg(feature = "native-client")]
+use http::{
+    uri::{Authority, Scheme},
+    Uri,
+};
+
 #[cfg(feature = "web-components")]
 pub mod web;
 
@@ -114,10 +122,28 @@ pub mod error;
 #[cfg(feature = "ame-control")]
 pub mod ctrl;
 
-pub type Result<U> = std::result::Result<U, error::AmeError>;
+pub type Result<U> = std::result::Result<U, AmeError>;
 
+#[derive(Clone)]
 pub struct AmeServiceClientCfg {
     pub disable_tls_cert_check: bool,
     pub endpoint: String,
     pub id_token: Option<String>,
+}
+
+#[cfg(feature = "native-client")]
+impl AmeServiceClientCfg {
+    pub fn scheme(&self) -> Result<Scheme> {
+        let uri = self.endpoint.parse::<Uri>()?;
+        uri.scheme()
+            .map(|s| s.to_owned())
+            .ok_or(AmeError::ParsingFailure)
+    }
+
+    pub fn authority(&self) -> Result<Authority> {
+        let uri = self.endpoint.parse::<Uri>()?;
+        uri.authority()
+            .map(|a| a.to_owned())
+            .ok_or(AmeError::ParsingFailure)
+    }
 }

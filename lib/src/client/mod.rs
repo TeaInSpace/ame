@@ -1,15 +1,13 @@
-#[cfg(all(feature = "native-client", not(features = "web-components")))]
-mod native_client;
-#[cfg(all(feature = "native-client", not(features = "web-components")))]
-pub use native_client::*;
+#[cfg(feature = "native-client")]
+pub mod native_client;
 
-#[cfg(all(feature = "web-components", not(features = "native-client")))]
-mod wasm_client;
+#[cfg(feature = "native-client")]
+pub mod auth;
 
-#[cfg(all(feature = "web-components", not(features = "native-client")))]
-pub use wasm_client::*;
+#[cfg(feature = "web-components")]
+pub mod wasm_client;
 
-#[cfg(any(feature = "web-components", feature = "native-client"))]
+#[cfg(feature = "web-components")]
 mod common;
-#[cfg(any(feature = "web-components", feature = "native-client"))]
+#[cfg(feature = "web-components")]
 pub use common::*;
