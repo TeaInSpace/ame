@@ -1174,6 +1174,10 @@ mod test {
                 {
                     "name": "VAR2",
                     "value": "val2"
+                },
+                {
+                    "name": "VAR3",
+                    "value": "val3"
                 }
                 ],
                 "secrets": [

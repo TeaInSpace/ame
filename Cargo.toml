@@ -1,4 +1,4 @@
 [workspace]
-members = ["controller", "service", "cli", "client", "web",  "lib"]
+members = ["controller", "service", "cli",  "web",  "lib"]
 resolver = "2"
 

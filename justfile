@@ -23,6 +23,16 @@ default:
 setup_toolchains:
  rustup toolchain install nightly 
 
+ci_tools:
+  rustup component add clippy --toolchain nightly
+  rustup component add rustfmt --toolchain nightly
+  cargo binstall -y cargo-spellcheck
+  cargo binstall -y typos-cli
+  cargo binstall -y cargo-audit
+  cargo binstall -y cargo-outdated
+  cargo binstall -y cargo-udeps
+
+
 tools:
   rustup component add clippy --toolchain nightly
   rustup component add rustfmt --toolchain nightly

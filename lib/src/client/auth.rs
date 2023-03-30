@@ -3,7 +3,7 @@ use std::{
     net::{TcpListener, TcpStream},
 };
 
-use crate::{Error, Result};
+use crate::{AmeError, Result};
 
 use openidconnect::{
     core::{CoreClient, CoreProviderMetadata, CoreResponseType},
@@ -66,7 +66,9 @@ pub async fn browser_login(
         CoreProviderMetadata::discover_async(issuer_url.clone(), async_client::async_http_client)
             .await
             .map_err(|_| {
-                Error::AuthError("failed to discover OpenIDconnect provider metadata".to_string())
+                AmeError::AuthError(
+                    "failed to discover OpenIDconnect provider metadata".to_string(),
+                )
             })?;
 
     let server = TcpListener::bind(("127.0.0.1", 0))?;
@@ -95,7 +97,7 @@ pub async fn browser_login(
     let (code, state) = extract_code_from_redirect(&stream).await;
 
     if csrf_state.secret() != state.secret() {
-        return Err(Error::AuthError(
+        return Err(AmeError::AuthError(
             "Received incorrect CSRF state".to_string(),
         ));
     }
@@ -113,7 +115,7 @@ pub async fn browser_login(
         .exchange_code(code)
         .request_async(async_client::async_http_client)
         .await
-        .map_err(|_| Error::AuthError("failed to exchange code for token".to_string()))?;
+        .map_err(|_| AmeError::AuthError("failed to exchange code for token".to_string()))?;
 
     //TODO: validate claims with nonce.
 

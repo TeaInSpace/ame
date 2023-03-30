@@ -1,6 +1,7 @@
 pub mod project;
 
-use ame_client::client_builder::{build_ame_client, AmeClient, AmeServiceClientCfg};
+use ame::client::native_client::{build_ame_client, AmeClient};
+use ame::AmeServiceClientCfg;
 use envconfig::Envconfig;
 
 use http::uri::InvalidUri;
@@ -47,7 +48,7 @@ pub enum Error {
     ParseError(#[from] ParseError),
 
     #[error("Ame errored: {0}")]
-    ClientError(#[from] ame_client::Error),
+    ClientError(#[from] ame::error::AmeError),
 
     #[error("Invalid URI: {0}")]
     UriParseError(#[from] InvalidUri),
@@ -120,7 +121,7 @@ impl TryFrom<CliConfiguration> for AmeServiceClientCfg {
     fn try_from(cli_cfg: CliConfiguration) -> std::result::Result<Self, Self::Error> {
         Ok(AmeServiceClientCfg {
             disable_tls_cert_check: true,
-            endpoint: cli_cfg.endpoint.parse()?,
+            endpoint: cli_cfg.endpoint,
             id_token: cli_cfg.id_token,
         })
     }

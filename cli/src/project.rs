@@ -1,7 +1,7 @@
 use crate::{Error, Result};
-use ame_client::client_builder::AmeClient;
-use ame_client::TaskLogRequest;
-use ame_client::{
+use ame::client::native_client::AmeClient;
+use ame::grpc::TaskLogRequest;
+use ame::grpc::{
     project_file_chunk::Messages, CreateTaskRequest, FileChunk, ProjectFileChunk,
     ProjectFileIdentifier, TaskProjectDirectoryStructure, TaskTemplate,
 };

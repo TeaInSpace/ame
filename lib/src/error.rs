@@ -1,5 +1,10 @@
+#[cfg(feature = "native-client")]
+use http::uri::InvalidUri;
 use thiserror::Error;
 use tonic::Status;
+
+#[cfg(feature = "native-client")]
+use url::ParseError;
 
 use crate::grpc::ResourceId;
 
@@ -30,6 +35,26 @@ pub enum AmeError {
 
     #[error("missing parameter from request: {0}")]
     MissingRequestParameter(String),
+
+    #[cfg(feature = "native-client")]
+    #[error("failed to parse endpoint")]
+    ParsingFailure,
+
+    #[cfg(feature = "native-client")]
+    #[error("{0}")]
+    InvalidUri(#[from] InvalidUri),
+
+    #[cfg(feature = "native-client")]
+    #[error("{0}")]
+    IoError(#[from] std::io::Error),
+
+    #[cfg(feature = "native-client")]
+    #[error("{0}")]
+    ParseError(#[from] ParseError),
+
+    #[cfg(feature = "native-client")]
+    #[error("{0}")]
+    AuthError(String),
 }
 
 impl From<Status> for AmeError {

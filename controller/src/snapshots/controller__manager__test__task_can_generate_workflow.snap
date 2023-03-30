@@ -109,6 +109,8 @@ spec:
                     value: val1
                   - name: VAR2
                     value: val2
+                  - name: VAR3
+                    value: val3
                 image: "ghcr.io/teainspace/ame/ame-executor:0.0.3"
                 name: ""
                 resources: {}

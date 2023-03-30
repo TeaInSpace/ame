@@ -1,8 +1,9 @@
 use std::time::Duration;
 
-use ame_client::client_builder::{build_ame_client, AmeServiceClientCfg};
-use ame_client::Empty;
-use ame_client::{AmeSecret, AmeSecretId};
+use ame::client::native_client::build_ame_client;
+use ame::grpc::Empty;
+use ame::grpc::{AmeSecret, AmeSecretId};
+use ame::AmeServiceClientCfg;
 use clap::Subcommand;
 use colored::Colorize;
 use dialoguer::{Input, Password};

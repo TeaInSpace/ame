@@ -1,5 +1,4 @@
-use ame::client::build_ame_client;
-use ame::client::AmeClient;
+use ame::client::wasm_client::{build_ame_client, AmeClient};
 use ame::client::AmeCtrl;
 use ame::grpc::*;
 use ame::web::{Header, HeaderProps};
@@ -21,7 +20,7 @@ use tonic::Request;
 use tonic_web_wasm_client::Client;
 
 pub fn gen_client(_endpoint: String) -> AmeClient {
-    let ame_endpoint = "http://ame.local:31475".to_string();
+    let ame_endpoint = "http://ame.local:32662".to_string();
     build_ame_client(AmeServiceClientCfg {
         id_token: None,
         endpoint: ame_endpoint,
