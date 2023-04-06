@@ -23,13 +23,18 @@ doc = false
 name = "project_crdgen"
 path = "src/project_crdgen.rs"
 
+[[bin]]
+doc = false
+name = "data_set_crdgen"
+path = "src/data_set_crd_gen.rs"
+
 [lib]
 name = "controller"
 path = "src/lib.rs"
 
 
 [dependencies]
-ame = { version = "0.1.0", path = "../lib", features = ["ame-control"] }
+ame = { version = "0.1.0", path = "../lib", features = ["ame-control", "custom-resources"] }
 async-trait = "0.1.66"
 duration-string = "0.2.0"
 either = "1.8.0"

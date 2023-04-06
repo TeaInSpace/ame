@@ -1,7 +1,9 @@
+use controller::data_sets::DataSetControllerCfg;
 use controller::project::ProjectCtrlCfg;
 use controller::*;
 use controller::{manager::TaskControllerConfig, project_source::ProjectSrcCtrlCfg};
 use envconfig::Envconfig;
+use kube::Client;
 use tracing_subscriber::{prelude::*, EnvFilter, Registry};
 
 #[tokio::main]
@@ -20,6 +22,13 @@ async fn main() -> Result<()> {
     tracing::subscriber::set_global_default(collector).unwrap();
 
     // Start kubernetes controller
+    let client = Client::try_default().await?;
+    let data_set_controller = data_sets::run(DataSetControllerCfg {
+        client,
+        namespace: task_ctrl_cfg.namespace.clone(),
+    })
+    .await
+    .unwrap();
     let task_controller = manager::start_task_controller(task_ctrl_cfg).await;
     let projectsrc_controller =
         project_source::start_project_source_controller(project_src_ctrl_cfg).await;
@@ -29,6 +38,7 @@ async fn main() -> Result<()> {
         _ = task_controller=> println!("task controller exited"),
         _ = projectsrc_controller => println!("project source controller exited"),
         _ = project_controller=> println!("project controller exited"),
+        _ = data_set_controller => println!("data set controller exited")
     }
 
     Ok(())

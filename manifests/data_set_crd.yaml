@@ -1,0 +1,98 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: datasets.ame.teainspace.com
+spec:
+  group: ame.teainspace.com
+  names:
+    categories: []
+    kind: DataSet
+    plural: datasets
+    shortNames:
+    - ds
+    singular: dataset
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns: []
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: Auto-generated derived type for DataSetSpec via `CustomResource`
+        properties:
+          spec:
+            properties:
+              name:
+                type: string
+              path:
+                type: string
+              task:
+                nullable: true
+                properties:
+                  name:
+                    nullable: true
+                    type: string
+                  task_ref:
+                    nullable: true
+                    properties:
+                      name:
+                        type: string
+                      project:
+                        nullable: true
+                        type: string
+                    required:
+                    - name
+                    type: object
+                type: object
+            required:
+            - name
+            - path
+            type: object
+          status:
+            nullable: true
+            properties:
+              phase:
+                oneOf:
+                - required:
+                  - pending
+                - required:
+                  - runningTask
+                - required:
+                  - ready
+                - required:
+                  - failed
+                properties:
+                  failed:
+                    properties:
+                      task_name:
+                        type: string
+                    required:
+                    - task_name
+                    type: object
+                  pending:
+                    type: object
+                  ready:
+                    properties:
+                      task_name:
+                        type: string
+                    required:
+                    - task_name
+                    type: object
+                  runningTask:
+                    properties:
+                      task_name:
+                        type: string
+                    required:
+                    - task_name
+                    type: object
+                type: object
+            required:
+            - phase
+            type: object
+        required:
+        - spec
+        title: DataSet
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

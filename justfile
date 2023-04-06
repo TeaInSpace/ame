@@ -88,6 +88,7 @@ crdgen:
  cargo run --bin crdgen > manifests/crd.yaml
  cargo run --bin project_src_crdgen > manifests/project_src_crd.yaml
  cargo run --bin project_crdgen > manifests/project_crd.yaml
+ cargo run --bin data_set_crdgen > manifests/data_set_crd.yaml
 
 start_controller:
   cargo run --bin controller

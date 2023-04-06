@@ -12,6 +12,8 @@ use futures::future::BoxFuture;
 use futures::FutureExt;
 use futures::StreamExt;
 
+use ame::grpc::TaskRef;
+
 use futures::future::join_all;
 use k8s_openapi::api::core::v1::EnvVar;
 use k8s_openapi::api::core::v1::EnvVarSource;
@@ -116,6 +118,34 @@ pub struct TaskSpec {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub data_set: Option<Vec<String>>,
+}
+
+impl Task {
+    pub fn new_gen_name(prefix: String, spec: TaskSpec) -> Self {
+        Self {
+            metadata: ObjectMeta {
+                generate_name: Some(prefix),
+                ..ObjectMeta::default()
+            },
+            spec,
+            status: None,
+        }
+    }
+}
+
+impl TaskSpec {
+    pub fn from_ref(TaskRef { name, project }: TaskRef) -> Self {
+        let task_ref = if let Some(project) = project {
+            format!("{project}.{name}")
+        } else {
+            name
+        };
+
+        Self {
+            task_ref: Some(task_ref),
+            ..Self::default()
+        }
+    }
 }
 
 #[derive(JsonSchema, Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

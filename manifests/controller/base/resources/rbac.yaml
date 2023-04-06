@@ -56,6 +56,9 @@ rules:
   - ame.teainspace.com
   resources:
   - tasks
+  - datasets
+  - datasets/finalizers
+  - datasets/status
   verbs:
   - create
   - delete

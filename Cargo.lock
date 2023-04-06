@@ -68,6 +68,7 @@ dependencies = [
  "http-body",
  "hyper",
  "hyper-rustls",
+ "k8s-openapi",
  "kube",
  "leptos",
  "oauth2",

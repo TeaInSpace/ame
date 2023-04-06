@@ -110,6 +110,8 @@ pub mod common;
 pub mod project_source_ctrl;
 pub mod secrets;
 
+pub mod data_sets;
+
 use ame::grpc::*;
 
 impl TryFrom<self::CreateTaskRequest> for Task {
