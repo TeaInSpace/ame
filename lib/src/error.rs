@@ -1,5 +1,6 @@
 #[cfg(feature = "native-client")]
 use http::uri::InvalidUri;
+use kube::runtime::finalizer;
 use thiserror::Error;
 use tonic::Status;
 
@@ -55,6 +56,22 @@ pub enum AmeError {
     #[cfg(feature = "native-client")]
     #[error("{0}")]
     AuthError(String),
+
+    #[error("finalizer failed: {0}")]
+    FinalizerError(String),
+
+    // TODO: this error needs to be made more useful.
+    #[error("missing task config for resource: {0}")]
+    MissingTaskCfg(String),
+
+    #[error("failed to find a task ref for: {0}")]
+    MissingTaskRef(String),
+
+    #[error("failed to get owner reference for resource: {0}")]
+    MissingOwnerRef(String),
+
+    #[error("missing status field for: {0}")]
+    MissingTaskStatus(String),
 }
 
 impl From<Status> for AmeError {
@@ -66,5 +83,12 @@ impl From<Status> for AmeError {
 impl From<AmeError> for tonic::Status {
     fn from(error: AmeError) -> Self {
         Self::from_error(Box::new(error))
+    }
+}
+
+impl<T: std::error::Error> From<finalizer::Error<T>> for AmeError {
+    fn from(error: finalizer::Error<T>) -> Self {
+        // TODO: how do we handle this error conversion properly?
+        AmeError::FinalizerError(error.to_string())
     }
 }

@@ -654,8 +654,10 @@ impl ProjectCtrlCfg {
         let prefix = "AME";
 
         Ok(ProjectCtrlCfg {
-            namespace: std::env::var(format!("{prefix}_NAMESPACE"))?,
-            deployment_image: std::env::var("EXECUTOR_IMAGE")?,
+            namespace: std::env::var(format!("{prefix}_NAMESPACE"))
+                .unwrap_or("ame-system".to_string()),
+            deployment_image: std::env::var("EXECUTOR_IMAGE")
+                .unwrap_or("main.localhost:45373/ame-executor:latest".to_string()),
             model_deployment_ingress: serde_yaml::from_str(
                 &std::env::var(format!("{prefix}_MODEL_DEPLOYMENT_INGRESS"))
                     .unwrap_or("".to_string()),
