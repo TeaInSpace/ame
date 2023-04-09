@@ -1,6 +1,7 @@
 pub mod ameservice;
 pub mod storage;
 
+use ame::custom_resources::task::Task;
 use kube::api::ListParams;
 use kube::runtime::wait;
 use kube::{Api, Client};
@@ -69,7 +70,7 @@ pub async fn health_check<S: NamedService>(
     s3config: S3Config,
 ) -> Result<()> {
     let client = Client::try_default().await.expect("Failed to create a K8S client, is the controller running in an environment with access to cluster credentials?");
-    let tasks = Api::<controller::Task>::namespaced(client, "default");
+    let tasks = Api::<Task>::namespaced(client, "default");
 
     let storage = ObjectStorage::new_s3_storage(&bucket, s3config)
         .expect("failed to create object storage client");
@@ -97,8 +98,8 @@ pub async fn health_check<S: NamedService>(
 mod test {
     use super::storage::{AmeFile, ObjectStorage, ObjectStorageDriver, S3Config, S3StorageDriver};
     use super::Result;
+    use ame::custom_resources::common::find_service_endpoint;
     use ame::grpc::{TaskIdentifier, TaskProjectDirectoryStructure};
-    use controller::common::find_service_endpoint;
     use serial_test::serial;
 
     async fn get_fresh_storage() -> Result<ObjectStorage<S3StorageDriver>> {

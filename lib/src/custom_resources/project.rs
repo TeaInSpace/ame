@@ -6,11 +6,12 @@ use std::{
 };
 
 use crate::{
-    manager::{self, TaskPhase},
-    Error, Result, TaskSpec,
+    custom_resources::task,
+    custom_resources::task::{TaskPhase, TaskSpec},
+    custom_resources::{Error, Result},
 };
 
-use ame::grpc::LogEntry;
+use crate::grpc::LogEntry;
 use futures::{future::BoxFuture, FutureExt, StreamExt};
 use k8s_openapi::{
     api::{
@@ -98,8 +99,8 @@ pub fn local_name(name: String) -> String {
 }
 
 impl DataSet {
-    pub fn gen_task(&self) -> crate::Task {
-        crate::Task {
+    pub fn gen_task(&self) -> task::Task {
+        task::Task {
             metadata: ObjectMeta {
                 // TODO: what are the impliciations of using a fixed name here instead of
                 // generating a random one?
@@ -239,22 +240,22 @@ impl Project {
             .and_then(|data_sets| data_sets.into_iter().find(|ds| ds.name == data_set_name))
     }
 
-    pub fn generate_data_set_task(&self, data_set_name: String) -> Option<manager::Task> {
+    pub fn generate_data_set_task(&self, data_set_name: String) -> Option<task::Task> {
         let Some(mut task) = self.get_data_set(data_set_name).map(|ds| ds.gen_task()) else {
             return None;
         };
 
         if let Some(repo) = self.annotations().get("gitrepository") {
-            task.spec.source = Some(manager::ProjectSource {
+            task.spec.source = Some(task::ProjectSource {
                 gitrepository: Some(repo.to_owned()),
-                ..manager::ProjectSource::default()
+                ..task::ProjectSource::default()
             });
         }
 
         Some(task)
     }
 
-    fn gen_validation_task(&self, model: &Model) -> Result<manager::Task> {
+    fn gen_validation_task(&self, model: &Model) -> Result<task::Task> {
         let Some(mut spec) =match model.validation_task.as_ref() {
             Some(TaskSpec {
                 task_ref: Some(name),
@@ -267,9 +268,9 @@ impl Project {
         };
 
         if let Some(repo) = self.annotations().get("gitrepository") {
-            spec.source = Some(manager::ProjectSource {
+            spec.source = Some(task::ProjectSource {
                 gitrepository: Some(repo.to_owned()),
-                ..manager::ProjectSource::default()
+                ..task::ProjectSource::default()
             });
         }
 
@@ -278,7 +279,7 @@ impl Project {
             ..ObjectMeta::default()
         };
 
-        Ok(manager::Task {
+        Ok(task::Task {
             metadata,
             spec,
             status: None,
@@ -329,7 +330,7 @@ impl Project {
         }
     }
 
-    fn find_task_spec(&self, name: &str) -> Option<&manager::TaskSpec> {
+    fn find_task_spec(&self, name: &str) -> Option<&task::TaskSpec> {
         self.spec.tasks.as_ref().and_then(|tasks| {
             tasks
                 .iter()
@@ -337,7 +338,7 @@ impl Project {
         })
     }
 
-    pub fn generate_model_training_task(&self, name: &str) -> Result<manager::Task> {
+    pub fn generate_model_training_task(&self, name: &str) -> Result<task::Task> {
         let Some(model) = self.get_model(name) else {
             return Err(Error::MissingProjectSrc("model".to_string()));
         };
@@ -358,9 +359,9 @@ impl Project {
 
         let repo = annotations.get("gitrepository").unwrap();
 
-        task_spec.source = Some(manager::ProjectSource {
+        task_spec.source = Some(task::ProjectSource {
             gitrepository: Some(repo.to_owned()),
-            ..manager::ProjectSource::default()
+            ..task::ProjectSource::default()
         });
 
         let metadata = ObjectMeta {
@@ -368,7 +369,7 @@ impl Project {
             ..ObjectMeta::default()
         };
 
-        Ok(manager::Task {
+        Ok(task::Task {
             metadata: add_owner_reference(metadata, self.controller_owner_ref(&()).unwrap()),
             spec: task_spec,
             status: None,
@@ -701,7 +702,7 @@ async fn reconcile(project: Arc<Project>, ctx: Arc<Context>) -> Result<Action> {
     let deployments = Api::<Deployment>::namespaced(ctx.client.clone(), &ctx.config.namespace);
     let ingresses = Api::<Ingress>::namespaced(ctx.client.clone(), &ctx.config.namespace);
     let services = Api::<Service>::namespaced(ctx.client.clone(), &ctx.config.namespace);
-    let tasks_cli = Api::<manager::Task>::namespaced(ctx.client.clone(), &ctx.config.namespace);
+    let tasks_cli = Api::<task::Task>::namespaced(ctx.client.clone(), &ctx.config.namespace);
     let ctrl_cfg = ctx.config.clone();
     let oref = if let Some(refe) = project.controller_owner_ref(&()) {
         refe
@@ -739,9 +740,9 @@ async fn reconcile(project: Arc<Project>, ctx: Arc<Context>) -> Result<Action> {
 
                     let repo = annotations.get("gitrepository").unwrap();
 
-                    task_spec.source = Some(manager::ProjectSource {
+                    task_spec.source = Some(task::ProjectSource {
                         gitrepository: Some(repo.to_owned()),
-                        ..manager::ProjectSource::default()
+                        ..task::ProjectSource::default()
                     });
 
                     let metadata = ObjectMeta {
@@ -749,7 +750,7 @@ async fn reconcile(project: Arc<Project>, ctx: Arc<Context>) -> Result<Action> {
                         ..ObjectMeta::default()
                     };
 
-                    let task = manager::Task {
+                    let task = task::Task {
                         metadata: add_owner_reference(metadata, oref.clone()),
                         spec: task_spec.clone(),
                         status: None,
@@ -974,7 +975,7 @@ pub async fn start_project_controller(config: ProjectCtrlCfg) -> BoxFuture<'stat
     let services = Api::<Service>::namespaced(client.clone(), &context.config.namespace);
     let ingresses = Api::<Ingress>::namespaced(client.clone(), &context.config.namespace);
     let deployments = Api::<Deployment>::namespaced(client.clone(), &context.config.namespace);
-    let tasks = Api::<manager::Task>::namespaced(client, &context.config.namespace);
+    let tasks = Api::<task::Task>::namespaced(client, &context.config.namespace);
 
     Controller::new(projects.clone(), ListParams::default())
         .owns(deployments, ListParams::default())
@@ -993,8 +994,7 @@ mod test {
 
     use serde_json::json;
 
-    use super::{Project, ProjectCtrlCfg};
-    use crate::Result;
+    use super::{Project, ProjectCtrlCfg, Result};
     use serial_test::serial;
 
     fn test_project() -> Result<Project> {

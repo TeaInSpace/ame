@@ -1,4 +1,4 @@
-use ame::grpc::AmeSecretId;
+use crate::grpc::AmeSecretId;
 use k8s_openapi::api::core::v1::Secret;
 use k8s_openapi::ByteString;
 use kube::api::{DeleteParams, ListParams};

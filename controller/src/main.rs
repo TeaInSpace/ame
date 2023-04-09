@@ -1,7 +1,9 @@
-use controller::data_sets::DataSetControllerCfg;
-use controller::project::ProjectCtrlCfg;
-use controller::*;
-use controller::{manager::TaskControllerConfig, project_source::ProjectSrcCtrlCfg};
+use ame::custom_resources::project::ProjectCtrlCfg;
+use ame::custom_resources::*;
+use ame::custom_resources::{
+    project_source::ProjectSrcCtrlCfg, task::start_task_controller, task::TaskControllerConfig,
+};
+use controller::data_sets::{start_data_set_controller, DataSetControllerCfg};
 use envconfig::Envconfig;
 use kube::Client;
 use tracing_subscriber::{prelude::*, EnvFilter, Registry};
@@ -23,13 +25,13 @@ async fn main() -> Result<()> {
 
     // Start kubernetes controller
     let client = Client::try_default().await?;
-    let data_set_controller = data_sets::run(DataSetControllerCfg {
+    let data_set_controller = start_data_set_controller(DataSetControllerCfg {
         client,
         namespace: task_ctrl_cfg.namespace.clone(),
     })
     .await
     .unwrap();
-    let task_controller = manager::start_task_controller(task_ctrl_cfg).await;
+    let task_controller = start_task_controller(task_ctrl_cfg).await;
     let projectsrc_controller =
         project_source::start_project_source_controller(project_src_ctrl_cfg).await;
     let project_controller = project::start_project_controller(project_ctrl_cfg).await;

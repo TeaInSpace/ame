@@ -1,4 +1,4 @@
-use controller::project_source::ProjectSource;
+use ame::custom_resources::project_source::ProjectSource;
 use kube::CustomResourceExt;
 
 fn main() {

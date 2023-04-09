@@ -6,7 +6,7 @@ use http::{
     Uri,
 };
 
-//#[cfg(features = "custom-resources")]
+#[cfg(feature = "custom-resources")]
 pub mod custom_resources;
 
 #[cfg(feature = "web-components")]

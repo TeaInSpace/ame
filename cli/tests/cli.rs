@@ -1,11 +1,11 @@
-use assert_cmd::prelude::*;
-use assert_fs::prelude::*;
-use controller::secrets::SecretCtrl;
-use controller::{
+use ame::custom_resources::project::{ModelValidationStatus, Project};
+use ame::custom_resources::secrets::SecretCtrl;
+use ame::custom_resources::{
     common::{find_ame_endpoint, private_repo_gh_pat, setup_cluster},
     project_source_ctrl::ProjectSrcCtrl,
 };
-use controller::{ModelValidationStatus, Project};
+use assert_cmd::prelude::*;
+use assert_fs::prelude::*;
 use fs_extra::dir::CopyOptions;
 
 use futures_util::StreamExt;
@@ -334,7 +334,7 @@ async fn can_use_data_set_train_validate_and_deploy_model() -> Result<(), Box<dy
     let s3_secret = "zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG";
 
     secret_ctrl
-        .store_secret("s3secretkey", s3_secret.to_string())
+        .store_secret_if_empty("s3secretkey", s3_secret.to_string())
         .await?;
 
     let _ = project_src_ctrl.delete_project_src_for_repo(repo).await;

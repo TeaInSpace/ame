@@ -9,5 +9,5 @@ fn main() -> io::Result<()> {
             "#[derive(serde::Serialize, serde::Deserialize, schemars::JsonSchema )]",
         )
         .protoc_arg("--experimental_allow_proto3_optional")
-        .compile(&["ame.proto"], &["../proto"])
+        .compile(&["ame.proto"], &["./"])
 }

@@ -20,7 +20,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y build-essential openssl libssl-dev libc6-dev clang libclang-dev ca-certificates protobuf-compiler-grpc
           cargo install cargo-binstall
-          cargo binstall -y just
+          cargo binstall --force -y just
           just setup_toolchains
           just ci_tools
           just add_helm_repos

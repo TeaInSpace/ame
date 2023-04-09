@@ -34,15 +34,34 @@ hyper-rustls = { version = "0.23.2", features = ["http2"], optional = true }
 open = {version = "4.0.1", optional = true}
 openidconnect = {version = "2.5.1", optional = true}
 oauth2 = {version = "4.3.0", optional = true}
-reqwest = {version = "0.11.15", optional = true}
+reqwest = {version = "0.11.15", optional = true, features = ["json"]}
 cfg-if = "1.0.0"
 k8s-openapi = {optional=true, version = "0.17.0", features = ["v1_23", "schemars" ] }
+serde_tuple = { version = "0.5.0", optional = true }
+git2 = {version = "0.17.0", optional = true}
+serde_yaml = {version = "0.9.21", optional = true}
+tracing = {version = "0.1.37", optional = true}
+duration-string = {version = "0.2.0", optional = true}
+envconfig = {version = "0.10.0", optional = true}
+similar = {version = "2.2.1", optional = true}
+humantime = {version = "2.1.0", optional = true}
+similar-asserts = {version = "1.4.2", optional = true}
+either = {version = "1.8.0", optional = true}
+
+[dev-dependencies]
+either = "1.8.0"
+assert_fs = "1.0.10"
+insta = {version = "1.21.0", features = ["yaml"] }
+predicates = "2.1.4"
+serial_test = "0.9.0"
+k8s-openapi = { version = "0.17.0", features = ["v1_23", "schemars" ] }
+tonic = { version = "0.8.3"  }
 
 [features]
 web-components = ["dep:leptos", "dep:tonic-web-wasm-client", "dep:hyper"]
 native-client = ["dep:hyper", "dep:tokio-rustls", "dep:tower", "dep:tower-http", "dep:rustls-native-certs", "dep:hyper-rustls", "dep:open", "dep:openidconnect", "dep:oauth2", "dep:reqwest", "dep:http"]
 ame-control = ["dep:kube", "dep:serde_merge"]
-custom-resources = ["dep:kube", "dep:k8s-openapi"]
+custom-resources = ["dep:kube", "dep:k8s-openapi", "dep:serde_tuple", "dep:reqwest", "dep:git2", "dep:serde_merge", "dep:serde_yaml", "dep:tracing", "dep:duration-string", "dep:envconfig",  "dep:similar", "dep:humantime", "dep:similar-asserts", "dep:either", "tonic/default"]
 
 
 [build-dependencies]

@@ -1,11 +1,10 @@
-use crate::manager::TaskPhase;
-use crate::{Task, TaskSpec};
+use ame::custom_resources::task::{Task, TaskSpec};
 use std::sync::Arc;
 use std::time::Duration;
 
 use ame::custom_resources::data_set::{DataSet, DataSetSpec, DataSetStatus, Phase};
 use ame::error::AmeError;
-use ame::grpc::TaskCfg;
+
 use ame::Result;
 use futures::future::BoxFuture;
 use futures::{FutureExt, StreamExt};
@@ -70,7 +69,9 @@ fn error_policy(_src: Arc<DataSet>, error: &AmeError, _ctx: Arc<Context>) -> Act
     Action::requeue(Duration::from_secs(5 * 60))
 }
 
-pub async fn run(config: impl Into<DataSetControllerCfg>) -> Result<BoxFuture<'static, ()>> {
+pub async fn start_data_set_controller(
+    config: impl Into<DataSetControllerCfg>,
+) -> Result<BoxFuture<'static, ()>> {
     let config: DataSetControllerCfg = config.into();
     let context = Arc::new(Context::from(config.clone()));
 
@@ -85,31 +86,6 @@ pub async fn run(config: impl Into<DataSetControllerCfg>) -> Result<BoxFuture<'s
         .filter_map(|x| async move { std::result::Result::ok(x) })
         .for_each(|_| futures::future::ready(()))
         .boxed())
-}
-
-impl TryFrom<TaskCfg> for TaskSpec {
-    type Error = AmeError;
-    fn try_from(cfg: TaskCfg) -> Result<Self> {
-        Ok(TaskSpec::from_ref(cfg.task_ref.ok_or(
-            AmeError::MissingTaskRef(cfg.name.unwrap_or_default()),
-        )?))
-    }
-}
-
-impl From<Task> for Phase {
-    fn from(task: Task) -> Self {
-        let task_name = task.name_any();
-
-        let task_phase = task.status.unwrap_or_default().phase.unwrap_or_default();
-
-        match task_phase {
-            TaskPhase::Running | TaskPhase::Error | TaskPhase::Pending => {
-                Phase::RunningTask { task_name }
-            }
-            TaskPhase::Succeeded => Phase::Ready { task_name },
-            TaskPhase::Failed => Phase::Failed { task_name },
-        }
-    }
 }
 
 fn generate_task(data_set: &DataSet) -> Result<Task> {

@@ -41,7 +41,6 @@ dialoguer = "0.10.3"
 assert_cmd = "2.0.6"
 assert_fs = "1.0.9"
 kube = "0.80.0"
-controller = { path = "../controller" }
 insta = { version = "1.21.1", features = ["filters", "redactions", "yaml"] }
 fs_extra = "1.2.0"
 similar-asserts = "1.4.2"
@@ -49,4 +48,4 @@ serial_test = "0.9.0"
 temp-env = { version = "0.3.1", features = ["async_closure"] }
 rstest = "0.16.0"
 k8s-openapi = { version = "0.17.0", features = ["v1_23", "schemars" ] }
-ame = { path = "../lib", features = ["native-client"] }
+ame = { path = "../lib", features = ["native-client", "custom-resources", "ame-control"] }
