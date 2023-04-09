@@ -52,7 +52,7 @@ async fn main() -> Result<()> {
 mod test {
     use std::time::Duration;
 
-    use controller::common::{find_service_endpoint, setup_cluster};
+    use ame::custom_resources::common::{find_service_endpoint, setup_cluster};
     use kube::api::PostParams;
     use kube::ResourceExt;
     use kube::{Api, Client};
@@ -65,6 +65,7 @@ mod test {
     use super::AmeServiceConfig;
     use super::*;
 
+    use ame::custom_resources::task::Task;
     use ame::grpc::ame_service_client::AmeServiceClient;
     use serial_test::serial;
     use service::storage::S3Config;
@@ -117,7 +118,7 @@ mod test {
     async fn can_get_task() -> Result<()> {
         let mut service_client = start_server().await?;
         let client = Client::try_default().await?;
-        let tasks = Api::<controller::Task>::namespaced(client, "ame-system");
+        let tasks = Api::<Task>::namespaced(client, "ame-system");
 
         let task = TaskTemplate {
             command: "test".to_string(),
@@ -126,10 +127,7 @@ mod test {
         };
 
         let task_in_cluster = tasks
-            .create(
-                &PostParams::default(),
-                &controller::Task::from(task.clone()),
-            )
+            .create(&PostParams::default(), &Task::from(task.clone()))
             .await?;
 
         let task_identifier = TaskIdentifier {
@@ -150,7 +148,7 @@ mod test {
     async fn can_create_task() -> Result<()> {
         let mut service_client = start_server().await?;
         let client = Client::try_default().await?;
-        let tasks = Api::<controller::Task>::namespaced(client, "ame-system");
+        let tasks = Api::<Task>::namespaced(client, "ame-system");
 
         let task = TaskTemplate {
             command: "test".to_string(),
@@ -184,7 +182,7 @@ mod test {
     async fn can_create_task_with_image_override() -> Result<()> {
         let mut service_client = start_server().await?;
         let client = Client::try_default().await?;
-        let tasks = Api::<controller::Task>::namespaced(client, "ame-system");
+        let tasks = Api::<Task>::namespaced(client, "ame-system");
 
         let task = TaskTemplate {
             name: "template_name".to_string(),
@@ -211,10 +209,7 @@ mod test {
 
         assert_eq!(
             task_in_cluster.spec.image,
-            controller::Task::try_from(create_task_req.clone())
-                .unwrap()
-                .spec
-                .image
+            Task::try_from(create_task_req.clone()).unwrap().spec.image
         );
 
         service_client
@@ -229,7 +224,7 @@ mod test {
     async fn can_delete_task() -> Result<()> {
         let mut service_client = start_server().await?;
         let client = Client::try_default().await?;
-        let tasks = Api::<controller::Task>::namespaced(client, "ame-system");
+        let tasks = Api::<Task>::namespaced(client, "ame-system");
 
         let task = TaskTemplate {
             name: "template_name".to_string(),
@@ -239,7 +234,7 @@ mod test {
         };
 
         let task_in_cluster = tasks
-            .create(&PostParams::default(), &controller::Task::from(task))
+            .create(&PostParams::default(), &Task::from(task))
             .await?;
 
         service_client

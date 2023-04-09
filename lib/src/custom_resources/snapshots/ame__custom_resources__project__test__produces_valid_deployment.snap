@@ -1,0 +1,40 @@
+---
+source: lib/src/custom_resources/project.rs
+expression: "&project.spec.models.unwrap().clone()[0].generate_model_deployment(&ctrl_cfg,\n                \"model_source\".to_string()).await?"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    ame-model: test
+  name: test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      ame-model: test
+  template:
+    metadata:
+      labels:
+        ame-model: test
+    spec:
+      containers:
+        - args:
+            - "-c"
+            - "export PATH=$HOME/.pyenv/bin:$PATH; mlflow models serve -m model_source --host 0.0.0.0"
+          command:
+            - /bin/bash
+          env:
+            - name: MLFLOW_TRACKING_URI
+              value: "http://mlflow.default.svc.cluster.local:5000"
+          image: test_img
+          name: main
+          ports:
+            - containerPort: 5000
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+          securityContext:
+            runAsUser: 1001
+

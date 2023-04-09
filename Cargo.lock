@@ -59,21 +59,29 @@ dependencies = [
 name = "ame"
 version = "0.1.0"
 dependencies = [
+ "assert_fs",
  "async-stream",
  "async-trait",
  "cfg-if",
+ "duration-string",
+ "either",
+ "envconfig",
  "futures 0.3.27",
  "futures-util",
+ "git2",
  "http",
  "http-body",
+ "humantime",
  "hyper",
  "hyper-rustls",
+ "insta",
  "k8s-openapi",
  "kube",
  "leptos",
  "oauth2",
  "open",
  "openidconnect",
+ "predicates 2.1.5",
  "prost",
  "reqwest",
  "rustls-native-certs",
@@ -81,6 +89,11 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_merge",
+ "serde_tuple",
+ "serde_yaml 0.9.21",
+ "serial_test",
+ "similar",
+ "similar-asserts",
  "thiserror",
  "tokio",
  "tokio-rustls",
@@ -90,6 +103,7 @@ dependencies = [
  "tonic-web-wasm-client",
  "tower",
  "tower-http 0.4.0",
+ "tracing",
  "url",
 ]
 
@@ -576,7 +590,6 @@ dependencies = [
  "colored",
  "confy",
  "console",
- "controller",
  "dialoguer",
  "envconfig",
  "fs_extra",
@@ -596,7 +609,7 @@ dependencies = [
  "rustls-native-certs",
  "serde",
  "serde_json",
- "serde_yaml 0.9.19",
+ "serde_yaml 0.9.21",
  "serial_test",
  "similar-asserts",
  "spinners",
@@ -734,7 +747,6 @@ name = "controller"
 version = "0.1.0"
 dependencies = [
  "ame",
- "assert_fs",
  "async-trait",
  "duration-string",
  "either",
@@ -742,20 +754,13 @@ dependencies = [
  "futures 0.3.27",
  "git2",
  "humantime",
- "insta",
  "k8s-openapi",
  "kube",
- "predicates 2.1.5",
  "reqwest",
  "schemars",
  "serde",
  "serde_json",
- "serde_merge",
- "serde_tuple",
- "serde_yaml 0.9.19",
- "serial_test",
- "similar",
- "similar-asserts",
+ "serde_yaml 0.9.21",
  "thiserror",
  "tokio",
  "tonic",
@@ -1379,9 +1384,9 @@ dependencies = [
 
 [[package]]
 name = "git2"
-version = "0.15.0"
+version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2994bee4a3a6a51eb90c218523be382fd7ea09b16380b9312e9dbe955ff7c7d1"
+checksum = "89511277159354bea13ae1e53e0c9ab85ba1b20d7e91618fa30e6bc5566857fb"
 dependencies = [
  "bitflags",
  "libc",
@@ -2211,9 +2216,9 @@ checksum = "99227334921fae1a979cf0bfdfcc6b3e5ce376ef57e16fb6fb3ea2ed6095f80c"
 
 [[package]]
 name = "libgit2-sys"
-version = "0.14.2+1.5.1"
+version = "0.15.0+1.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7f3d95f6b51075fe9810a7ae22c7095f12b98005ab364d8544797a825ce946a4"
+checksum = "032e537ae4dd4e50c877f258dc55fcd0657b5021f454094a425bb6bcc9edea4c"
 dependencies = [
  "cc",
  "libc",
@@ -2225,9 +2230,9 @@ dependencies = [
 
 [[package]]
 name = "libssh2-sys"
-version = "0.2.23"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b094a36eb4b8b8c8a7b4b8ae43b2944502be3e59cd87687595cf6b0a71b3f4ca"
+checksum = "2dc8a030b787e2119a731f1951d6a773e2280c660f8ec4b0f5e1505a386e71ee"
 dependencies = [
  "cc",
  "libc",
@@ -3545,9 +3550,9 @@ dependencies = [
 
 [[package]]
 name = "serde_yaml"
-version = "0.9.19"
+version = "0.9.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f82e6c8c047aa50a7328632d067bcae6ef38772a79e28daf32f735e0e4f3dd10"
+checksum = "d9d684e3ec7de3bf5466b32bd75303ac16f0736426e5a4e0d6e489559ce1249c"
 dependencies = [
  "indexmap",
  "itoa",
@@ -3636,7 +3641,6 @@ version = "0.1.0"
 dependencies = [
  "ame",
  "async-trait",
- "controller",
  "envconfig",
  "futures-core",
  "futures-util",

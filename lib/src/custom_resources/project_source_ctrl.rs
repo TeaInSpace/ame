@@ -1,7 +1,7 @@
-use crate::custom_resource::project_source::{ProjectSource, ProjectourceSpec};
-use ame::ctrl::AmeKubeResourceCtrl;
-use ame::error::AmeError;
-use ame::grpc::{ProjectSourceCfg, ProjectSourceId, ProjectSourceStatus};
+use crate::ctrl::AmeKubeResourceCtrl;
+use crate::custom_resources::project_source::{ProjectSource, ProjectSourceSpec};
+use crate::error::AmeError;
+use crate::grpc::{ProjectSourceCfg, ProjectSourceId, ProjectSourceStatus};
 use kube::{
     api::{DeleteParams, ListParams, Patch, PatchParams, PostParams},
     Api, Client, ResourceExt,
@@ -176,7 +176,7 @@ impl AmeKubeResourceCtrl for ProjectSrcCtrl {
         self.project_srcs.clone()
     }
 
-    async fn validate_resource(&self, cfg: &Self::KubeResource) -> ame::Result<()> {
+    async fn validate_resource(&self, cfg: &Self::KubeResource) -> crate::Result<()> {
         let Some(repository) = cfg.spec.cfg.git_repository() else {
             return Err(AmeError::InvalidProjectSourceCfg("missing git configuration".to_string()));
         };
@@ -195,7 +195,7 @@ impl AmeKubeResourceCtrl for ProjectSrcCtrl {
 impl TryFrom<ProjectSource> for ProjectSourceStatus {
     type Error = AmeError;
 
-    fn try_from(ps: ProjectSource) -> ame::Result<Self> {
+    fn try_from(ps: ProjectSource) -> crate::Result<Self> {
         ps.clone().status.ok_or(AmeError::ConversionError(format!(
             "missing status field in project source {}",
             ps.name_any()

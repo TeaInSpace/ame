@@ -1,4 +1,5 @@
-use crate::{Task, Workflow};
+use crate::custom_resources::argo::Workflow;
+use crate::custom_resources::task::Task;
 use either::Either;
 use k8s_openapi::api::core::v1::{LoadBalancerStatus, Service, ServiceSpec, ServiceStatus};
 use kube::{

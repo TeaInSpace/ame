@@ -158,6 +158,22 @@ message ProjectSrcIdRequest {
   string repo = 1;
 }
 
+message TaskRef {
+  string name = 1;
+  optional string project = 2;
+}
+
+message TaskCfg {
+  optional string name = 1;
+  TaskRef taskRef = 2;  
+}
+
+message DataSetCfg {
+ string name = 1;
+ TaskCfg  task = 2;
+ string path = 3;
+}
+
 service AmeService {
   rpc GetTask(TaskIdentifier) returns (TaskTemplate) {}
   rpc CreateTask(CreateTaskRequest) returns (TaskIdentifier) {}

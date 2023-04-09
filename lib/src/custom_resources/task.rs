@@ -1,18 +1,15 @@
-use crate::add_owner_reference;
-use crate::argo::ArgoScriptTemplate;
-use crate::argo::WorkflowStep;
-use crate::argo::WorkflowTemplate;
-use crate::local_name;
-use crate::project;
-use crate::DataSet;
-use crate::Workflow;
-use crate::WorkflowPhase;
-use crate::{Error, Result};
+use crate::custom_resources::argo::ArgoScriptTemplate;
+use crate::custom_resources::argo::Workflow;
+use crate::custom_resources::argo::WorkflowPhase;
+use crate::custom_resources::argo::WorkflowStep;
+use crate::custom_resources::argo::WorkflowTemplate;
+use crate::custom_resources::project::{add_owner_reference, DataSet, Project};
+use crate::custom_resources::{Error, Result};
 use futures::future::BoxFuture;
 use futures::FutureExt;
 use futures::StreamExt;
 
-use ame::grpc::TaskRef;
+use crate::grpc::TaskRef;
 
 use futures::future::join_all;
 use k8s_openapi::api::core::v1::EnvVar;
@@ -49,6 +46,8 @@ use tracing::info;
 
 use envconfig::Envconfig;
 use serde_merge::omerge;
+
+use super::project::local_name;
 
 #[derive(Envconfig, Clone)]
 pub struct TaskControllerConfig {
@@ -281,7 +280,7 @@ pub struct ProjectSource {
 async fn resolve_template(
     name: &str,
     project_id: &str,
-    projects: Api<project::Project>,
+    projects: Api<Project>,
 ) -> Result<TaskSpec> {
     let Some(project) = projects
         .list(&ListParams::default())
@@ -589,7 +588,7 @@ impl Task {
     fn generate_workflow(
         &mut self,
         config: &TaskControllerConfig,
-        _projects: Api<project::Project>,
+        _projects: Api<Project>,
         data_sets: Option<Vec<DataSet>>,
     ) -> Result<Workflow> {
         let volume_name = format!("{}-volume", self.name_any());
@@ -645,7 +644,7 @@ impl Task {
             .clone())
     }
 
-    async fn get_datasets(&self, projects: Api<project::Project>) -> Result<Vec<DataSet>> {
+    async fn get_datasets(&self, projects: Api<Project>) -> Result<Vec<DataSet>> {
         let TaskSpec {
             data_set: Some(data_sets),
             ..
@@ -670,7 +669,7 @@ impl Task {
 
         debug!("looking for project vals");
 
-        let project_vals: Vec<project::Project> = join_all(projects_ids.into_iter().map(|p| {
+        let project_vals: Vec<Project> = join_all(projects_ids.into_iter().map(|p| {
             let projects = projects.clone();
             async move {
                 projects
@@ -683,7 +682,7 @@ impl Task {
         }))
         .await
         .into_iter()
-        .collect::<Result<Vec<project::Project>>>()?;
+        .collect::<Result<Vec<Project>>>()?;
 
         debug!("mapping remote datasets");
 
@@ -709,7 +708,7 @@ impl Task {
         Ok(data_sets)
     }
 
-    async fn get_data_set_tasks(&self, projects: Api<project::Project>) -> Result<Vec<Task>> {
+    async fn get_data_set_tasks(&self, projects: Api<Project>) -> Result<Vec<Task>> {
         let TaskSpec {
             data_set: Some(data_sets),
             ..
@@ -734,7 +733,7 @@ impl Task {
 
         debug!("looking for project vals");
 
-        let project_vals: Vec<project::Project> = join_all(projects_ids.into_iter().map(|p| {
+        let project_vals: Vec<Project> = join_all(projects_ids.into_iter().map(|p| {
             let projects = projects.clone();
             async move {
                 projects
@@ -747,7 +746,7 @@ impl Task {
         }))
         .await
         .into_iter()
-        .collect::<Result<Vec<project::Project>>>()?;
+        .collect::<Result<Vec<Project>>>()?;
 
         debug!("mapping remote datasets");
 
@@ -773,7 +772,7 @@ impl Task {
         Ok(data_set_tasks)
     }
 
-    async fn solve_template(&mut self, projects: Api<project::Project>) -> Result<()> {
+    async fn solve_template(&mut self, projects: Api<Project>) -> Result<()> {
         let TaskSpec {
             template_ref: Some(ref template_ref),
             ..
@@ -799,15 +798,15 @@ impl Task {
 }
 
 #[derive(Clone)]
-struct Context {
+pub struct Context {
     client: Client,
     config: TaskControllerConfig,
 }
 
-async fn reconcile(task: Arc<Task>, ctx: Arc<Context>) -> Result<Action> {
+pub async fn reconcile(task: Arc<Task>, ctx: Arc<Context>) -> Result<Action> {
     let tasks = Api::<Task>::namespaced(ctx.client.clone(), &ctx.config.namespace);
     let workflows = Api::<Workflow>::namespaced(ctx.client.clone(), &ctx.config.namespace);
-    let projects = Api::<project::Project>::namespaced(ctx.client.clone(), &ctx.config.namespace);
+    let projects = Api::<Project>::namespaced(ctx.client.clone(), &ctx.config.namespace);
 
     let mut task: Task = Task::clone(&task);
 
@@ -876,7 +875,7 @@ async fn reconcile(task: Arc<Task>, ctx: Arc<Context>) -> Result<Action> {
                             .and_then(|status| status.phase)
                             .unwrap_or_default(),
                     },
-                )) as crate::Result<(String, DataSetStatus)>
+                )) as Result<(String, DataSetStatus)>
             }))
             .await
             .into_iter()
@@ -1229,7 +1228,7 @@ mod test {
         .unwrap();
 
         let client = Client::try_default().await.unwrap();
-        let projects = Api::<project::Project>::default_namespaced(client);
+        let projects = Api::<Project>::default_namespaced(client);
         let wf: Workflow = t
             .generate_workflow(
                 &gen_test_config(),
@@ -1284,7 +1283,7 @@ mod test {
         .unwrap();
 
         let client = Client::try_default().await.unwrap();
-        let projects = Api::<project::Project>::default_namespaced(client);
+        let projects = Api::<Project>::default_namespaced(client);
         let wf: Workflow = t
             .generate_workflow(&gen_test_config(), projects, None)
             .unwrap();
@@ -1333,7 +1332,7 @@ mod test {
         .unwrap();
 
         let client = Client::try_default().await.unwrap();
-        let projects = Api::<project::Project>::default_namespaced(client);
+        let projects = Api::<Project>::default_namespaced(client);
         let wf: Workflow = t
             .generate_workflow(&gen_test_config(), projects, None)
             .unwrap();
@@ -1381,7 +1380,7 @@ mod test {
         .unwrap();
 
         let client = Client::try_default().await.unwrap();
-        let projects = Api::<project::Project>::default_namespaced(client);
+        let projects = Api::<Project>::default_namespaced(client);
         let wf: Workflow = t
             .generate_workflow(&gen_test_config(), projects, None)
             .unwrap();

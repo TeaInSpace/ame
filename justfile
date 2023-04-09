@@ -23,14 +23,15 @@ default:
 setup_toolchains:
  rustup toolchain install nightly 
 
+# TODO: can we get rid of --force?
 ci_tools:
   rustup component add clippy --toolchain nightly
   rustup component add rustfmt --toolchain nightly
-  cargo binstall -y cargo-spellcheck
-  cargo binstall -y typos-cli
-  cargo binstall -y cargo-audit
-  cargo binstall -y cargo-outdated
-  cargo binstall -y cargo-udeps
+  cargo binstall --force -y cargo-spellcheck
+  cargo binstall --force -y typos-cli
+  cargo binstall --force -y cargo-audit
+  cargo binstall --force -y cargo-outdated
+  cargo binstall --force -y cargo-udeps
 
 
 tools:
@@ -52,6 +53,7 @@ fmt:
   cargo +nightly fmt 
 
 check:
+  cargo check --workspace --all-targets --all-features
   cargo spellcheck check 
   typos --exclude **/primer.css ./
   cargo audit
@@ -136,6 +138,7 @@ install_crd:
  kubectl apply -f manifests/crd.yaml
  kubectl apply -f manifests/project_src_crd.yaml
  kubectl apply -f manifests/project_crd.yaml
+ kubectl apply -f manifests/data_set_crd.yaml
 
 set_host_entries:
  #!/bin/sh

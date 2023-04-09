@@ -1,0 +1,16 @@
+---
+source: lib/src/custom_resources/project.rs
+expression: "&project.spec.models.unwrap()[0].generate_model_service(&ctrl_cfg)?"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    ame-model: test
+  name: test
+spec:
+  ports:
+    - port: 5000
+  selector:
+    ame-model: test
+

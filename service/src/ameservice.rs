@@ -1,9 +1,10 @@
 use crate::{Error, Result};
 
+use ame::custom_resources::project::{self, Project};
+use ame::custom_resources::project_source_ctrl::ProjectSrcCtrl;
+use ame::custom_resources::secrets::SecretCtrl;
+use ame::custom_resources::task::{Task, TaskPhase};
 use ame::error::AmeError;
-use controller::manager::TaskPhase;
-use controller::project_source_ctrl::ProjectSrcCtrl;
-use controller::secrets::SecretCtrl;
 use futures_util::StreamExt;
 use k8s_openapi::api::core::v1::Pod;
 use kube::api::{DeleteParams, ListParams, LogParams, PostParams};
@@ -36,8 +37,8 @@ pub struct AmeServiceConfig {
 
 #[derive(Debug, Clone)]
 pub struct Service {
-    tasks: Arc<Api<controller::Task>>,
-    projects: Arc<Api<controller::Project>>,
+    tasks: Arc<Api<Task>>,
+    projects: Arc<Api<project::Project>>,
     storage: Arc<ObjectStorage<S3StorageDriver>>,
     pods: Arc<Api<Pod>>,
     secret_ctrl: Arc<SecretCtrl>,
@@ -87,7 +88,7 @@ impl AmeService for Service {
             .tasks
             .create(
                 &PostParams::default(),
-                &controller::Task::try_from(request.into_inner())
+                &Task::try_from(request.into_inner())
                     .map_err(|e| Status::from_error(Box::new(e)))?,
             )
             .await
@@ -449,9 +450,9 @@ impl Service {
     pub async fn try_init(cfg: AmeServiceConfig) -> Result<Service> {
         let client = Client::try_default().await?;
         let target_namespace = "ame-system";
-        let tasks = Api::<controller::Task>::namespaced(client.clone(), target_namespace);
+        let tasks = Api::<Task>::namespaced(client.clone(), target_namespace);
         let pods = Api::<Pod>::namespaced(client.clone(), target_namespace);
-        let projects = Api::<controller::Project>::namespaced(client.clone(), target_namespace);
+        let projects = Api::<Project>::namespaced(client.clone(), target_namespace);
 
         let task_service = Service {
             tasks: Arc::new(tasks),

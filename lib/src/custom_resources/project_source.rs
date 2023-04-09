@@ -1,9 +1,9 @@
-use crate::project::{Project, ProjectSpec};
-use crate::secrets::SecretCtrl;
-use crate::{Error, Result};
-use ame::grpc::GitProjectSource;
-use ame::grpc::ProjectSourceState;
-use ame::grpc::ProjectSourceStatus;
+use crate::custom_resources::project::{Project, ProjectSpec};
+use crate::custom_resources::secrets::SecretCtrl;
+use crate::custom_resources::{Error, Result};
+use crate::grpc::GitProjectSource;
+use crate::grpc::ProjectSourceState;
+use crate::grpc::ProjectSourceStatus;
 use duration_string::DurationString;
 use envconfig::Envconfig;
 use futures::{future::BoxFuture, FutureExt, StreamExt};
@@ -39,7 +39,7 @@ use tracing::{error, info};
 #[serde(rename_all = "camelCase")]
 pub struct ProjectSourceSpec {
     #[serde(flatten)]
-    pub cfg: ame::grpc::ProjectSourceCfg,
+    pub cfg: crate::grpc::ProjectSourceCfg,
 }
 
 #[derive(Envconfig, Clone)]
@@ -280,10 +280,10 @@ pub async fn start_project_source_controller(config: ProjectSrcCtrlCfg) -> BoxFu
 #[cfg(test)]
 mod test {
 
-    use crate::common::private_repo_gh_pat;
+    use crate::custom_resources::common::private_repo_gh_pat;
 
     use super::*;
-    use crate::secrets::SecretCtrl;
+    use crate::custom_resources::secrets::SecretCtrl;
     use assert_fs::prelude::*;
     use futures::StreamExt;
     use futures::TryStreamExt;

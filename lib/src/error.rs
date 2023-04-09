@@ -1,6 +1,9 @@
 #[cfg(feature = "native-client")]
 use http::uri::InvalidUri;
+
+#[cfg(feature = "custom-resources")]
 use kube::runtime::finalizer;
+
 use thiserror::Error;
 use tonic::Status;
 
@@ -86,6 +89,7 @@ impl From<AmeError> for tonic::Status {
     }
 }
 
+#[cfg(feature = "custom-resources")]
 impl<T: std::error::Error> From<finalizer::Error<T>> for AmeError {
     fn from(error: finalizer::Error<T>) -> Self {
         // TODO: how do we handle this error conversion properly?

@@ -1,0 +1,30 @@
+---
+source: lib/src/custom_resources/project.rs
+expression: "&project.spec.models.unwrap()[0].generate_model_ingress(&ctrl_cfg)?"
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+  labels:
+    ame-model: test
+  name: test
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: testhost
+      http:
+        paths:
+          - backend:
+              service:
+                name: test
+                port:
+                  number: 5000
+            path: /invocations
+            pathType: ImplementationSpecific
+  tls:
+    - hosts:
+        - testhost
+      secretName: test-tls
+
