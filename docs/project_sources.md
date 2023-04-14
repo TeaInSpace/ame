@@ -2,11 +2,11 @@
 
 A project source informs AME of a location to check and sync an AME project from. Currently the only supported location is a Git repository.
 
-## Git project sources
+### Git project sources
 
 Git project sources allow for a Gitops like approach to managing models, data and the surrounding operations using the AME file defined in the repository.
 
-### How to use Git project sources
+#### How to use Git project sources
 
 You can create a Git project source either through the CLI or the AME frontend.
 
