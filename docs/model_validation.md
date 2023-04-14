@@ -73,3 +73,5 @@ if run.data.metrics['score'] < 0.6:
     sys.exit(1)
 
 ```
+
+A validation task indicates failure with a non zero exit code. In this example if our model scores below 0.6 the task will exit with code 1 indicating a failure.
