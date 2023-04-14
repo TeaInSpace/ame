@@ -43,23 +43,33 @@ import mlflow
 import mlflow.sklearn
 import os
 
-if __name__ == "__main__":
-    X = np.array([-2, -1, 0, 1, 2, 1]).reshape(-1, 1)
-    y = np.array([0, 0, 1, 1, 1, 0])
-    lr = LogisticRegression()
-    lr.fit(X, y)
-    score = lr.score(X, y)
-    print("Score: %s" % score)
-    mlflow.log_metric("score", score)
-    mlflow.sklearn.log_model(lr, "model", registered_model_name="logreg")
-    print("Model saved in run %s" % mlflow.active_run().info.run_uuid)
+X = np.array([-2, -1, 0, 1, 2, 1]).reshape(-1, 1)
+y = np.array([0, 0, 1, 1, 1, 0])
+lr = LogisticRegression()
+lr.fit(X, y)
+score = lr.score(X, y)
+mlflow.log_metric("score", score)
+mlflow.sklearn.log_model(lr, "model", registered_model_name="logreg")
+print("Model saved in run %s" % mlflow.active_run().info.run_uuid)
 ```
 
 Notice how the score is logged as a metric. We can use that in our validation.
 
 AME exposes the necessary environment variables to running tasks so we can access the Mlflow instance during validation just by using the Mlflow library.
 
+**Note**: the model name is hard coded , in the future the model name will be made available as an environment variable allowing for better reusability of validation code.
+
 ```python
-TODO
+import sys
+import mlflow
+from mlflow.entities import ViewType
+
+results = mlflow.search_registered_models(filter_string="name='logreg'")
+run_id = results[0].latest_versions[-1].run_id
+run = mlflow.get_run(run_id)
+print(run.data.metrics['score'])
+
+if run.data.metrics['score'] < 0.6:
+    sys.exit(1)
 
 ```
