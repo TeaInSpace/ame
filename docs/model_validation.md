@@ -34,7 +34,7 @@ This approach allows for a lot of flexibility of how models are validated, at th
 
 ### Using MLflow metrics
 
-Here we will walk through how to validate a model based on recorded metrics in MLflow, using the [ame-demo](https://github.com/TeaInSpace/ame-demo) repository as an example. The model is a simple logistic regresser, the training code looks like this:
+Here we will walk through how to validate a model based on recorded metrics in MLflow, using the [ame-demo](https://github.com/TeaInSpace/ame-demo) repository as an example. The model is a simple logistic regressor, the training code looks like this:
 
 ```python
 import numpy as np
@@ -60,14 +60,15 @@ AME exposes the necessary environment variables to running tasks so we can acces
 **Note**: the model name is hard coded , in the future the model name will be made available as an environment variable allowing for better reusability of validation code.
 
 ```python
+# validation.py
 import sys
 import mlflow
 from mlflow.entities import ViewType
 
-results = mlflow.search_registered_models(filter_string="name='logreg'")
-run_id = results[0].latest_versions[-1].run_id
+# We fetch the metrics for latest run for the logreg model.
+models = mlflow.search_registered_models(filter_string="name='logreg'")
+run_id = models[0].latest_versions[-1].run_id
 run = mlflow.get_run(run_id)
-print(run.data.metrics['score'])
 
 if run.data.metrics['score'] < 0.6:
     sys.exit(1)
@@ -75,3 +76,40 @@ if run.data.metrics['score'] < 0.6:
 ```
 
 A validation task indicates failure with a non zero exit code. In this example if our model scores below 0.6 the task will exit with code 1 indicating a failure.
+
+In this example we keep `validation.py` in the same repository as our training code, that is how ever not required. We could use a task from a completely separate project and share the validation logic between multiple projects.
+
+Our AME file will look as follows:
+```yaml
+
+projectid: mlflow_validation_example
+models:
+  - name: logreg # Note the model name is what mlflow will use as well and the name used during validation.
+    type: mlflow # This tells AME to train the model using mlfow.
+    validationTask: # the validation task is set here.
+      taskRef: mlflow_validation 
+    training: 
+      task:
+        taskRef: training
+    deployment:
+      auto_train: true
+      deploy: true
+      enable_tls: false
+tasks:
+  - name: training
+    projectid: mlflow_validation_example
+    taskType: Mlflow # Since this is an mlflow task, AME knows how to run it.
+  - name: mlflow_validation
+    projectid: mlflow_validation_example
+    runcommand: python validate.py
+```
+
+See [ame-demo](https://github.com/TeaInSpace/ame-demo) for a full list of files.
+
+We can add these files a git repository and add that repository as a project source in AME.
+
+```bash
+ame projectsrc create https://github.com/myuser/myrepo.git
+```
+
+Now you will be able to observe the model being trained, validated and then deployed.
