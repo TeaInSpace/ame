@@ -1,8 +1,8 @@
-use ame::custom_resources::task::{Task, TaskSpec};
+use ame::custom_resources::task::Task;
 use std::sync::Arc;
 use std::time::Duration;
 
-use ame::custom_resources::data_set::{DataSet, DataSetSpec, DataSetStatus, Phase};
+use ame::custom_resources::data_set::{DataSet, DataSetPhase, DataSetSpec, DataSetStatus};
 use ame::error::AmeError;
 
 use ame::Result;
@@ -12,7 +12,7 @@ use kube::api::{ListParams, Patch, PatchParams};
 use kube::core::ObjectMeta;
 use kube::runtime::controller::Action;
 use kube::runtime::{finalizer, Controller};
-use kube::{Api, Client, Resource, ResourceExt};
+use kube::{Api, Client, ResourceExt};
 use std::default::Default;
 use tracing::{error, info};
 
@@ -22,15 +22,6 @@ static DATA_SET_CONTROLLER: &str = "datasets.ame.teainspace.com";
 struct Context {
     client: Client,
     namespace: String,
-}
-
-impl Context {
-    fn api(&self) -> (Api<DataSet>, Api<Task>) {
-        (
-            Api::namespaced(self.client.clone(), &self.namespace),
-            Api::namespaced(self.client.clone(), &self.namespace),
-        )
-    }
 }
 
 impl From<DataSetControllerCfg> for Context {
@@ -49,15 +40,16 @@ pub struct DataSetControllerCfg {
 }
 
 async fn reconcile(data_set: Arc<DataSet>, ctx: Arc<Context>) -> Result<Action> {
-    let (data_sets, _) = ctx.api();
+    let data_sets = Api::<DataSet>::namespaced(ctx.client.clone(), &ctx.namespace);
+    let tasks = Api::<Task>::namespaced(ctx.client.clone(), &ctx.namespace);
 
-    info!("reconciling {}", data_set.name_any());
+    info!("reconciling data set {}", data_set.name_any());
 
     Ok(
         finalizer(&data_sets, DATA_SET_CONTROLLER, data_set, |event| async {
             match event {
-                finalizer::Event::Apply(data_set) => apply(&data_set, ctx).await,
-                finalizer::Event::Cleanup(data_set) => cleanup(&data_set, ctx).await,
+                finalizer::Event::Apply(data_set) => apply(&data_set, &data_sets, &tasks).await,
+                finalizer::Event::Cleanup(data_set) => cleanup(&data_set).await,
             }
         })
         .await?,
@@ -88,38 +80,8 @@ pub async fn start_data_set_controller(
         .boxed())
 }
 
-fn generate_task(data_set: &DataSet) -> Result<Task> {
-    let Some(owner_ref) = data_set.controller_owner_ref(&()) else {
-        return Err(AmeError::MissingOwnerRef(data_set.name_any()));
-    };
-
-    let Some(ref task_cfg) = data_set.spec.cfg.task else {
-        return Err(AmeError::MissingTaskCfg(data_set.name_any()));
-    };
-
-    let default_name = "datatask".to_string();
-    let name = task_cfg.name.as_ref().unwrap_or(&default_name);
-
-    let spec = TaskSpec::try_from(task_cfg.clone())?;
-
-    let metadata = ObjectMeta {
-        name: Some(format!("{}{}", data_set.name_any(), name)),
-        owner_references: Some(vec![owner_ref]),
-        ..Default::default()
-    };
-
-    Ok(Task {
-        metadata,
-        spec,
-        status: None,
-    })
-}
-
-async fn apply(data_set: &DataSet, context: Arc<Context>) -> Result<Action> {
-    info!("applying dataset: {}", data_set.name_any());
-    let (data_sets, tasks) = context.api();
-
-    let task = generate_task(data_set)?;
+async fn apply(data_set: &DataSet, data_sets: &Api<DataSet>, tasks: &Api<Task>) -> Result<Action> {
+    let task = data_set.generate_task()?;
 
     let task = tasks
         .patch(
@@ -130,7 +92,7 @@ async fn apply(data_set: &DataSet, context: Arc<Context>) -> Result<Action> {
         .await?;
 
     let status = DataSetStatus {
-        phase: Phase::from(task),
+        phase: DataSetPhase::from_task(task),
     };
 
     data_sets
@@ -148,9 +110,14 @@ async fn apply(data_set: &DataSet, context: Arc<Context>) -> Result<Action> {
     Ok(Action::requeue(Duration::from_secs(300)))
 }
 
-async fn cleanup(_data_set: &DataSet, _context: Arc<Context>) -> Result<Action> {
-    info!("cleanup");
-    Ok(Action::requeue(Duration::from_secs(300)))
+async fn cleanup(data_set: &DataSet) -> Result<Action> {
+    info!("cleanup dataset: {}", data_set.name_any());
+
+    if data_set.spec.deletion_approved {
+        Ok(Action::requeue(Duration::from_secs(300)))
+    } else {
+        Err(AmeError::ApiError("deletion not approved".to_string()))
+    }
 }
 
 #[cfg(test)]
@@ -165,12 +132,13 @@ mod test {
     };
 
     use super::*;
+    use std::time::Duration;
 
     #[tokio::test]
     #[ignore = "requires a k8s cluster"]
-    async fn can_create_data_set_task() -> Result<()> {
+    async fn can_create_data_set_task_and_finalize_data_set() -> Result<()> {
         let client = Client::try_default().await?;
-        let namespace = "ame-system".to_string();
+        let namespace = "default".to_string();
         let _tasks = Api::<Task>::namespaced(client.clone(), &namespace);
         let data_sets = Api::<DataSet>::namespaced(client.clone(), &namespace);
         let context = super::Context {
@@ -195,10 +163,12 @@ mod test {
                             project: None,
                         }),
                     }),
+                    size: None,
                 },
+                deletion_approved: false,
             },
             status: Some(DataSetStatus {
-                phase: Phase::Pending {},
+                phase: DataSetPhase::Pending {},
             }),
         };
 
@@ -208,6 +178,8 @@ mod test {
             .await
             .unwrap();
 
+        // Note that after calling reconcile we have to fetch the object
+        // from the cluster, as our local version will not have been updated.
         let data_set = data_sets.get(&data_set.name_any()).await?;
 
         assert!(data_set.running_task(client.clone()).await.is_some());
@@ -217,6 +189,31 @@ mod test {
             .await?;
 
         let data_set = data_sets.get(&data_set.name_any()).await?;
+
+        // An error is expected here as the cleanup is rejected.
+        reconcile(Arc::new(data_set.clone()), Arc::new(context.clone()))
+            .await
+            .unwrap_err();
+
+        // The cluster is allowed a minimum of 100ms to delete the data set
+        // object after the finalizer has approved deletion during the last
+        // reconcile call.
+        tokio::time::sleep(Duration::from_millis(100)).await;
+
+        // Deletion should not be possible until deletion has been approved.
+        let mut data_set = data_sets.get(&data_set.name_any()).await.unwrap();
+
+        // Approve deletion and verify that the data set is now deleted.
+        data_set.spec.deletion_approved = true;
+
+        data_sets
+            .patch(
+                &data_set.name_any(),
+                &PatchParams::default(),
+                &Patch::Merge(data_set.clone()),
+            )
+            .await?;
+
         reconcile(Arc::new(data_set.clone()), Arc::new(context.clone()))
             .await
             .unwrap();

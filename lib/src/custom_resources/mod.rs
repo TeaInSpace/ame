@@ -9,10 +9,9 @@ use std::env::VarError;
 use task::Task;
 use thiserror::Error;
 
-use self::data_set::Phase;
 use self::project_source::ProjectSource;
 use self::project_source::ProjectSourceSpec;
-use self::task::TaskPhase;
+
 use self::task::TaskSpec;
 use self::task::TaskType;
 
@@ -206,21 +205,5 @@ impl TryFrom<TaskCfg> for TaskSpec {
         Ok(TaskSpec::from_ref(cfg.task_ref.ok_or(
             AmeError::MissingTaskRef(cfg.name.unwrap_or_default()),
         )?))
-    }
-}
-
-impl From<Task> for Phase {
-    fn from(task: Task) -> Self {
-        let task_name = task.name_any();
-
-        let task_phase = task.status.unwrap_or_default().phase.unwrap_or_default();
-
-        match task_phase {
-            TaskPhase::Running | TaskPhase::Error | TaskPhase::Pending => {
-                Phase::RunningTask { task_name }
-            }
-            TaskPhase::Succeeded => Phase::Ready { task_name },
-            TaskPhase::Failed => Phase::Failed { task_name },
-        }
     }
 }
