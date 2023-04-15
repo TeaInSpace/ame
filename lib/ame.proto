@@ -172,6 +172,7 @@ message DataSetCfg {
  string name = 1;
  TaskCfg  task = 2;
  string path = 3;
+ optional string size = 4;
 }
 
 service AmeService {

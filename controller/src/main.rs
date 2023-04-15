@@ -3,7 +3,7 @@ use ame::custom_resources::*;
 use ame::custom_resources::{
     project_source::ProjectSrcCtrlCfg, task::start_task_controller, task::TaskControllerConfig,
 };
-use controller::data_sets::{start_data_set_controller, DataSetControllerCfg};
+use controller::data_set::{start_data_set_controller, DataSetControllerCfg};
 use envconfig::Envconfig;
 use kube::Client;
 use tracing_subscriber::{prelude::*, EnvFilter, Registry};
