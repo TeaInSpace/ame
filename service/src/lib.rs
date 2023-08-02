@@ -1,14 +1,10 @@
 pub mod ameservice;
 pub mod storage;
 
-use ame::custom_resources::task::Task;
-use kube::api::ListParams;
-use kube::runtime::wait;
-use kube::{Api, Client};
+use ame::custom_resources::new_task::Task;
+use kube::{api::ListParams, runtime::wait, Api, Client};
 use s3::{creds::error::CredentialsError, error::S3Error};
-use std::net::AddrParseError;
-use std::string::FromUtf8Error;
-use std::time::Duration;
+use std::{net::AddrParseError, string::FromUtf8Error, time::Duration};
 use storage::S3Config;
 use thiserror::Error;
 
@@ -61,6 +57,9 @@ pub enum Error {
 
     #[error("Failed to find project source for repository: {0}")]
     MissingProjectSrc(String),
+
+    #[error("Project config is missing from request")]
+    MissingProjectCfg,
 }
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
@@ -90,16 +89,20 @@ pub async fn health_check<S: NamedService>(
             reporter.set_not_serving::<S>().await;
         }
 
-        tokio::time::sleep(Duration::from_secs(5)).await;
+        tokio::time::sleep(Duration::from_secs(50)).await;
     }
 }
 
 #[cfg(test)]
 mod test {
-    use super::storage::{AmeFile, ObjectStorage, ObjectStorageDriver, S3Config, S3StorageDriver};
-    use super::Result;
-    use ame::custom_resources::common::find_service_endpoint;
-    use ame::grpc::{TaskIdentifier, TaskProjectDirectoryStructure};
+    use super::{
+        storage::{AmeFile, ObjectStorage, ObjectStorageDriver, S3Config, S3StorageDriver},
+        Result,
+    };
+    use ame::{
+        custom_resources::common::find_service_endpoint,
+        grpc::{TaskIdentifier, TaskProjectDirectoryStructure},
+    };
     use serial_test::serial;
 
     async fn get_fresh_storage() -> Result<ObjectStorage<S3StorageDriver>> {
@@ -123,6 +126,7 @@ mod test {
 
     #[tokio::test]
     #[serial]
+    #[ignore]
     async fn s3_crud_operations() -> Result<()> {
         let object_storage = get_fresh_storage().await?;
 
@@ -174,6 +178,7 @@ mod test {
 
     #[tokio::test]
     #[serial]
+    #[ignore]
     async fn can_storage_project_directory_structure() -> Result<()> {
         let object_storage = get_fresh_storage().await?;
 

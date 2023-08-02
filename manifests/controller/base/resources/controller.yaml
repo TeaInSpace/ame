@@ -35,7 +35,7 @@ spec:
             cpu: 10m
             memory: 250Mi
         env:
-          - name: EXECUTOR_IMAGE
+          - name: AME_EXECUTOR_IMAGE
             valueFrom:
               configMapKeyRef:
                 name: ame-controller-configmap
@@ -47,7 +47,7 @@ spec:
           - name: AME_MODEL_INGRESS_HOST
             value: "20.4.90.180.nip.io"
           - name: RUST_LOG
-            value: controller=debug
+            value: info
           - name: AME_MODEL_DEPLOYMENT_INGRESS
             value: |
                 apiVersion: networking.k8s.io/v1

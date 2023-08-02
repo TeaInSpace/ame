@@ -1,7 +1,9 @@
 pub mod project;
 
-use ame::client::native_client::{build_ame_client, AmeClient};
-use ame::AmeServiceClientCfg;
+use ame::{
+    client::native_client::{build_ame_client, AmeClient},
+    AmeServiceClientCfg,
+};
 use envconfig::Envconfig;
 
 use http::uri::InvalidUri;
@@ -17,10 +19,10 @@ pub enum Error {
     #[error("Ame errored: {0}")]
     FileError(#[from] std::io::Error),
 
-    #[error("Ame errored: {0}")]
+    #[error("The AME server could not be reached: {0}")]
     TonicError(#[from] tonic::transport::Error),
 
-    #[error("Ame errored: {0}")]
+    #[error("The AME sever failed a request: {0}")]
     TonicStatusError(#[from] tonic::Status),
 
     #[error("Ame errored: {0}")]
@@ -56,8 +58,10 @@ pub enum Error {
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
+pub mod project_cmd;
 pub mod projectsrc;
 pub mod secrets;
+pub mod task;
 
 #[derive(Clone, Default, Deserialize, Serialize, Envconfig, PartialEq, Debug)]
 pub struct CliConfiguration {

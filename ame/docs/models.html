@@ -1,0 +1,30 @@
+<h1>Models</h1>
+<p>Models are one of AME's higher level constructs, see what that means <a href="">here</a>. if you are configuring how a model should be trained, deployed, monitored or validated this is the right place.
+Models exist in an AME file along side Datasets Tasks and Templates.</p>
+<h3>Model training</h3>
+<p>Model training is configured described use a <a href="./task.html">Task</a>.</p>
+<p>AME can be deployed with a an MLflow instance which will be exposed to the Training Task allowing for simply storage and retrievel of models and metrics.</p>
+<pre lang="yaml" style="background-color:#2b303b;"><code><span style="color:#65737e;"># main project ame.yml
+</span><span style="color:#bf616a;">project</span><span style="color:#c0c5ce;">: </span><span style="color:#a3be8c;">xgboost_project
+</span><span style="color:#bf616a;">models</span><span style="color:#c0c5ce;">:
+</span><span style="color:#c0c5ce;">  - </span><span style="color:#bf616a;">name</span><span style="color:#c0c5ce;">: </span><span style="color:#a3be8c;">product_recommendor
+</span><span style="color:#c0c5ce;">    </span><span style="color:#bf616a;">training</span><span style="color:#c0c5ce;">:
+</span><span style="color:#c0c5ce;">      </span><span style="color:#bf616a;">task</span><span style="color:#c0c5ce;">: 
+</span><span style="color:#c0c5ce;">        </span><span style="color:#bf616a;">taskRef</span><span style="color:#c0c5ce;">: </span><span style="color:#a3be8c;">train_my_model 
+</span><span style="color:#bf616a;">tasks</span><span style="color:#c0c5ce;">:
+</span><span style="color:#c0c5ce;">  - </span><span style="color:#bf616a;">name</span><span style="color:#c0c5ce;">: </span><span style="color:#a3be8c;">train_my_model
+</span><span style="color:#c0c5ce;">    </span><span style="color:#bf616a;">fromTemplate</span><span style="color:#c0c5ce;">: </span><span style="color:#a3be8c;">shared_templates.xgboost_resources
+</span><span style="color:#c0c5ce;">    </span><span style="color:#bf616a;">executor</span><span style="color:#c0c5ce;">:
+</span><span style="color:#c0c5ce;">      </span><span style="color:#b48ead;">!poetry
+</span><span style="color:#c0c5ce;">      </span><span style="color:#bf616a;">pythonVersion</span><span style="color:#c0c5ce;">: </span><span style="color:#d08770;">3.11
+</span><span style="color:#c0c5ce;">      </span><span style="color:#bf616a;">command</span><span style="color:#c0c5ce;">: </span><span style="color:#a3be8c;">python train.py
+</span><span style="color:#c0c5ce;">    </span><span style="color:#bf616a;">resources</span><span style="color:#c0c5ce;">:
+</span><span style="color:#c0c5ce;">      </span><span style="color:#bf616a;">memory</span><span style="color:#c0c5ce;">: </span><span style="color:#a3be8c;">10G 
+</span><span style="color:#c0c5ce;">      </span><span style="color:#bf616a;">cpu</span><span style="color:#c0c5ce;">: </span><span style="color:#d08770;">4 
+</span><span style="color:#c0c5ce;">      </span><span style="color:#bf616a;">storage</span><span style="color:#c0c5ce;">: </span><span style="color:#a3be8c;">30G 
+</span><span style="color:#c0c5ce;">      </span><span style="color:#bf616a;">nvidia.com/gpu</span><span style="color:#c0c5ce;">: </span><span style="color:#d08770;">1 
+</span></code></pre>
+<h3>Model deployment</h3>
+<h4>Model validation</h4>
+<h4>Model monitoring</h4>
+<h3>Batch inference</h3>

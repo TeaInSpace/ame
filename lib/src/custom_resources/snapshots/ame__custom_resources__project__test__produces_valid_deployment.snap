@@ -1,6 +1,6 @@
 ---
 source: lib/src/custom_resources/project.rs
-expression: "&project.spec.models.unwrap().clone()[0].generate_model_deployment(&ctrl_cfg,\n                \"model_source\".to_string()).await?"
+expression: "&project.spec.cfg.models.clone()[0].generate_model_deployment(ctrl_cfg.deployment_image,\n                \"model_source\".to_string()).await?"
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -35,6 +35,8 @@ spec:
             httpGet:
               path: /health
               port: 5000
+          resources:
+            limits: {}
           securityContext:
             runAsUser: 1001
 

@@ -2,13 +2,15 @@
 source: lib/src/custom_resources/project_source.rs
 expression: "&projects"
 ---
-- projectid: echo
+- name: echo
   tasks:
     - name: echo
-      runcommand: python echo.py myoutput
-      projectid: echo
-      source: {}
       resources:
         cpu: "2"
         memory: 4Gi
+      env: []
+      secrets: []
+      executor: ~
+  deletionApproved: false
+  enableTriggers: false
 

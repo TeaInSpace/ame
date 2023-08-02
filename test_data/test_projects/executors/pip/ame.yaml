@@ -1,0 +1,10 @@
+name: piptest
+models: 
+data_sets:
+templates:
+tasks:
+ - name: training
+   executor:
+     !pip
+     command: python nn.py
+     pythonVersion: 3.10

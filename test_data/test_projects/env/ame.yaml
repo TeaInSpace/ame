@@ -1,23 +1,27 @@
-projectname: env
+name: env
 tasks:
-  env:
+  - name: testenv
     env:
-    - name: VAR1
-      value: VAL1
-    - name: VAR2
-      value: VAL2
+    - key: VAR1
+      val: VAL1
+    - key: VAR2
+      val: VAL2
     resources:
       cpu: "2"
       memory: 4Gi
-    runcommand: python env.py
-    source: {}
-  secret:
-    projectid: env
+    executor:
+     !pipEnv
+     command: python env.py
+  - name: testsecret
     resources:
       cpu: "2"
       memory: 4Gi
-    runcommand: python env.py VAR1=mysecretval
+    executor:
+     !pipEnv
+     command: python env.py VAR1=mysecretval
     secrets:
-    - envkey: VAR1
-      name: mysecret
-    source: {}
+      - ame:
+          injectAs: VAR1
+          key: mysecret
+
+# TODO:, why is it ame: and not !ame here?

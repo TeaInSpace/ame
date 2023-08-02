@@ -1,0 +1,30 @@
+---
+source: lib/src/custom_resources/project.rs
+expression: "&project.generate_model_training_task(\"test\")?"
+---
+apiVersion: ame.teainspace.com/v1alpha1
+kind: Task
+metadata:
+  name: test-privatetestmytaskmyproject
+  ownerReferences:
+    - apiVersion: ""
+      kind: ""
+      name: ""
+      uid: ""
+spec:
+  name: mytask
+  resources: {}
+  env: []
+  secrets: []
+  executor:
+    pipEnv:
+      command: test cmd
+  deletionApproved: false
+  source:
+    git:
+      repository: my-git-repo
+      reference: ""
+      user_name: ""
+      secret: ~
+  project: ~
+

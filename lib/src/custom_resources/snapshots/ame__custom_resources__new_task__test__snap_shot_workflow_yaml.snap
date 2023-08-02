@@ -1,0 +1,190 @@
+---
+source: lib/src/custom_resources/new_task.rs
+expression: "build_workflow(task, task_ctx)?"
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  labels:
+    ame-task: mytask
+  name: mytask
+spec:
+  entrypoint: main
+  templates:
+    - name: main
+      metadata:
+        labels: ~
+        annotations: ~
+      steps:
+        - - name: setup
+            inline:
+              name: setup
+              metadata:
+                labels:
+                  ame-task: mytask
+                annotations: ~
+              steps: ~
+              securityContext:
+                fsGroup: 2000
+                runAsUser: 1001
+              script:
+                command:
+                  - bash
+                env:
+                  - name: AWS_ACCESS_KEY_ID
+                    valueFrom:
+                      secretKeyRef:
+                        key: MINIO_ROOT_USER
+                        name: ame-minio-secret
+                        optional: false
+                  - name: AWS_SECRET_ACCESS_KEY
+                    valueFrom:
+                      secretKeyRef:
+                        key: MINIO_ROOT_PASSWORD
+                        name: ame-minio-secret
+                        optional: false
+                  - name: MLFLOW_TRACKING_URI
+                    value: "http://mlflow.default.svc.cluster.local:5000"
+                  - name: MINIO_URL
+                    value: "http://ame-minio.ame-system.svc.cluster.local:9000"
+                  - name: PIPENV_YES
+                    value: "1"
+                  - name: SOME_VAR
+                    value: someval
+                  - name: MY_SECRET
+                    valueFrom:
+                      secretKeyRef:
+                        key: secret
+                        name: secretkey
+                image: myimage
+                name: ""
+                resources:
+                  limits:
+                    cpu: "2"
+                    memory: 2Gi
+                volumeMounts:
+                  - mountPath: /project
+                    name: myvolume
+                source: " \n\n s3cmd --no-ssl --region eu-central-1 --host=$MINIO_URL --host-bucket=$MINIO_URL get --recursive s3://test ./"
+              podSpecPatch: ~
+        - - name: mytask
+            inline:
+              name: mytask
+              metadata:
+                labels:
+                  ame-task: mytask
+                annotations: ~
+              steps: ~
+              securityContext:
+                fsGroup: 2000
+                runAsUser: 1001
+              script:
+                command:
+                  - bash
+                env:
+                  - name: AWS_ACCESS_KEY_ID
+                    valueFrom:
+                      secretKeyRef:
+                        key: MINIO_ROOT_USER
+                        name: ame-minio-secret
+                        optional: false
+                  - name: AWS_SECRET_ACCESS_KEY
+                    valueFrom:
+                      secretKeyRef:
+                        key: MINIO_ROOT_PASSWORD
+                        name: ame-minio-secret
+                        optional: false
+                  - name: MLFLOW_TRACKING_URI
+                    value: "http://mlflow.default.svc.cluster.local:5000"
+                  - name: MINIO_URL
+                    value: "http://ame-minio.ame-system.svc.cluster.local:9000"
+                  - name: PIPENV_YES
+                    value: "1"
+                  - name: SOME_VAR
+                    value: someval
+                  - name: MY_SECRET
+                    valueFrom:
+                      secretKeyRef:
+                        key: secret
+                        name: secretkey
+                image: myimage
+                name: ""
+                resources:
+                  limits:
+                    cpu: "2"
+                    memory: 2Gi
+                volumeMounts:
+                  - mountPath: /project
+                    name: myvolume
+                source: "\n                        source ~/.bashrc\n                        \n                        pyenv install 3.11\n\n                        pyenv global 3.11\n\n                        poetry install\n                    \n                        poetry run python train.py\n                    "
+              podSpecPatch: ~
+        - - name: saveartifacts
+            inline:
+              name: saveartifacts
+              metadata:
+                labels:
+                  ame-task: mytask
+                annotations: ~
+              steps: ~
+              securityContext:
+                fsGroup: 2000
+                runAsUser: 1001
+              script:
+                command:
+                  - bash
+                env:
+                  - name: AWS_ACCESS_KEY_ID
+                    valueFrom:
+                      secretKeyRef:
+                        key: MINIO_ROOT_USER
+                        name: ame-minio-secret
+                        optional: false
+                  - name: AWS_SECRET_ACCESS_KEY
+                    valueFrom:
+                      secretKeyRef:
+                        key: MINIO_ROOT_PASSWORD
+                        name: ame-minio-secret
+                        optional: false
+                  - name: MLFLOW_TRACKING_URI
+                    value: "http://mlflow.default.svc.cluster.local:5000"
+                  - name: MINIO_URL
+                    value: "http://ame-minio.ame-system.svc.cluster.local:9000"
+                  - name: PIPENV_YES
+                    value: "1"
+                  - name: SOME_VAR
+                    value: someval
+                  - name: MY_SECRET
+                    valueFrom:
+                      secretKeyRef:
+                        key: secret
+                        name: secretkey
+                image: myimage
+                name: ""
+                resources:
+                  limits:
+                    cpu: "2"
+                    memory: 2Gi
+                volumeMounts:
+                  - mountPath: /project
+                    name: myvolume
+                source: save_artifacts ame/tasks/mytask/artifacts/
+              podSpecPatch: ~
+      securityContext: ~
+      script: ~
+      podSpecPatch: ~
+  imagePullSecrets: ~
+  volumeClaimTemplates:
+    - apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: mytask
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 50Gi
+      status: {}
+  volumes: ~
+  serviceAccountName: ame-task
+

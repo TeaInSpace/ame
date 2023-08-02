@@ -1,0 +1,11 @@
+---
+source: cli/tests/cli.rs
+expression: "&String::from_utf8(res.get_output().stderr.clone())?"
+---
+Error: status: Unavailable, message: "error trying to connect: tcp connect error: Connection refused (os error 111)", details: [], metadata: MetadataMap { headers: {} }
+
+Caused by:
+    0: error trying to connect: tcp connect error: Connection refused (os error 111)
+    1: tcp connect error: Connection refused (os error 111)
+    2: Connection refused (os error 111)
+

@@ -1,11 +1,12 @@
 ---
 source: lib/src/custom_resources/project.rs
-expression: "&project.spec.models.unwrap()[0].generate_model_ingress(&ctrl_cfg)?"
+expression: "&project.spec.cfg.models[0].generate_model_ingress(\"\".to_string(), None,\n            \"projectname\".to_string())?"
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
     nginx.ingress.kubernetes.io/ssl-redirect: "false"
   labels:
     ame-model: test
@@ -13,7 +14,7 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-    - host: testhost
+    - host: ""
       http:
         paths:
           - backend:
@@ -21,10 +22,10 @@ spec:
                 name: test
                 port:
                   number: 5000
-            path: /invocations
-            pathType: ImplementationSpecific
+            path: /projects/projectname/models/test(/|$)(.*)
+            pathType: Prefix
   tls:
     - hosts:
-        - testhost
+        - ""
       secretName: test-tls
 

@@ -1,0 +1,114 @@
+---
+source: controller/src/task.rs
+expression: "&workflow.spec"
+---
+entrypoint: main
+templates:
+  - name: main
+    metadata:
+      labels: ~
+      annotations: ~
+    steps:
+      - - name: setup
+          inline:
+            name: setup
+            metadata:
+              labels:
+                ame-task: redacted
+              annotations: ~
+            steps: ~
+            securityContext:
+              fsGroup: 2000
+              runAsUser: 1001
+            script:
+              command:
+                - bash
+              env:
+                - name: AWS_ACCESS_KEY_ID
+                  valueFrom:
+                    secretKeyRef:
+                      key: MINIO_ROOT_USER
+                      name: ame-minio-secret
+                      optional: false
+                - name: AWS_SECRET_ACCESS_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      key: MINIO_ROOT_PASSWORD
+                      name: ame-minio-secret
+                      optional: false
+                - name: MLFLOW_TRACKING_URI
+                  value: "http://mlflow.default.svc.cluster.local:5000"
+                - name: MINIO_URL
+                  value: "http://ame-minio.ame-system.svc.cluster.local:9000"
+                - name: PIPENV_YES
+                  value: "1"
+              image: "main.localhost:45373/ame-executor:latest"
+              name: ""
+              resources:
+                limits: {}
+              volumeMounts:
+                - mountPath: /project
+                  name: redacted
+              source: " \n\n s3cmd --no-ssl --region eu-central-1 --host=$MINIO_URL --host-bucket=$MINIO_URL get --recursive s3://somepath ./"
+            podSpecPatch: ~
+      - - name: redacted
+          inline:
+            name: redacted
+            metadata:
+              labels:
+                ame-task: redacted
+              annotations: ~
+            steps: ~
+            securityContext:
+              fsGroup: 2000
+              runAsUser: 1001
+            script:
+              command:
+                - bash
+              env:
+                - name: AWS_ACCESS_KEY_ID
+                  valueFrom:
+                    secretKeyRef:
+                      key: MINIO_ROOT_USER
+                      name: ame-minio-secret
+                      optional: false
+                - name: AWS_SECRET_ACCESS_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      key: MINIO_ROOT_PASSWORD
+                      name: ame-minio-secret
+                      optional: false
+                - name: MLFLOW_TRACKING_URI
+                  value: "http://mlflow.default.svc.cluster.local:5000"
+                - name: MINIO_URL
+                  value: "http://ame-minio.ame-system.svc.cluster.local:9000"
+                - name: PIPENV_YES
+                  value: "1"
+              image: "main.localhost:45373/ame-executor:latest"
+              name: ""
+              resources:
+                limits: {}
+              volumeMounts:
+                - mountPath: /project
+                  name: redacted
+              source: "\n                        source ~/.bashrc\n                        \n                        pyenv install 3.11\n\n                        pyenv global 3.11\n\n                        poetry install\n                    \n                        poetry run python train.py\n                    "
+            podSpecPatch: ~
+    securityContext: ~
+    script: ~
+    podSpecPatch: ~
+imagePullSecrets: ~
+volumeClaimTemplates:
+  - apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
+      name: redacted
+    spec:
+      accessModes:
+        - ReadWriteOnce
+      resources:
+        requests:
+          storage: 50Gi
+    status: {}
+volumes: ~
+serviceAccountName: ame-task
+

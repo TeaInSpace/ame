@@ -1,18 +1,17 @@
 use std::{
     collections::{BTreeMap, HashMap},
     default::Default,
-    sync::Arc,
-    time::Duration,
 };
 
 use crate::{
-    custom_resources::task,
-    custom_resources::task::{TaskPhase, TaskSpec},
-    custom_resources::{Error, Result},
+    ctrl::AmeResource,
+    custom_resources::{data_set::DataSet, Error, Result},
+    error::AmeError,
+    grpc::{resource_map_conv, DataSetCfg, Model, ProjectCfg, ProjectStatus, TaskCfg, TaskRef},
 };
 
-use crate::grpc::LogEntry;
-use futures::{future::BoxFuture, FutureExt, StreamExt};
+use super::new_task::{ProjectSource, Task, TaskBuilder};
+
 use k8s_openapi::{
     api::{
         apps::v1::{Deployment, DeploymentSpec},
@@ -26,21 +25,16 @@ use k8s_openapi::{
         },
     },
     apimachinery::pkg::{
-        apis::meta::v1::{LabelSelector, OwnerReference, Time},
+        apis::meta::v1::{LabelSelector, OwnerReference},
         util::intstr::IntOrString,
     },
 };
-use kube::{
-    api::{ListParams, Patch, PatchParams, PostParams},
-    core::ObjectMeta,
-    runtime::{controller::Action, Controller},
-    Api, Client, CustomResource, Resource, ResourceExt,
-};
-use reqwest::Url;
+use kube::{core::ObjectMeta, CustomResource, Resource, ResourceExt};
+
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use tracing::{debug, error, log::info};
+use tracing::debug;
 
 #[derive(CustomResource, Deserialize, Serialize, Clone, Debug, JsonSchema, Default)]
 #[kube(
@@ -53,36 +47,12 @@ use tracing::{debug, error, log::info};
 )]
 #[serde(rename_all = "camelCase")]
 pub struct ProjectSpec {
-    #[serde(rename = "projectid")]
-    pub id: String,
+    #[serde(flatten)]
+    pub cfg: ProjectCfg,
+    pub deletion_approved: bool,
 
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub models: Option<Vec<Model>>,
-
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub tasks: Option<Vec<TaskSpec>>,
-
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub templates: Option<Vec<TaskSpec>>,
-
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub log_entry: Option<LogEntry>,
-
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub data_sets: Option<Vec<DataSet>>,
-}
-
-#[derive(Deserialize, Serialize, Clone, Debug, JsonSchema, PartialEq, Eq, Default)]
-pub struct ProjectStatus {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub models: Option<BTreeMap<String, ModelStatus>>,
-}
-
-#[derive(Deserialize, Serialize, Clone, Debug, JsonSchema, Default)]
-pub struct DataSet {
-    pub name: String,
-    pub task: TaskSpec,
-    pub path: String,
+    #[serde(default)]
+    pub enable_triggers: Option<bool>,
 }
 
 pub fn local_name(name: String) -> String {
@@ -98,192 +68,159 @@ pub fn local_name(name: String) -> String {
     }
 }
 
-impl DataSet {
-    pub fn gen_task(&self) -> task::Task {
-        task::Task {
-            metadata: ObjectMeta {
-                // TODO: what are the impliciations of using a fixed name here instead of
-                // generating a random one?
-                name: Some(self.name.clone()),
-                ..ObjectMeta::default()
-            },
-            spec: self.task.clone(),
-            status: None,
+pub fn project_name(name: String) -> Option<String> {
+    if !name.contains('.') {
+        return None;
+    }
+
+    let splits: Vec<String> = name.split('.').map(String::from).collect();
+
+    if splits.len() > 1 {
+        return Some(splits[0].clone());
+    }
+
+    None
+}
+
+impl From<ProjectCfg> for ProjectSpec {
+    fn from(cfg: ProjectCfg) -> Self {
+        Self {
+            cfg,
+            deletion_approved: false,
+            enable_triggers: Some(false),
         }
     }
 }
 
-impl ProjectStatus {
-    fn set_model_status(&mut self, name: &str, status: ModelStatus) {
-        if let Some(ref mut statuses) = self.models {
-            statuses.insert(name.to_string(), status);
-        } else {
-            let mut statuses: BTreeMap<String, ModelStatus> = BTreeMap::new();
-            statuses.insert(name.to_string(), status);
-            self.models = Some(statuses);
-        }
-    }
-
-    fn set_model_validation(&mut self, name: &str, validation: ModelValidationStatus) {
-        let mut default = ModelStatus::default();
-        let mut status = self.get_model_status(name).unwrap_or(&mut default).clone();
-
-        status.validation = Some(validation);
-
-        self.set_model_status(name, status);
-    }
-
-    pub fn get_model_status(&mut self, name: &str) -> Option<&mut ModelStatus> {
-        self.models.as_mut().and_then(|models| models.get_mut(name))
-    }
-
-    fn set_latest_valid_model_version(&mut self, name: &str, version: String) {
-        let mut status = self
-            .get_model_status(name)
-            .map(|s| s.to_owned())
-            .unwrap_or_default();
-
-        status.latest_valid_model_version = Some(version);
-        self.set_model_status(name, status)
-    }
-
-    fn get_latest_valid_model_version(&mut self, name: &str) -> Option<String> {
-        self.get_model_status(name)
-            .as_ref()
-            .and_then(|model_status| model_status.latest_valid_model_version.clone())
-    }
+pub fn generate_task_name(project_name: String, task_name: String) -> String {
+    format!("{project_name}{task_name}")
 }
 
-#[derive(Deserialize, Serialize, Clone, Debug, JsonSchema, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct Model {
-    name: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    model_type: Option<ModelType>,
-
-    training: TrainingCfg,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    deployment: Option<ModelDeployment>,
-
-    #[serde(skip_serializing_if = "Option::is_none")]
-    validation_task: Option<TaskSpec>,
-}
-
-#[derive(Deserialize, Serialize, Clone, Debug, JsonSchema, Default)]
-pub struct TrainingCfg {
-    task: TaskSpec,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    schedule: Option<String>,
-}
-
-#[derive(Deserialize, Serialize, Clone, Debug, JsonSchema, Default)]
-pub struct ModelDeployment {
-    deploy: bool,
-    auto_train: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    image: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    resources: Option<ResourceRequirements>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    replicas: Option<i32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    ingress: Option<Ingress>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    ingress_annotations: Option<BTreeMap<String, String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    enable_tls: Option<bool>,
-}
-
-#[derive(Deserialize, Serialize, Clone, Debug, JsonSchema)]
-pub enum ModelType {
-    Mlflow,
-}
-
-#[derive(Deserialize, Serialize, Clone, Debug, JsonSchema, PartialEq, Eq, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct ModelStatus {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub latest_model_version: Option<Time>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub latest_validated_model_version: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub last_trained: Option<Time>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub last_deployed: Option<Time>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub validation: Option<ModelValidationStatus>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub latest_valid_model_version: Option<String>,
-}
-
-#[derive(Deserialize, Serialize, Clone, Debug, JsonSchema, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub enum ModelValidationStatus {
-    UnValidated {}, // we cannot use a unit type here: see https://docs.rs/kube/latest/kube/derive.CustomResource.html#enums
-    Validating { task: String, model_version: String },
-    FailedValidation { model_version: String },
-    Validated { model_version: String },
-}
-
-impl Default for ModelValidationStatus {
-    fn default() -> Self {
-        ModelValidationStatus::UnValidated {}
-    }
+pub fn generate_data_set_task_name(project_name: String, data_set_name: String) -> String {
+    format!("{}{}_task", project_name, data_set_name)
 }
 
 impl Project {
-    pub fn get_data_set(&self, data_set_name: String) -> Option<DataSet> {
-        let data_set_name = local_name(data_set_name);
-        self.clone()
-            .spec
-            .data_sets
-            .and_then(|data_sets| data_sets.into_iter().find(|ds| ds.name == data_set_name))
+    pub fn from_cfg(cfg: ProjectCfg) -> Self {
+        Self {
+            metadata: ObjectMeta {
+                generate_name: Some(cfg.name.clone()),
+                ..ObjectMeta::default()
+            },
+
+            spec: ProjectSpec::from(cfg),
+            status: None,
+        }
     }
 
-    pub fn generate_data_set_task(&self, data_set_name: String) -> Option<task::Task> {
-        let Some(mut task) = self.get_data_set(data_set_name).map(|ds| ds.gen_task()) else {
+    pub fn deletion_approved(&self) -> bool {
+        self.spec.deletion_approved
+    }
+
+    pub fn approve_deletion(&mut self) {
+        self.spec.deletion_approved = true;
+    }
+
+    pub fn get_data_set(&self, data_set_name: String) -> Option<DataSetCfg> {
+        let data_set_name = local_name(data_set_name);
+
+        self.clone()
+            .spec
+            .cfg
+            .data_sets
+            .into_iter()
+            .find(|ds| ds.name == data_set_name)
+    }
+
+    // TODO: documentat that this assumes a local data set.
+    pub fn generate_data_set(&self, data_set_name: String) -> crate::Result<DataSet> {
+        let Some(cfg) = self.get_data_set(data_set_name.clone()) else {
+            debug!("failed to get data set {}", data_set_name);
+            return Err(AmeError::MissingDataSet(data_set_name, self.name_any()));
+        };
+
+        let mut data_set = DataSet::from_cfg(
+            &format!("dataset{}{}", self.spec.cfg.name, data_set_name),
+            cfg,
+        );
+
+        if let Some(repo) = self.annotations().get("gitrepository") {
+            data_set
+                .annotations_mut()
+                .insert("gitrepository".to_string(), repo.to_string());
+        }
+
+        data_set.spec.project = Some(self.spec.cfg.name.clone());
+
+        let Some(project_oref) = self.gen_owner_ref() else {
+            return Err(AmeError::FailedToCreateOref(self.name_any()));
+        };
+
+        data_set.owner_references_mut().push(project_oref);
+
+        Ok(data_set)
+    }
+
+    pub fn generate_data_set_task(&self, data_set_name: String) -> Option<Task> {
+        let Some(Some(task)) = self.get_data_set(data_set_name.clone()).map(|ds| ds.task) else {
             return None;
         };
 
+        let mut task_builder = TaskBuilder::from_cfg(task);
+
+        task_builder.set_name(generate_data_set_task_name(
+            self.spec.cfg.name.clone(),
+            data_set_name,
+        ));
+        task_builder.set_project(self.spec.cfg.name.clone());
+
         if let Some(repo) = self.annotations().get("gitrepository") {
-            task.spec.source = Some(task::ProjectSource {
-                gitrepository: Some(repo.to_owned()),
-                ..task::ProjectSource::default()
-            });
+            task_builder.set_project_src(ProjectSource::from_public_git_repo(repo.to_string()));
         }
 
-        Some(task)
+        Some(task_builder.build())
     }
 
-    fn gen_validation_task(&self, model: &Model) -> Result<task::Task> {
-        let Some(mut spec) =match model.validation_task.as_ref() {
-            Some(TaskSpec {
-                task_ref: Some(name),
-                ..
-            }) => self.find_task_spec(name),
-            Some(task_spec) => Some(task_spec),
-            None => None
-        }.map(|ts| ts.to_owned()) else {
+    pub fn generate_validation_task(&self, model: &Model, latest_version: String) -> Result<Task> {
+        let cfg = if let Some(cfg) = model.validation_task.as_ref() {
+            if let Some(ref task_ref) = cfg.task_ref {
+                self.find_task_cfg(&task_ref.name)
+                    .ok_or(Error::MissingTaskCfg(
+                        task_ref.name.clone(),
+                        self.spec.cfg.name.clone(),
+                    ))?
+            } else {
+                cfg.to_owned()
+            }
+        } else {
             return Err(Error::MissingValidationTask(model.name.clone()));
         };
 
+        let mut task_builder = TaskBuilder::from_cfg(cfg);
+
         if let Some(repo) = self.annotations().get("gitrepository") {
-            spec.source = Some(task::ProjectSource {
-                gitrepository: Some(repo.to_owned()),
-                ..task::ProjectSource::default()
-            });
+            task_builder.set_project_src(ProjectSource::from_public_git_repo(repo.to_string()));
         }
 
-        let metadata = ObjectMeta {
-            generate_name: Some(format!("validate-{}", model.name.clone())),
-            ..ObjectMeta::default()
-        };
+        task_builder.add_owner_reference(
+            self.controller_owner_ref(&())
+                .ok_or(AmeError::FailedToCreateOref(self.name_any()))?,
+        );
 
-        Ok(task::Task {
-            metadata,
-            spec,
-            status: None,
-        })
+        let validation_task = task_builder
+            .set_name(format!(
+                "validate-{}-{}",
+                model.name.clone(),
+                latest_version
+            ))
+            .clone()
+            .build();
+
+        if validation_task.spec.cfg.executor.is_none() {
+            return Err(Error::MissingExecutor(validation_task.name_any()));
+        }
+
+        Ok(validation_task)
     }
 
     pub fn add_owner_reference(&mut self, owner_reference: OwnerReference) -> &mut Project {
@@ -309,71 +246,85 @@ impl Project {
     }
 
     fn get_model(&self, name: &str) -> Option<Model> {
-        if let Some(ref models) = self.spec.models {
-            models.clone().into_iter().find(|m| m.name == name)
-        } else {
-            None
-        }
+        self.spec
+            .cfg
+            .models
+            .clone()
+            .into_iter()
+            .find(|m| m.name == name)
     }
 
-    pub fn get_template(&self, name: &str) -> Option<TaskSpec> {
-        if let Some(ref templates) = self.spec.templates {
-            templates.clone().into_iter().find(|m| {
-                if let Some(ref tname) = m.name {
-                    tname == name
-                } else {
-                    false
-                }
-            })
-        } else {
-            None
-        }
-    }
-
-    fn find_task_spec(&self, name: &str) -> Option<&task::TaskSpec> {
-        self.spec.tasks.as_ref().and_then(|tasks| {
-            tasks
-                .iter()
-                .find(|task| task.name.as_ref().map(|n| n == name).unwrap_or(false))
+    pub fn get_template(&self, name: &str) -> Option<TaskCfg> {
+        self.spec.cfg.templates.clone().into_iter().find(|m| {
+            if let Some(ref tname) = m.name {
+                tname == name
+            } else {
+                false
+            }
         })
     }
 
-    pub fn generate_model_training_task(&self, name: &str) -> Result<task::Task> {
-        let Some(model) = self.get_model(name) else {
-            return Err(Error::MissingProjectSrc("model".to_string()));
+    fn find_task_cfg(&self, name: &str) -> Option<TaskCfg> {
+        self.spec
+            .cfg
+            .tasks
+            .iter()
+            .find(|task| task.name.as_ref().map(|n| n == name).unwrap_or(false))
+            .cloned()
+    }
+
+    fn get_task_cfg_for_ref(&self, task_ref: TaskRef) -> Option<TaskCfg> {
+        self.spec.cfg.get_task_cfg(&task_ref.name)
+    }
+
+    fn get_model_training_cfg(&self, model: &str) -> Result<TaskCfg> {
+        let Some(model) = self.get_model(model) else {
+            return Err(
+                AmeError::MissingModelTrainingTaskCfg(model.to_string(), self.name_any()).into(),
+            );
         };
 
-        let task_ref = model.training.task.task_ref.clone().unwrap();
+        match model.get_training_task_cfg() {
+            Some(TaskCfg {
+                task_ref: Some(ref task_ref),
+                ..
+            }) => self
+                .get_task_cfg_for_ref(task_ref.clone())
+                .ok_or(AmeError::MissingTaskRef(task_ref.name.to_string()).into()),
+            Some(task_cfg @ TaskCfg { task_ref: None, .. }) => Ok(task_cfg),
+            None => Err(AmeError::MissingTrainingTaskCfg(model.name).into()),
+        }
+    }
 
-        let project_spec = self.spec.clone();
-        let tasks = project_spec.tasks.unwrap();
-        let mut task_spec = tasks
-            .iter()
-            .find(|t| t.name.clone().unwrap() == task_ref)
-            .unwrap()
-            .to_owned();
+    pub fn generate_model_training_task(&self, name: &str) -> Result<Task> {
+        let task_cfg = self.get_model_training_cfg(name)?;
+
+        let mut task_builder = TaskBuilder::from_cfg(task_cfg.clone());
 
         let medata = self.metadata.clone();
 
         let annotations = medata.annotations.unwrap();
 
         let repo = annotations.get("gitrepository").unwrap();
+        // NOTE: how is the data set repo set as src here?
 
-        task_spec.source = Some(task::ProjectSource {
-            gitrepository: Some(repo.to_owned()),
-            ..task::ProjectSource::default()
-        });
+        let training_task = task_builder
+            .set_project_src(ProjectSource::from_public_git_repo(repo.to_string()))
+            .set_name(format!(
+                "{}{}{}{}",
+                self.name_any(),
+                name,
+                task_cfg.name(),
+                self.spec.cfg.name
+            ))
+            .add_owner_reference(
+                self.controller_owner_ref(&())
+                    .unwrap_or(OwnerReference::default()),
+            )
+            .clone()
+            .build();
 
-        let metadata = ObjectMeta {
-            generate_name: Some(model.name),
-            ..ObjectMeta::default()
-        };
-
-        Ok(task::Task {
-            metadata: add_owner_reference(metadata, self.controller_owner_ref(&()).unwrap()),
-            spec: task_spec,
-            status: None,
-        })
+        Ok(training_task)
     }
 }
 
@@ -389,7 +340,39 @@ pub fn add_owner_reference(
     metadata
 }
 
+pub async fn get_latest_model_version(
+    model: &Model,
+    mlflow_url: String,
+) -> Result<MlflowModelVersion> {
+    let Some(model_version) = ({
+        let mut body = HashMap::new();
+        body.insert("name", model.name.clone());
+        let client = reqwest::Client::new();
+        let MlflowModelVersionsRes { model_versions } = client
+            .post(format!(
+                "{mlflow_url}/api/2.0/mlflow/registered-models/get-latest-versions"
+            ))
+            .json(&body)
+            .send()
+            .await?
+            .json()
+            .await?;
+
+        model_versions
+            .into_iter()
+            .max_by_key(|v| v.creation_timestamp)
+    }) else {
+        return Err(Error::MissingMlflowUrl());
+    };
+
+    Ok(model_version)
+}
+
 impl Model {
+    fn get_training_task_cfg(&self) -> Option<TaskCfg> {
+        self.training.as_ref().and_then(|t| t.task.clone())
+    }
+
     fn labels(&self) -> BTreeMap<String, String> {
         let mut labels: BTreeMap<String, String> = BTreeMap::new();
         labels.insert("ame-model".to_string(), self.name.clone());
@@ -399,18 +382,22 @@ impl Model {
     fn object_metadata(&self) -> ObjectMeta {
         ObjectMeta {
             name: Some(self.name.clone()),
-            labels: Some(self.labels()),
+            labels: Some(self.labels().to_owned()),
             ..ObjectMeta::default()
         }
     }
 
-    fn generate_model_ingress(&self, ctrl_cfg: &ProjectCtrlCfg) -> Result<Ingress> {
-        let Some(model_deployment) = self.deployment.clone() else {
-            return Err(Error::MissingDeployment())
+    pub fn generate_model_ingress(
+        &self,
+        ingress_host: String,
+        ingress_annotations: Option<BTreeMap<String, String>>,
+        project_name: String,
+    ) -> Result<Ingress> {
+        let Some(mut model_deployment) = self.deployment.clone() else {
+            return Err(Error::MissingDeployment());
         };
 
-        let mut ingress_annotations = ctrl_cfg
-            .model_ingress_annotations
+        let mut ingress_annotations = ingress_annotations
             .clone()
             .unwrap_or(BTreeMap::<String, String>::new());
 
@@ -419,9 +406,13 @@ impl Model {
             "false".to_string(),
         );
 
-        if let Some(mut annotations) = model_deployment.ingress_annotations {
-            ingress_annotations.append(&mut annotations);
-        }
+        ingress_annotations.append(&mut model_deployment.ingress_annotations);
+
+        // TODO: we need a better method of setting paths for models as this is can easily break.
+        ingress_annotations.insert(
+            "nginx.ingress.kubernetes.io/rewrite-target".to_string(),
+            "/$2".to_string(),
+        );
 
         let metadata = ObjectMeta {
             name: Some(self.name.clone()),
@@ -432,10 +423,7 @@ impl Model {
 
         let tls: Option<Vec<IngressTLS>> = match model_deployment.enable_tls {
             Some(true) | None => Some(vec![IngressTLS {
-                hosts: Some(vec![ctrl_cfg
-                    .clone()
-                    .model_ingress_host
-                    .unwrap_or("".to_string())]),
+                hosts: Some(vec![ingress_host.clone()]),
                 secret_name: Some(format!("{}-tls", self.name)),
             }]),
             _ => None,
@@ -446,12 +434,7 @@ impl Model {
             spec: Some(IngressSpec {
                 ingress_class_name: Some("nginx".to_string()),
                 rules: Some(vec![IngressRule {
-                    host: Some(
-                        ctrl_cfg
-                            .clone()
-                            .model_ingress_host
-                            .unwrap_or("".to_string()),
-                    ),
+                    host: Some(ingress_host),
                     http: Some(HTTPIngressRuleValue {
                         paths: vec![HTTPIngressPath {
                             backend: IngressBackend {
@@ -464,8 +447,11 @@ impl Model {
                                 }),
                                 ..IngressBackend::default()
                             },
-                            path_type: "ImplementationSpecific".to_string(),
-                            path: Some("/invocations".to_string()),
+                            path_type: "Prefix".to_string(),
+                            path: Some(format!(
+                                "/projects/{}/models/{}(/|$)(.*)",
+                                project_name, self.name
+                            )),
                         }],
                     }),
                 }]),
@@ -476,9 +462,9 @@ impl Model {
         })
     }
 
-    fn generate_model_service(&self, _ctrl_cfg: &ProjectCtrlCfg) -> Result<Service> {
+    pub fn generate_model_service(&self) -> Result<Service> {
         let Some(_model_deployment) = self.deployment.clone() else {
-            return Err(Error::MissingDeployment())
+            return Err(Error::MissingDeployment());
         };
 
         Ok(Service {
@@ -495,75 +481,17 @@ impl Model {
         })
     }
 
-    async fn get_model_version(
+    pub async fn get_model_version(
         &self,
-        ctrl_cfg: &ProjectCtrlCfg,
-        version: &str,
+        _ctrl_cfg: &ProjectCtrlCfg,
+        _version: &str,
     ) -> Result<MlflowModelVersion> {
-        let Some(ref mlflow_url) = ctrl_cfg.mlflow_url else {
-            return Err(Error::MissingMlflowUrl());
-        };
-
-        let model_version = {
-            let mut body = HashMap::new();
-            body.insert("name", self.name.clone());
-            body.insert("version", version.to_string());
-            let url = Url::parse_with_params(
-                &format!("{mlflow_url}/api/2.0/mlflow/model-versions/get"),
-                &[
-                    ("name", self.name.clone()),
-                    ("version", version.to_string()),
-                ],
-            )
-            .unwrap();
-
-            let client = reqwest::Client::new();
-            client
-                .get(url)
-                .send()
-                .await?
-                .json::<MlflowModelVersionResponse>()
-                .await?
-                .model_version
-        };
-        Ok(model_version)
+        todo!();
     }
 
-    async fn get_latest_model_version(
+    pub async fn generate_model_deployment(
         &self,
-        ctrl_cfg: &ProjectCtrlCfg,
-    ) -> Result<MlflowModelVersion> {
-        let Some(ref mlflow_url) = ctrl_cfg.mlflow_url else {
-            return Err(Error::MissingMlflowUrl());
-        };
-
-        let Some(model_version) = ({
-            let mut body = HashMap::new();
-            body.insert("name", self.name.clone());
-            let client = reqwest::Client::new();
-            let MlflowModelVersionsRes{model_versions } = client
-                .post(format!(
-                    "{mlflow_url}/api/2.0/mlflow/registered-models/get-latest-versions"
-                ))
-                .json(&body)
-                .send()
-                .await?
-                .json()
-                .await?;
-
-            model_versions
-                .into_iter()
-                .max_by_key(|v| v.creation_timestamp)
-        }) else {
-            return Err(Error::MissingMlflowUrl());
-        };
-
-        Ok(model_version)
-    }
-
-    async fn generate_model_deployment(
-        &self,
-        ctrl_cfg: &ProjectCtrlCfg,
+        deployment_image: String,
         model_source: String,
     ) -> Result<Deployment> {
         let Some(model_deployment) = self.deployment.clone() else {
@@ -588,7 +516,7 @@ impl Model {
                 replicas: Some(model_deployment.replicas.unwrap_or(1)),
                 template: PodTemplateSpec {
                     metadata: Some(ObjectMeta {
-                        labels: Some(labels),
+                        labels: Some(labels.clone()),
                         ..ObjectMeta::default()
                     }),
                     spec: Some(PodSpec {
@@ -601,14 +529,17 @@ impl Model {
                             image: Some(
                                 model_deployment
                                     .image
-                                    .unwrap_or(ctrl_cfg.clone().deployment_image),
+                                    .unwrap_or(deployment_image),
                             ),
                             command: Some(vec!["/bin/bash".to_string()]),
                             args: Some(vec![
                                 "-c".to_string(),
                                 format!("export PATH=$HOME/.pyenv/bin:$PATH; mlflow models serve -m {model_source} --host 0.0.0.0"),
                             ]),
-                            resources: model_deployment.resources,
+                            resources: Some(ResourceRequirements{
+                                limits: Some(resource_map_conv(model_deployment.resources)),
+                                requests: None,
+                            }),
                             env: Some(vec![EnvVar {
                                 name: "MLFLOW_TRACKING_URI".to_string(),
                                 value: Some(
@@ -671,11 +602,6 @@ impl ProjectCtrlCfg {
     }
 }
 
-struct Context {
-    client: Client,
-    config: ProjectCtrlCfg,
-}
-
 #[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Default)]
 struct MlflowModelVersionsRes {
     model_versions: Vec<MlflowModelVersion>,
@@ -687,305 +613,13 @@ struct MlflowModelVersionResponse {
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Default)]
-struct MlflowModelVersion {
+pub struct MlflowModelVersion {
     name: String,
-    version: String,
+    pub version: String,
     current_stage: String,
     creation_timestamp: i64,
-    source: String,
+    pub source: String,
     run_id: String,
-}
-
-async fn reconcile(project: Arc<Project>, ctx: Arc<Context>) -> Result<Action> {
-    info!("reconciling projects");
-    let _projects = Api::<Project>::namespaced(ctx.client.clone(), &ctx.config.namespace);
-    let deployments = Api::<Deployment>::namespaced(ctx.client.clone(), &ctx.config.namespace);
-    let ingresses = Api::<Ingress>::namespaced(ctx.client.clone(), &ctx.config.namespace);
-    let services = Api::<Service>::namespaced(ctx.client.clone(), &ctx.config.namespace);
-    let tasks_cli = Api::<task::Task>::namespaced(ctx.client.clone(), &ctx.config.namespace);
-    let ctrl_cfg = ctx.config.clone();
-    let oref = if let Some(refe) = project.controller_owner_ref(&()) {
-        refe
-    } else {
-        OwnerReference::default()
-    };
-
-    let mut status = project.status.clone().unwrap_or_default();
-
-    if let Some(models) = project.spec.clone().models {
-        for model in models {
-            let model_version = model.get_latest_model_version(&ctrl_cfg).await;
-
-            if let Some(ModelDeployment {
-                auto_train: true,
-                deploy: true,
-                ..
-            }) = model.clone().deployment
-            {
-                info!("creating autotrain task {model_version:?}");
-                if model_version.is_err() {
-                    let task_ref = model.training.task.task_ref.clone().unwrap();
-
-                    let project_spec = project.spec.clone();
-                    let tasks = project_spec.tasks.unwrap();
-                    let mut task_spec = tasks
-                        .iter()
-                        .find(|t| t.name.clone().unwrap() == task_ref)
-                        .unwrap()
-                        .to_owned();
-
-                    let medata = project.metadata.clone();
-
-                    let annotations = medata.annotations.unwrap();
-
-                    let repo = annotations.get("gitrepository").unwrap();
-
-                    task_spec.source = Some(task::ProjectSource {
-                        gitrepository: Some(repo.to_owned()),
-                        ..task::ProjectSource::default()
-                    });
-
-                    let metadata = ObjectMeta {
-                        name: Some(model.name.clone()),
-                        ..ObjectMeta::default()
-                    };
-
-                    let task = task::Task {
-                        metadata: add_owner_reference(metadata, oref.clone()),
-                        spec: task_spec.clone(),
-                        status: None,
-                    };
-
-                    tasks_cli
-                        .patch(
-                            &task.name_any(),
-                            &PatchParams::apply("ame"),
-                            &Patch::Apply(&task),
-                        )
-                        .await?;
-                }
-            };
-
-            debug!(
-                "check model validation status {:?} {:?}",
-                model_version, model.validation_task
-            );
-
-            if model.validation_task.is_some() && model_version.is_ok() {
-                let validation = status
-                    .clone()
-                    .get_model_status(&model.name)
-                    .and_then(|s| s.validation.as_ref())
-                    .unwrap_or(&ModelValidationStatus::UnValidated {})
-                    .clone();
-
-                debug!("update model validation state");
-
-                match validation {
-                    ModelValidationStatus::UnValidated {} => {
-                        debug!(
-                            "model {} with version {} needs to be validated",
-                            &model.name,
-                            model_version
-                                .as_ref()
-                                .map(|m| m.version.clone())
-                                .unwrap_or("'no version found'".to_string())
-                        );
-
-                        let mut validation_task = project.gen_validation_task(&model)?; // TODO: the ? here could cause unwanted early exits.
-                        validation_task.owner_references_mut().push(oref.clone());
-
-                        let validation_task = tasks_cli
-                            .create(&PostParams::default(), &validation_task)
-                            .await?;
-
-                        status.set_model_validation(
-                            &model.name,
-                            ModelValidationStatus::Validating {
-                                task: validation_task.name_any(),
-                                model_version: model_version.as_ref().unwrap().version.clone(),
-                            },
-                        );
-                    }
-                    ModelValidationStatus::Validating {
-                        task,
-                        model_version,
-                    } => {
-                        // TODO: handle early cancelation if a new model version appears before
-                        // this validation completes.
-
-                        debug!("debug status: validating");
-
-                        let Ok(task_status) = tasks_cli.get_status(&task).await else {
-                            debug!("failed to find status for task {task}, resetting model status to unvalidatd");
-                            status.set_model_validation(&model.name, ModelValidationStatus::UnValidated {  });
-                            continue;
-                        };
-
-                        debug!("validation task status: {task_status:?}");
-
-                        if let Some(task_status) = task_status.status {
-                            match task_status.phase {
-                                Some(TaskPhase::Succeeded) => {
-                                    status.set_latest_valid_model_version(
-                                        &model.name,
-                                        model_version.clone(),
-                                    );
-                                    status.set_model_validation(
-                                        &model.name,
-                                        ModelValidationStatus::Validated {
-                                            model_version: model_version.to_string(),
-                                        },
-                                    );
-                                }
-                                Some(TaskPhase::Failed) => status.set_model_validation(
-                                    &model.name,
-                                    ModelValidationStatus::FailedValidation {
-                                        model_version: model_version.to_string(),
-                                    },
-                                ),
-                                _ => (),
-                            };
-
-                            debug!("set model validations status: {status:?}");
-                        }
-                    }
-
-                    ModelValidationStatus::Validated {
-                        model_version: validatd_version,
-                    } => {
-                        if *validatd_version == model_version.as_ref().unwrap().version {
-                            debug!("new model version requires validation");
-                            let mut validation_task = project.gen_validation_task(&model)?; // TODO: the ? here could cause unwanted early exits.
-                            validation_task.owner_references_mut().push(oref.clone());
-
-                            let validation_task = tasks_cli
-                                .create(&PostParams::default(), &validation_task)
-                                .await?;
-
-                            status.set_model_validation(
-                                &model.name,
-                                ModelValidationStatus::Validating {
-                                    task: validation_task.name_any(),
-                                    model_version: model_version.as_ref().unwrap().version.clone(),
-                                },
-                            );
-
-                            continue;
-                        }
-                    }
-                    ModelValidationStatus::FailedValidation {
-                        model_version: validatd_version,
-                    } => {
-                        if *validatd_version != model_version.as_ref().unwrap().version {
-                            debug!("failed to validate");
-                            let mut validation_task = project.gen_validation_task(&model)?; // TODO: the ? here could cause unwanted early exits.
-                            validation_task.owner_references_mut().push(oref.clone());
-
-                            let validation_task = tasks_cli
-                                .create(&PostParams::default(), &validation_task)
-                                .await?;
-
-                            status.set_model_validation(
-                                &model.name,
-                                ModelValidationStatus::Validating {
-                                    task: validation_task.name_any(),
-                                    model_version: model_version.as_ref().unwrap().version.clone(),
-                                },
-                            );
-                        }
-                        continue;
-                    }
-                }
-            }
-
-            debug!("preparing model deployment");
-
-            let Some(latest_version) = status.get_latest_valid_model_version(&model.name) else {
-                debug!("no valid model version to deploy");
-                continue;
-            };
-
-            let mlflow_version = model.get_model_version(&ctrl_cfg, &latest_version).await?;
-
-            let mut deployment = model
-                .generate_model_deployment(&ctrl_cfg, mlflow_version.source)
-                .await?;
-            let mut service = model.generate_model_service(&ctrl_cfg)?;
-            let mut ingress = model.generate_model_ingress(&ctrl_cfg)?;
-            let pp = PatchParams::apply("ame");
-
-            deployment.metadata = add_owner_reference(deployment.metadata, oref.clone());
-            service.metadata = add_owner_reference(service.metadata, oref.clone());
-            ingress.metadata = add_owner_reference(ingress.metadata, oref.clone());
-
-            deployments
-                .patch(&deployment.name_any(), &pp, &Patch::Apply(&deployment))
-                .await?;
-            services
-                .patch(&service.name_any(), &pp, &Patch::Apply(&service))
-                .await?;
-            ingresses
-                .patch(&ingress.name_any(), &pp, &Patch::Apply(&ingress))
-                .await?;
-        }
-    }
-
-    debug!("patching status");
-
-    let mut patch = Project {
-        metadata: project.metadata.clone(),
-        spec: ProjectSpec::default(),
-        status: Some(status),
-    };
-
-    patch.meta_mut().managed_fields = None;
-
-    _projects
-        .patch_status(
-            &project.name_any(),
-            &PatchParams::apply("ame").force(),
-            &Patch::Apply(patch),
-        )
-        .await?;
-
-    debug!("requeing");
-
-    Ok(Action::requeue(Duration::from_secs(300)))
-}
-
-fn error_policy(src: Arc<Project>, error: &Error, _ctx: Arc<Context>) -> Action {
-    error!("error: {}, for project: {}", error, src.name_any());
-    Action::requeue(Duration::from_secs(60))
-}
-
-pub async fn start_project_controller(config: ProjectCtrlCfg) -> BoxFuture<'static, ()> {
-    let client = Client::try_default().await.expect("Failed to create a K8S client, is the controller running in an environment with access to cluster credentials?");
-    let context = Arc::new(Context {
-        client: client.clone(),
-        config,
-    });
-
-    let projects = Api::<Project>::namespaced(client.clone(), &context.config.namespace);
-    projects
-        .list(&ListParams::default())
-        .await
-        .expect("Is the CRD installed?");
-
-    let services = Api::<Service>::namespaced(client.clone(), &context.config.namespace);
-    let ingresses = Api::<Ingress>::namespaced(client.clone(), &context.config.namespace);
-    let deployments = Api::<Deployment>::namespaced(client.clone(), &context.config.namespace);
-    let tasks = Api::<task::Task>::namespaced(client, &context.config.namespace);
-
-    Controller::new(projects.clone(), ListParams::default())
-        .owns(deployments, ListParams::default())
-        .owns(services, ListParams::default())
-        .owns(ingresses, ListParams::default())
-        .owns(tasks, ListParams::default())
-        .run(reconcile, error_policy, context)
-        .filter_map(|x| async move { std::result::Result::ok(x) })
-        .for_each(|_| futures::future::ready(()))
-        .boxed()
 }
 
 #[cfg(test)]
@@ -1001,17 +635,25 @@ mod test {
         Ok(serde_json::from_value(json!({
             "apiVersion": "ame.teainspace.com/v1alpha1",
             "kind": "Project",
-            "metadata": { "name": "test-private" },
+            "metadata": { "name": "test-private", "annotations": {
+                "gitrepository": "my-git-repo"
+            } },
             "spec": {
-                "projectid": "myproject",
+                "deletionApproved": false,
+
+                "name": "myproject",
+                "deletionApproved": false,
                 "models": [
                 {
                     "name": "test",
                     "training": {
                         "task": {
-                            "taskRef": "trainingtask",
-                            "runcommand": "test",
-                            "projectid": "test",
+                            "name": "mytask",
+                            "executor": {
+                                 "pipEnv": {
+                                        "command": "test cmd"
+                                    }
+                                },
                         }
                     },
                     "deployment": {
@@ -1039,8 +681,8 @@ mod test {
         let project = test_project()?;
 
         insta::assert_yaml_snapshot!(
-            &project.spec.models.unwrap().clone()[0]
-                .generate_model_deployment(&ctrl_cfg, "model_source".to_string())
+            &project.spec.cfg.models.clone()[0]
+                .generate_model_deployment(ctrl_cfg.deployment_image, "model_source".to_string())
                 .await?
         );
 
@@ -1049,8 +691,16 @@ mod test {
 
     #[tokio::test]
     #[serial]
+    async fn produces_valid_model_training_task() -> Result<()> {
+        let project = test_project().unwrap();
+        insta::assert_yaml_snapshot!(&project.generate_model_training_task("test")?);
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial]
     async fn produces_valid_service() -> Result<()> {
-        let ctrl_cfg = ProjectCtrlCfg {
+        let _ctrl_cfg = ProjectCtrlCfg {
             namespace: "default".to_string(),
             deployment_image: "test_img".to_string(),
             model_ingress_host: Some("testhost".to_string()),
@@ -1060,9 +710,7 @@ mod test {
 
         let project = test_project()?;
 
-        insta::assert_yaml_snapshot!(
-            &project.spec.models.unwrap()[0].generate_model_service(&ctrl_cfg)?
-        );
+        insta::assert_yaml_snapshot!(&project.spec.cfg.models[0].generate_model_service()?);
 
         Ok(())
     }
@@ -1070,7 +718,7 @@ mod test {
     #[tokio::test]
     #[serial]
     async fn produces_valid_ingress() -> Result<()> {
-        let ctrl_cfg = ProjectCtrlCfg {
+        let _ctrl_cfg = ProjectCtrlCfg {
             namespace: "default".to_string(),
             deployment_image: "test_img".to_string(),
             model_ingress_host: Some("testhost".to_string()),
@@ -1080,9 +728,11 @@ mod test {
 
         let project = test_project()?;
 
-        insta::assert_yaml_snapshot!(
-            &project.spec.models.unwrap()[0].generate_model_ingress(&ctrl_cfg)?
-        );
+        insta::assert_yaml_snapshot!(&project.spec.cfg.models[0].generate_model_ingress(
+            "".to_string(),
+            None,
+            "projectname".to_string()
+        )?);
 
         Ok(())
     }

@@ -3,9 +3,6 @@ source: cli/tests/cli.rs
 expression: "&String::from_utf8(res.get_output().stdout.clone())?"
 ---
 uploaded project!
-"redacted timestamp" INFO mlflow.utils.virtualenv: Installing python 3.8.10 if it does not exist
-Downloading Python-3.8.10.tar.xz...
--> https://www.python.org/ftp/python/3.8.10/Python-3.8.10.tar.xz
 Installing Python-3.8.10...
 patching file Misc/NEWS.d/next/Build/2021-10-11-16-27-38.bpo-45405.iSfdW5.rst
 patching file configure
@@ -20,7 +17,7 @@ created virtual environment "redacted"
 "redacted timestamp" INFO mlflow.utils.virtualenv: Installing dependencies
 "redacted timestamp" INFO mlflow.projects.utils: === Created directory /"redacted temporary directory""redacted timestamp" INFO mlflow.projects.backend.local: === Running command 'source /home/ame/.mlflow/envs/"redacted MLflow env ID"activate && python train.py' in "redacted run ID"
   redacted
-"redacted timestamp" INFO mlflow.tracking._model_registry.client: Waiting up to 300 seconds for model version to finish creation.                     Model name: test_model, version %
+"redacted timestamp" INFO mlflow.tracking._model_registry.client: Waiting up to 300 seconds for model version to finish creation. Model name: test_model, version %
 Score: 0.6666666666666666
 Model saved in "redacted run ID"
 "redacted timestamp" INFO mlflow.projects: === Run ("redacted run ID") succeeded ===

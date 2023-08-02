@@ -12,19 +12,6 @@ enum TaskType {
   Poetry = 2;
 }
 
-message TaskTemplate {
-  string projectid = 1;
-  string command = 2;
-  string name = 3;
-  optional string image = 4;
-  optional TaskType taskType = 5;
-}
-
-message CreateTaskRequest {
-  TaskIdentifier id = 1;
-  TaskTemplate template = 2;
-}
-
 message Empty {
 }
 
@@ -117,7 +104,7 @@ message AmeSecretId {
 }
 
 message AmeSecrets {
-  repeated AmeSecretId secrets = 1;
+repeated AmeSecretId secrets = 1;
 }
 
 message ResourceCfg {
@@ -165,7 +152,99 @@ message TaskRef {
 
 message TaskCfg {
   optional string name = 1;
-  TaskRef taskRef = 2;  
+  optional TaskRef taskRef = 2;  
+  map<string, string> resources = 3;
+  oneof executor {
+    PoetryExecutor poetry = 4; 
+    MlflowExecutor mlflow = 5;
+    PipEnvExecutor pipEnv = 6;
+    PipExecutor pip = 8;
+    CustomExecutor custom = 9;
+  }
+  repeated string dataSets = 7;
+  optional TemplateRef fromTemplate = 10;
+  optional ArtifactCfg artifactCfg = 11;
+  optional TriggerCfg triggers = 12;
+  repeated EnvVar env = 13;
+  repeated Secret secrets = 14;
+}
+
+message Secret {
+  oneof variant {
+    AmeSecretVariant ame = 1;
+  }
+}
+
+message AmeSecretVariant {
+  string key = 1;
+  string injectAs = 2;
+}
+
+message EnvVar {
+  string key = 1;
+  string val = 2;
+}
+
+message TriggerCfg {
+  optional string schedule = 1;
+}
+
+message ArtifactCfg {
+  bool save_changed_files = 1;
+  repeated string paths = 2; 
+}
+
+message TemplateRef {
+  string name = 1;
+  optional string project = 2;
+}
+
+message CustomExecutor {
+  string pythonVersion = 1;
+  string command = 2;
+}
+
+message PoetryExecutor {
+  string pythonVersion = 1;  
+  string command = 2;
+}
+
+
+message PipExecutor {
+  string pythonVersion = 1;  
+  string command = 2;
+}
+
+message MlflowExecutor {
+  
+}
+
+message PipEnvExecutor {
+  string command = 1;
+}
+
+// TODO: should there be an error case?
+message TaskStatus {
+  oneof phase {
+    TaskPhasePending pending = 2;  
+    TaskPhaseRunning running = 3;
+    TaskPhaseFailed failed = 4;
+    TaskPhaseSucceeded succeeded= 5;
+  }
+}
+
+message TaskPhasePending {
+  
+}
+
+message TaskPhaseRunning {
+  string workflowName= 1;
+}
+message TaskPhaseFailed {
+  string workflowName= 1;
+}
+message TaskPhaseSucceeded {
+  string workflowName= 1;
 }
 
 message DataSetCfg {
@@ -175,9 +254,81 @@ message DataSetCfg {
  optional string size = 4;
 }
 
+message ProjectCfg {
+  string name = 1;
+  repeated Model models = 2;
+  repeated DataSetCfg dataSets = 3;
+  repeated TaskCfg tasks = 4;
+  repeated TaskCfg templates = 5;
+  optional bool enableTriggers = 6;
+}
+
+message ProjectStatus {
+  map<string,ModelStatus> models = 1;
+}
+
+message ModelStatus {
+  optional string latestValidatedModelVersion = 1;
+}
+
+message CreateProjectRequest {
+  ProjectCfg cfg = 1;
+  optional bool enableTriggers = 2;
+}
+
+message ProjectId {
+  string name = 1;
+}
+
+message Model {
+  string name = 1;
+  optional TaskCfg validationTask = 2; 
+  optional ModelTrainingCfg training = 3;
+  optional ModelDeploymentCfg deployment = 4;
+}
+
+message ModelTrainingCfg {
+  TaskCfg task = 1;
+}
+
+message ModelDeploymentCfg {
+   map<string, string> ingressAnnotations = 1;
+   optional int32 replicas = 2;
+   optional string image = 3;
+   map<string,string> resources = 4;
+   optional bool enableTls = 5;
+}
+
+message RunTaskRequest {
+  ProjectId projectId= 1;
+  TaskCfg taskCfg = 2;
+}
+
+message TaskId {
+  string name = 1;
+}
+
+message ListTasksRequest {
+  
+}
+
+message ListTasksResponse {
+  map<string, TaskListEntry> tasks = 1;
+}
+
+message TaskListEntry {
+  TaskStatus status = 1;
+  string timeStamp = 2;
+}
+
+message RemoveTaskRequest {
+  string name = 1;
+  optional bool approve = 2;
+}
+
 service AmeService {
-  rpc GetTask(TaskIdentifier) returns (TaskTemplate) {}
-  rpc CreateTask(CreateTaskRequest) returns (TaskIdentifier) {}
+  rpc RunTask(RunTaskRequest) returns (TaskIdentifier) {}
+  rpc GetTask(TaskIdentifier) returns (TaskCfg) {}
   rpc DeleteTask(TaskIdentifier) returns (Empty) {}
   rpc CreateTaskProjectDirectory(TaskProjectDirectoryStructure) returns (Empty) {}
   rpc UploadProjectFile(stream ProjectFileChunk) returns (Empty) {}
@@ -196,4 +347,7 @@ service AmeService {
   rpc GetProjectSrcStatus(ProjectSourceId) returns (ProjectSourceStatus) {}
   rpc GetProjectSrcId(ProjectSrcIdRequest) returns (ProjectSourceId) {}
   rpc ListProjectSrcs(ProjectSourceListParams) returns (ListProjectSrcsResponse) {} 
-}
+  rpc CreateProject(CreateProjectRequest) returns (ProjectId) {}
+  rpc ListTasks(ListTasksRequest) returns (ListTasksResponse) {}
+  rpc RemoveTask(RemoveTaskRequest) returns (Empty) {}
+ }

@@ -1,7 +1,9 @@
-use crate::ctrl::AmeKubeResourceCtrl;
-use crate::custom_resources::project_source::{ProjectSource, ProjectSourceSpec};
-use crate::error::AmeError;
-use crate::grpc::{ProjectSourceCfg, ProjectSourceId, ProjectSourceStatus};
+use crate::{
+    ctrl::AmeKubeResourceCtrl,
+    custom_resources::project_source::{ProjectSource, ProjectSourceSpec},
+    error::AmeError,
+    grpc::{ProjectSourceCfg, ProjectSourceId, ProjectSourceStatus},
+};
 use kube::{
     api::{DeleteParams, ListParams, Patch, PatchParams, PostParams},
     Api, Client, ResourceExt,
@@ -69,7 +71,9 @@ impl ProjectSrcCtrl {
 
     pub async fn create_project_src(&self, cfg: &ProjectSourceCfg) -> Result<ProjectSourceId> {
         let Some(repository) = cfg.git_repository() else {
-            return Err(Error::InvalidProjectSourceCfg("missing git configuration".to_string()));
+            return Err(Error::InvalidProjectSourceCfg(
+                "missing git configuration".to_string(),
+            ));
         };
 
         match self.get_project_src_for_repo(repository).await {
@@ -89,7 +93,9 @@ impl ProjectSrcCtrl {
 
     pub async fn update_project_src(&self, cfg: &ProjectSourceCfg) -> Result<ProjectSourceId> {
         let Some(repository) = cfg.git_repository() else {
-            return Err(Error::InvalidProjectSourceCfg("missing git configuration".to_string()));
+            return Err(Error::InvalidProjectSourceCfg(
+                "missing git configuration".to_string(),
+            ));
         };
 
         let mut project_src = self.get_project_src_for_repo(repository).await?;
@@ -178,7 +184,9 @@ impl AmeKubeResourceCtrl for ProjectSrcCtrl {
 
     async fn validate_resource(&self, cfg: &Self::KubeResource) -> crate::Result<()> {
         let Some(repository) = cfg.spec.cfg.git_repository() else {
-            return Err(AmeError::InvalidProjectSourceCfg("missing git configuration".to_string()));
+            return Err(AmeError::InvalidProjectSourceCfg(
+                "missing git configuration".to_string(),
+            ));
         };
 
         match self.get_project_src_for_repo(repository).await {

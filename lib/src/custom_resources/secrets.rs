@@ -1,12 +1,14 @@
 use crate::grpc::AmeSecretId;
-use k8s_openapi::api::core::v1::Secret;
-use k8s_openapi::ByteString;
-use kube::api::{DeleteParams, ListParams};
-use kube::core::ObjectMeta;
-use kube::error::ErrorResponse;
-use kube::ResourceExt;
-use kube::{api::PostParams, Api, Client};
-use std::collections::BTreeMap;
+use k8s_openapi::{api::core::v1::Secret, ByteString};
+use kube::{
+    api::{DeleteParams, ListParams, PostParams},
+    core::ObjectMeta,
+    error::ErrorResponse,
+    Api, Client, ResourceExt,
+};
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
+use std::{collections::BTreeMap, string::FromUtf8Error};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -19,6 +21,9 @@ pub enum SecretError {
 
     #[error("secret with key: {0}, was misconfigured")]
     MissingSecretKey(String),
+
+    #[error("{0}")]
+    FailedToParseString(#[from] FromUtf8Error),
 }
 
 impl From<SecretError> for tonic::Status {
@@ -126,7 +131,7 @@ impl SecretCtrl {
         };
 
         if let Some(ByteString(v)) = secret_data.get("secret").to_owned() {
-            Ok(String::from_utf8(v.to_owned()).unwrap())
+            Ok(String::from_utf8(v.to_owned())?)
         } else {
             Err(SecretError::MissingSecretKey(key.to_string()))
         }
@@ -141,6 +146,11 @@ impl SecretCtrl {
             .map(|s| s.name_any().into())
             .collect())
     }
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug, JsonSchema)]
+pub enum SecretReference {
+    AmeSecret(String),
 }
 
 #[cfg(test)]

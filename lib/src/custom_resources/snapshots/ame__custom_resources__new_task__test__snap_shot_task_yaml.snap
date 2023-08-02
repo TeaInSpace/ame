@@ -1,0 +1,33 @@
+---
+source: lib/src/custom_resources/new_task.rs
+expression: "&task"
+---
+apiVersion: ame.teainspace.com/v1alpha1
+kind: Task
+metadata:
+  name: mytask
+spec:
+  name: mytask
+  taskRef:
+    name: othertask
+    project: ~
+  resources:
+    cpu: "2"
+  env:
+    - key: SOME_VAR
+      val: someval
+  secrets:
+    - ame:
+        key: secretkey
+        injectAs: MY_SECRET
+  executor: ~
+  deletionApproved: false
+  source:
+    ame:
+      path: test
+  project: ~
+status:
+  phase:
+    running:
+      workflowName: someinfo
+

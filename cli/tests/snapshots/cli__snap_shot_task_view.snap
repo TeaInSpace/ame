@@ -1,0 +1,13 @@
+---
+source: cli/tests/cli.rs
+expression: "String::from_utf8(res.get_output().stdout.clone())?"
+---
+name: training
+resources: {}
+env: []
+secrets: []
+executor: !poetry
+  pythonVersion: 3.10.9
+  command: python nn.py
+
+

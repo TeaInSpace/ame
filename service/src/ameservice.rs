@@ -1,33 +1,38 @@
 use crate::{Error, Result};
 
-use ame::custom_resources::project::{self, Project};
-use ame::custom_resources::project_source_ctrl::ProjectSrcCtrl;
-use ame::custom_resources::secrets::SecretCtrl;
-use ame::custom_resources::task::{Task, TaskPhase};
-use ame::error::AmeError;
+use ame::{
+    custom_resources::{
+        new_task::{self, Task, TaskBuilder},
+        project::{self, Project},
+        project_source_ctrl::ProjectSrcCtrl,
+        secrets::SecretCtrl,
+        task_ctrl::approve_deletion,
+    },
+    error::AmeError,
+};
+use either::Either;
 use futures_util::StreamExt;
 use k8s_openapi::api::core::v1::Pod;
-use kube::api::{DeleteParams, ListParams, LogParams, PostParams};
-use kube::runtime::wait::await_condition;
-use kube::runtime::wait::conditions;
+use kube::{
+    api::{DeleteParams, ListParams, LogParams, PostParams},
+    runtime::wait::{await_condition, conditions},
+};
 
-use kube::{Api, Client, ResourceExt};
-use tokio::sync::mpsc;
-use tokio::task::JoinHandle;
+use kube::{Api, Client, Resource, ResourceExt};
+use tokio::{sync::mpsc, task::JoinHandle};
 use tokio_stream::wrappers::ReceiverStream;
 
-use ame::grpc::ame_service_server::AmeService;
-use ame::grpc::project_file_chunk::Messages;
+use ame::grpc::{ame_service_server::AmeService, project_file_chunk::Messages};
 
 use ame::grpc::*;
 
 use crate::storage::{AmeFile, ObjectStorage, S3Config, S3StorageDriver};
-use tracing::{debug, info, instrument};
+use tracing::{debug, instrument};
 
 use ame::ctrl::AmeKubeResourceCtrl;
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 use tokio::time::{sleep, Duration};
-use tonic::{Request, Response, Status, Streaming};
+use tonic::{Code, Request, Response, Status, Streaming};
 
 #[derive(Debug, Clone)]
 pub struct AmeServiceConfig {
@@ -43,6 +48,7 @@ pub struct Service {
     pods: Arc<Api<Pod>>,
     secret_ctrl: Arc<SecretCtrl>,
     project_src_ctrl: Arc<ProjectSrcCtrl>,
+    new_tasks: Arc<Api<new_task::Task>>,
 }
 
 #[tonic::async_trait]
@@ -50,51 +56,99 @@ impl AmeService for Service {
     async fn train_model(&self, request: Request<TrainRequest>) -> Result<Response<Empty>, Status> {
         let tr = request.into_inner();
 
-        let Some(project) = self.projects.list(&ListParams::default()).await.unwrap().into_iter().find(|p| p.spec.id == tr.projectid) else {
-            return Err(Status::from_error(Box::new(Error::MissingModel(tr.model_name.clone()))));
+        let Some(_project) = self
+            .projects
+            .list(&ListParams::default())
+            .await
+            .unwrap()
+            .into_iter()
+            .find(|p| p.spec.cfg.name == tr.projectid)
+        else {
+            return Err(Status::from_error(Box::new(Error::MissingModel(
+                tr.model_name.clone(),
+            ))));
         };
 
-        self.tasks
-            .create(
-                &PostParams::default(),
-                &project
-                    .generate_model_training_task(&tr.model_name)
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
-
-        Ok(Response::new(Empty {}))
+        todo!();
     }
 
     async fn get_task(
         &self,
         request: Request<TaskIdentifier>,
-    ) -> Result<Response<TaskTemplate>, Status> {
+    ) -> Result<Response<TaskCfg>, Status> {
         let task = self
             .tasks
             .get(&request.get_ref().name)
             .await
             .map_err(|e| Status::from_error(Box::new(e)))?;
 
-        Ok(Response::new(TaskTemplate::from(task)))
+        Ok(Response::new(task.spec.cfg))
     }
 
-    async fn create_task(
+    async fn run_task(
         &self,
-        request: Request<CreateTaskRequest>,
+        request: Request<RunTaskRequest>,
     ) -> Result<Response<TaskIdentifier>, Status> {
+        let RunTaskRequest {
+            project_id: Some(ref project_id),
+            task_cfg: Some(task_cfg),
+        } = request.into_inner()
+        else {
+            todo!();
+        };
+
+        let parent_project = self.projects.get(&project_id.name).await.unwrap();
+        let mut oref = parent_project.controller_owner_ref(&()).unwrap();
+        oref.controller = Some(false);
+
+        let mut task_builder = TaskBuilder::from_cfg(task_cfg.clone());
+        let task = task_builder
+            .set_project(project_id.name.clone())
+            .add_owner_reference(oref)
+            .set_name(format!(
+                "{}{}local",
+                project_id.name,
+                task_cfg.name.unwrap()
+            ))
+            .clone()
+            .build();
+
         let task_in_cluster = self
-            .tasks
-            .create(
-                &PostParams::default(),
-                &Task::try_from(request.into_inner())
-                    .map_err(|e| Status::from_error(Box::new(e)))?,
-            )
+            .new_tasks
+            .create(&PostParams::default(), &task)
             .await
             .map_err(|e| Status::from_error(Box::new(e)))?;
 
-        Ok(Response::new(TaskIdentifier::from(task_in_cluster)))
+        Ok(Response::new(TaskIdentifier {
+            name: task_in_cluster.name_any(),
+        }))
+    }
+
+    async fn list_tasks(
+        &self,
+        _request: Request<ListTasksRequest>,
+    ) -> Result<Response<ListTasksResponse>, Status> {
+        let tasks = self
+            .new_tasks
+            .list(&ListParams::default())
+            .await
+            .unwrap()
+            .items;
+
+        let mut task_statuses: HashMap<String, TaskListEntry> = HashMap::new();
+
+        for task in tasks {
+            let entry = TaskListEntry {
+                status: Some(task.clone().status.unwrap_or_default()),
+                time_stamp: serde_json::json!(task.creation_timestamp().unwrap()).to_string(),
+            };
+
+            task_statuses.insert(task.name_any(), entry);
+        }
+
+        Ok(Response::new(ListTasksResponse {
+            tasks: task_statuses,
+        }))
     }
 
     async fn delete_task(
@@ -115,8 +169,12 @@ impl AmeService for Service {
         request: Request<TaskProjectDirectoryStructure>,
     ) -> Result<Response<Empty>, Status> {
         let structure = request.into_inner();
-        let TaskProjectDirectoryStructure{taskid: Some(task_id), ..} = structure.clone() else {
-            return Err(Status::invalid_argument("missing Task identifier"))
+        let TaskProjectDirectoryStructure {
+            taskid: Some(task_id),
+            ..
+        } = structure.clone()
+        else {
+            return Err(Status::invalid_argument("missing Task identifier"));
         };
 
         self.storage
@@ -128,6 +186,7 @@ impl AmeService for Service {
             )
     }
 
+    #[instrument]
     async fn upload_project_file(
         &self,
         request: Request<Streaming<ProjectFileChunk>>,
@@ -161,7 +220,7 @@ impl AmeService for Service {
             }
         }
 
-        let Some(task_id) =  task_id_option  else {
+        let Some(task_id) = task_id_option else {
             return Err(Status::invalid_argument("missing TaskIdentifier in stream"));
         };
 
@@ -172,6 +231,7 @@ impl AmeService for Service {
         }
 
         //TODO: is an empty file valid?
+        debug!("uploading file: {}", file.key);
 
         self.storage
             .write_task_project_file(&task_id, file)
@@ -191,81 +251,187 @@ impl AmeService for Service {
         let (log_sender, log_receiver) = mpsc::channel(1);
         let task_name = request.get_ref().clone().taskid.unwrap().name;
         let pods = self.pods.clone();
-        let tasks = self.tasks.clone();
+        let tasks = self.new_tasks.clone();
 
-        tracing::info!("streaming logs for: {}", &task_name);
+        debug!("streaming logs for: {}", &task_name);
         let _handle: JoinHandle<Result<()>> = tokio::spawn(async move {
+            let mut seen_pods: Vec<String> = vec![];
             loop {
+                // TODO: move away from polling
+                sleep(Duration::from_secs(5)).await;
                 let task_pods = pods
                     .list(&ListParams::default().labels(&format!("ame-task={task_name}")))
                     .await
                     .unwrap();
 
                 // TODO: ensure the pod is actually done before  giving up on logging.
-                if !task_pods.items.is_empty() {
-                    let pod = &task_pods.items[0];
-                    info!("found pod {} for task {}", &pod.name_any(), &task_name);
+                for pod in &task_pods.items {
+                    debug!("found pod {} for task {}", &pod.name_any(), &task_name,);
 
-                    for pod in &task_pods.items {
-                        let status = pods.get_status(&pod.name_any()).await.unwrap();
-                        if status.status.unwrap().phase.unwrap() != "Running" {
-                            continue;
-                        }
+                    if seen_pods.contains(&pod.name_any()) {
+                        continue;
+                    }
+                    seen_pods.push(pod.name_any());
+
+                    let status = pods.get_status(&pod.name_any()).await.unwrap_or_default();
+
+                    let phase = status.status.unwrap_or_default().phase.unwrap_or_default();
+                    let mut log_params = LogParams::default();
+                    log_params.container = Some("main".to_string());
+
+                    if phase == "Failed" || phase == "Succeeded" {
+                        let logs = pods.logs(&pod.name_any(), &log_params).await?;
+                        debug!("sending full logs");
+                        let log_entry = LogEntry {
+                            contents: logs.into_bytes(),
+                        };
+                        log_sender
+                            .send(Ok(log_entry))
+                            .await
+                            .or(Err(Error::TokioSendError(format!(
+                                "failed to send log entry: {}",
+                                pod.name_any()
+                            ))))?;
+
+                        continue;
+                    }
+
+                    debug!("waiting for pod to start running {}", pod.name_any());
+                    // TODO: we end up waiting here in cases where we shouldn't. After the task has already completed.
+                    if let Err(_e) = tokio::time::timeout(
+                        std::time::Duration::from_secs(2),
                         await_condition(
                             Api::<Pod>::clone(&pods),
                             &pod.name_any(),
                             conditions::is_pod_running(),
+                        ),
+                    )
+                    .await
+                    {
+                        debug!(
+                            "failed to wait for running pod within timeout {}",
+                            pod.name_any()
+                        )
+                    };
+
+                    let mut pod_log_stream = pods
+                        .log_stream(
+                            &pod.name_any(),
+                            &LogParams {
+                                container: Some("main".to_string()),
+                                follow: true,
+                                since_seconds: Some(1),
+
+                                ..LogParams::default()
+                            },
                         )
                         .await?;
 
-                        info!("pod is running!");
-
-                        let mut pod_log_stream = pods
-                            .log_stream(
-                                &pod.name_any(),
-                                &LogParams {
-                                    container: Some("main".to_string()),
-                                    follow: true,
-                                    since_seconds: Some(1),
-
-                                    ..LogParams::default()
-                                },
-                            )
-                            .await?;
-
-                        while let Some(e) = pod_log_stream.next().await {
-                            debug!("sent log entry: {:?}", &e);
-                            let log_entry = LogEntry {
-                                contents: e.unwrap().to_vec(),
-                            };
-                            log_sender.send(Ok(log_entry.clone())).await.or(Err(
-                                Error::TokioSendError(format!(
-                                    "failed to send log entry: {}",
-                                    String::from_utf8(log_entry.contents)?
-                                )),
-                            ))?
-                        }
+                    debug!("Streaming logs for {}", pod.name_any());
+                    while let Some(e) = pod_log_stream.next().await {
+                        let log_entry = LogEntry {
+                            contents: e.unwrap().to_vec(),
+                        };
+                        log_sender.send(Ok(log_entry.clone())).await.or(Err(
+                            Error::TokioSendError(format!(
+                                "failed to send log entry: {}",
+                                String::from_utf8(log_entry.contents)?
+                            )),
+                        ))?
                     }
+
+                    debug!("finished streaming logs for {}", pod.name_any());
                 }
 
-                let Ok(task) = tasks
-                    .get_status(&task_name)
-                    .await else {
-                        sleep(Duration::from_secs(1)).await;
-                        continue;
-                    };
+                let Ok(task) = tasks.get_status(&task_name).await else {
+                    sleep(Duration::from_secs(1)).await;
+                    continue;
+                };
 
-                if task.status.clone().unwrap().phase.unwrap() != TaskPhase::Running
-                    && task.status.unwrap().phase.unwrap() != TaskPhase::Pending
+                debug!("checking task status {} {:?}", task.name_any(), task.status);
+
+                match task
+                    .status
+                    .clone()
+                    .unwrap_or_default()
+                    .phase
+                    .unwrap_or(task_status::Phase::Pending(TaskPhasePending {}))
                 {
-                    return Ok(());
+                    task_status::Phase::Failed(TaskPhaseFailed { .. })
+                    | task_status::Phase::Succeeded(TaskPhaseSucceeded { .. }) => {
+                        debug!("task has finished, stopping stream");
+                        return Ok(());
+                    }
+                    _ => (),
                 }
-
                 sleep(Duration::from_millis(50)).await;
             }
         });
 
         Ok(Response::new(ReceiverStream::new(log_receiver)))
+    }
+
+    #[instrument]
+    async fn remove_task(
+        &self,
+        request: Request<RemoveTaskRequest>,
+    ) -> Result<Response<Empty>, Status> {
+        let RemoveTaskRequest { name, approve } = request.into_inner();
+
+        if approve.unwrap_or(false) {
+            approve_deletion(&self.tasks, &name).await?;
+        }
+
+        let res = self
+            .tasks
+            .delete(&name, &DeleteParams::default())
+            .await
+            .map_err(AmeError::KubeApi)?;
+
+        match res {
+            Either::Left(t) => {
+                if t.spec.deletion_approved {
+                    return Ok(Response::new(Empty {}));
+                }
+
+                return Err(Status::new(
+                    Code::FailedPrecondition,
+                    "Task is not approved for deletion",
+                ));
+            }
+            Either::Right(e) => {
+                if e.is_failure() {
+                    return Err(Status::failed_precondition("sfsd"));
+                }
+            }
+        };
+
+        Ok(Response::new(Empty {}))
+    }
+
+    #[instrument]
+    async fn create_project(
+        &self,
+        request: Request<CreateProjectRequest>,
+    ) -> Result<Response<ProjectId>, Status> {
+        let request = request.into_inner();
+
+        let Some(cfg) = request.cfg else {
+            return Err(AmeError::MissingProjectcfg.into());
+        };
+
+        let mut project = Project::from_cfg(cfg);
+
+        project.spec.enable_triggers = Some(request.enable_triggers.unwrap_or(false));
+
+        let name = self
+            .projects
+            .create(&PostParams::default(), &project)
+            .await
+            .map_err(AmeError::KubeApi)?
+            .name_any();
+
+        Ok(Response::new(ProjectId { name }))
     }
 
     #[instrument]
@@ -451,12 +617,14 @@ impl Service {
         let client = Client::try_default().await?;
         let target_namespace = "ame-system";
         let tasks = Api::<Task>::namespaced(client.clone(), target_namespace);
+        let new_tasks = Api::<new_task::Task>::namespaced(client.clone(), target_namespace);
         let pods = Api::<Pod>::namespaced(client.clone(), target_namespace);
         let projects = Api::<Project>::namespaced(client.clone(), target_namespace);
 
         let task_service = Service {
             tasks: Arc::new(tasks),
             pods: Arc::new(pods),
+            new_tasks: Arc::new(new_tasks),
             projects: Arc::new(projects),
             storage: Arc::new(ObjectStorage::<S3StorageDriver>::new_s3_storage(
                 &cfg.bucket,

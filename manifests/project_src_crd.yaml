@@ -29,7 +29,7 @@ spec:
                   secret:
                     nullable: true
                     type: string
-                  sync_interval:
+                  syncInterval:
                     nullable: true
                     type: string
                   username:
@@ -48,14 +48,14 @@ spec:
                     explanation:
                       nullable: true
                       type: string
-                    issue_type:
+                    issueType:
                       format: int32
                       type: integer
                   required:
-                  - issue_type
+                  - issueType
                   type: object
                 type: array
-              last_synced:
+              lastSynced:
                 nullable: true
                 type: string
               reason:

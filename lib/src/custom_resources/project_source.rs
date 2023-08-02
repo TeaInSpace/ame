@@ -1,17 +1,18 @@
-use crate::custom_resources::project::{Project, ProjectSpec};
-use crate::custom_resources::secrets::SecretCtrl;
-use crate::custom_resources::{Error, Result};
-use crate::grpc::GitProjectSource;
-use crate::grpc::ProjectSourceState;
-use crate::grpc::ProjectSourceStatus;
+use crate::{
+    custom_resources::{
+        project::{Project, ProjectSpec},
+        secrets::SecretCtrl,
+        Error, Result,
+    },
+    grpc::{GitProjectSource, ProjectCfg, ProjectSourceState, ProjectSourceStatus},
+};
 use duration_string::DurationString;
 use envconfig::Envconfig;
 use futures::{future::BoxFuture, FutureExt, StreamExt};
-use git2::build::RepoBuilder;
-use git2::{Cred, FetchOptions};
-use k8s_openapi::api::core::v1::Secret;
-use k8s_openapi::apimachinery::pkg::apis::meta::v1::OwnerReference;
-use k8s_openapi::chrono::DateTime;
+use git2::{build::RepoBuilder, Cred, FetchOptions};
+use k8s_openapi::{
+    api::core::v1::Secret, apimachinery::pkg::apis::meta::v1::OwnerReference, chrono::DateTime,
+};
 
 use kube::{
     api::{Api, ListParams, PatchParams, ResourceExt},
@@ -22,10 +23,13 @@ use kube::{
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use std::path::Path;
-use std::time::SystemTime;
-use std::{fs, sync::Arc, time::Duration};
-use tracing::{error, info};
+use std::{
+    fs,
+    path::Path,
+    sync::Arc,
+    time::{Duration, SystemTime},
+};
+use tracing::{debug, error, info};
 
 #[derive(CustomResource, Deserialize, Serialize, Clone, Debug, JsonSchema, Default)]
 #[kube(
@@ -50,21 +54,31 @@ pub struct ProjectSrcCtrlCfg {
 
 impl ProjectSource {
     async fn git_secret(&self, secrets: Api<Secret>) -> Result<Option<String>> {
-        let Some(GitProjectSource {  secret: Some(secret_name), .. }) = self.spec.clone().cfg.git else {
-        return Ok(None);
-    };
+        let Some(GitProjectSource {
+            secret: Some(secret_name),
+            ..
+        }) = self.spec.clone().cfg.git
+        else {
+            return Ok(None);
+        };
         Ok(Some(
             SecretCtrl::from(secrets).get_secret(&secret_name).await?,
         ))
     }
 
     async fn extract_projects(&self, secrets: Api<Secret>) -> Result<Vec<ProjectSpec>> {
-        let Some(GitProjectSource{
-        repository,
-        username,
-        ..
-        }) = self.spec.clone().cfg.git else {
-            return Err(Error::MissingProjectSrc("git".to_string()))
+        debug!(
+            "Attempting to extract project file from repository: {:?}",
+            self.spec.cfg.git
+        );
+
+        let Some(GitProjectSource {
+            repository,
+            username,
+            ..
+        }) = self.spec.clone().cfg.git
+        else {
+            return Err(Error::MissingProjectSrc("git".to_string()));
         };
 
         let _ = fs::remove_dir_all("/tmp/".to_string() + &self.name_any());
@@ -77,12 +91,11 @@ impl ProjectSource {
             let mut callbacks = git2::RemoteCallbacks::new();
             callbacks.credentials(|_user, _, _| -> std::result::Result<Cred, git2::Error> {
                 let Some(git_secret) = git_secret.clone() else {
-                    return Err(git2::Error::from_str("git secret was empty"))
+                    return Err(git2::Error::from_str("git secret was empty"));
                 };
 
                 let Some(username) = username.clone() else {
-                return Err(git2::Error::from_str("missing username"));
-
+                    return Err(git2::Error::from_str("missing username"));
                 };
 
                 git2::Cred::userpass_plaintext(&username, &git_secret)
@@ -112,7 +125,16 @@ impl ProjectSource {
             return Err(Error::MissingAmeFile(self.name_any()));
         };
 
-        let project: ProjectSpec = serde_yaml::from_str(&ame_file)?;
+        debug!("Reading ame.yaml: {}", ame_file);
+
+        let project: ProjectCfg = serde_yaml::from_str(&ame_file)?;
+        let project = ProjectSpec {
+            cfg: project,
+            deletion_approved: false,
+            enable_triggers: Some(false),
+        };
+
+        debug!("Successfully extracted project: {:?}", project);
 
         fs::remove_dir_all("/tmp/".to_string() + &self.name_any())?;
 
@@ -139,9 +161,10 @@ impl ProjectSource {
             ..
         }) = self.status
         {
+            let sync_interva = self.sync_interval()?;
             Ok(std::time::SystemTime::now()
-                .duration_since(SystemTime::from(DateTime::parse_from_rfc2822(last_synced)?))?
-                > self.sync_interval()?)
+                .duration_since(SystemTime::from(DateTime::parse_from_rfc3339(last_synced)?))?
+                > sync_interva)
         } else {
             Ok(true)
         }
@@ -170,9 +193,15 @@ async fn reconcile(src: Arc<ProjectSource>, ctx: Arc<Context>) -> Result<Action>
     patch.metadata.managed_fields = None;
 
     if src.requires_sync()? {
+        info!("Synchronizing project source {}", src.name_any());
         let project_specs = match src.extract_projects(secrets).await {
             Ok(specs) => specs,
             Err(e) => {
+                error!(
+                    "Failed to find AME project in source {}: {}",
+                    src.name_any(),
+                    e
+                );
                 let status = ProjectSourceStatus {
                     state: ProjectSourceState::Error.into(),
                     reason: Some(e.to_string()),
@@ -193,8 +222,11 @@ async fn reconcile(src: Arc<ProjectSource>, ctx: Arc<Context>) -> Result<Action>
         };
 
         if project_specs.is_empty() {
+            debug!("no project specs were found");
             return Ok(Action::requeue(Duration::from_secs(50)));
         }
+
+        info!("Patch project {}", project_specs[0].cfg.name);
 
         let mut project = Project {
             metadata: ObjectMeta {
@@ -211,6 +243,8 @@ async fn reconcile(src: Arc<ProjectSource>, ctx: Arc<Context>) -> Result<Action>
 
         let project = project.add_owner_reference(oref);
 
+        debug!("Patch project: {:?}", project);
+
         projects
             .patch(
                 &project.name_any(),
@@ -218,35 +252,35 @@ async fn reconcile(src: Arc<ProjectSource>, ctx: Arc<Context>) -> Result<Action>
                 &kube::api::Patch::Apply(project),
             )
             .await?;
+        let last_synced = Some(humantime::format_rfc3339(SystemTime::now()).to_string());
+        let mut patch: ProjectSource = _srcs.get_status(&src.name_any()).await?;
+        patch.metadata.managed_fields = None;
+
+        if let Some(mut status) = patch.clone().status {
+            status.last_synced = last_synced;
+            status.reason = Some("project has been synced".to_string());
+            status.state = ProjectSourceState::Synchronized.into();
+            patch.status = Some(status);
+        } else {
+            patch.status = Some(ProjectSourceStatus {
+                last_synced,
+                reason: Some("project has been synced".to_string()),
+                state: ProjectSourceState::Synchronized.into(),
+                ..ProjectSourceStatus::default()
+            })
+        }
+
+        _srcs
+            .patch_status(
+                &src.name_any(),
+                &PatchParams::apply("ame-controller"),
+                &kube::api::Patch::Apply(patch),
+            )
+            .await?;
     }
 
-    let last_synced = Some(humantime::format_rfc3339(SystemTime::now()).to_string());
-    let mut patch: ProjectSource = _srcs.get_status(&src.name_any()).await?;
-    patch.metadata.managed_fields = None;
-
-    if let Some(mut status) = patch.clone().status {
-        status.last_synced = last_synced;
-        status.reason = Some("project has been synced".to_string());
-        status.state = ProjectSourceState::Synchronized.into();
-        patch.status = Some(status);
-    } else {
-        patch.status = Some(ProjectSourceStatus {
-            last_synced,
-            reason: Some("project has been synced".to_string()),
-            state: ProjectSourceState::Synchronized.into(),
-            ..ProjectSourceStatus::default()
-        })
-    }
-
-    _srcs
-        .patch_status(
-            &src.name_any(),
-            &PatchParams::apply("ame-controller"),
-            &kube::api::Patch::Apply(patch),
-        )
-        .await?;
-
-    Ok(Action::requeue(Duration::from_secs(5 * 60)))
+    // TODO: how should we handle if project source needs to be reconciled but not synced?
+    Ok(Action::requeue(src.sync_interval()?))
 }
 
 fn error_policy(_src: Arc<ProjectSource>, error: &Error, _ctx: Arc<Context>) -> Action {
@@ -255,6 +289,7 @@ fn error_policy(_src: Arc<ProjectSource>, error: &Error, _ctx: Arc<Context>) -> 
 }
 
 pub async fn start_project_source_controller(config: ProjectSrcCtrlCfg) -> BoxFuture<'static, ()> {
+    info!("Starting project source controller.");
     let client = Client::try_default().await.expect("Failed to create a K8S client, is the controller running in an environment with access to cluster credentials?");
     let context = Arc::new(Context {
         client: client.clone(),
@@ -285,8 +320,7 @@ mod test {
     use super::*;
     use crate::custom_resources::secrets::SecretCtrl;
     use assert_fs::prelude::*;
-    use futures::StreamExt;
-    use futures::TryStreamExt;
+    use futures::{StreamExt, TryStreamExt};
     use k8s_openapi::api::core::v1::Secret;
     use kube::api::DeleteParams;
 
@@ -401,6 +435,7 @@ mod test {
         let secret_ctrl = SecretCtrl::new(client, "default");
 
         let secret_name = "ghsecret";
+        let _ = secret_ctrl.delete_secret(secret_name).await;
         secret_ctrl
             .store_secret_if_empty(secret_name, private_repo_gh_pat().unwrap())
             .await
@@ -428,11 +463,9 @@ mod test {
             .await?
             .boxed();
         while let Ok(Some(e)) = stream.try_next().await {
-            if let WatchEvent::Added(project) = e {
+            if let WatchEvent::Added(project) = e.clone() {
                 if project
-                    .metadata
-                    .owner_references
-                    .unwrap()
+                    .owner_references()
                     .iter()
                     .any(|r| r.name == project_src.name_any())
                 {
