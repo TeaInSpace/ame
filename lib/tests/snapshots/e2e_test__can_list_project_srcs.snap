@@ -1,0 +1,8 @@
+---
+source: lib/tests/e2e_test.rs
+expression: "&String::from_utf8(output.get_output().stdout.clone())?"
+---
+Project Sources:
+https://github.com/TeaInSpace/ame-demo.git  
+https://github.com/TeaInSpace/ame-template-demo.git  
+

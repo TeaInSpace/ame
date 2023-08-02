@@ -1,0 +1,38 @@
+---
+source: lib/tests/e2e_test.rs
+expression: "&String::from_utf8(res.get_output().stdout.clone())?"
+---
+Uploading project!
+download: 's3://ame/tasks/redacted/projectfiles/ame.yaml' -> './ame.yaml' (149 bytes in 0.0 seconds, redacted/s)
+download: 's3://ame/tasks/redacted/projectfiles/nn.py' -> './nn.py' (58 bytes in 0.0 seconds, redacted/s)
+download: 's3://ame/tasks/redacted/projectfiles/poetry.lock' -> './poetry.lock' (4587 bytes in 0.0 seconds, redacted/s)
+download: 's3://ame/tasks/redacted/projectfiles/pyproject.toml' -> './pyproject.toml' (297 bytes in 0.0 seconds, redacted/s)
+Installing Python-3.10.9...
+Installed Python-3.10.9 to /home/ame/.pyenv/versions/3.10.9
+The currently activated Python version 3.11.4 is not supported by the project (3.10.9).
+Trying to find and use a compatible version. 
+Using python3 (3.10.9)
+Creating virtualenv test-6gE1vKXj-py3.10 in /home/ame/.cache/pypoetry/virtualenvs
+Installing dependencies from lock file
+
+Package operations: 1 install, 0 updates, 0 removals
+
+  • Installing numpy (1.24.3)
+The currently activated Python version 3.11.4 is not supported by the project (3.10.9).
+Trying to find and use a compatible version. 
+Using python3 (3.10.9)
+np array:  [1 2 3]
+WARNING: Exiting now because of --dry-run
+Uploading artifacts: './ame.yaml'
+'./nn.py'
+'./poetry.lock'
+'./pyproject.toml'
+WARNING: Module python-magic is not available. Guessing MIME types based on file extensions.
+upload: 'ame.yaml' -> 's3://ame/tasks/trainingclzjj/artifacts/ame.yaml' (149 bytes in 0.0 seconds, redacted/s) [1 of 1]
+WARNING: Module python-magic is not available. Guessing MIME types based on file extensions.
+upload: 'nn.py' -> 's3://ame/tasks/trainingclzjj/artifacts/nn.py' (58 bytes in 0.0 seconds, redacted/s) [1 of 1]
+WARNING: Module python-magic is not available. Guessing MIME types based on file extensions.
+upload: 'poetry.lock' -> 's3://ame/tasks/trainingclzjj/artifacts/poetry.lock' (4587 bytes in 0.0 seconds, redacted/s) [1 of 1]
+WARNING: Module python-magic is not available. Guessing MIME types based on file extensions.
+upload: 'pyproject.toml' -> 's3://ame/tasks/trainingclzjj/artifacts/pyproject.toml' (297 bytes in 0.0 seconds, redacted/s) [1 of 1]
+

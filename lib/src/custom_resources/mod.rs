@@ -1,28 +1,24 @@
-use crate::error::AmeError;
 use crate::grpc::*;
-use k8s_openapi::chrono::OutOfRangeError;
-use k8s_openapi::chrono::ParseError;
-use kube::core::ObjectMeta;
-use kube::ResourceExt;
+use k8s_openapi::chrono::{OutOfRangeError, ParseError};
+use kube::{api::ListParams, core::ObjectMeta, Api, ResourceExt};
+use new_task::Task;
 use secrets::SecretError;
 use std::env::VarError;
-use task::Task;
 use thiserror::Error;
 
-use self::project_source::ProjectSource;
-use self::project_source::ProjectSourceSpec;
-
-use self::task::TaskSpec;
-use self::task::TaskType;
+use self::project_source::{ProjectSource, ProjectSourceSpec};
+use project::Project;
 
 pub mod argo;
 pub mod common;
 pub mod data_set;
+pub mod new_task;
 pub mod project;
 pub mod project_source;
 pub mod project_source_ctrl;
 pub mod secrets;
-pub mod task;
+
+pub mod task_ctrl;
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -35,7 +31,7 @@ pub enum Error {
     #[error("Received error from kube API: {0}")]
     KubeApiError(#[from] kube::Error),
 
-    #[error("Failed to find projet source: {0}")]
+    #[error("Failed to find project source: {0}")]
     MissingProjectSrc(String),
 
     #[error("libgit2 produced an error: {0}")]
@@ -103,41 +99,18 @@ pub enum Error {
 
     #[error("failed to find AME file project source with name : {0}")]
     MissingAmeFile(String),
+
+    #[error("Task {0} is missing an executor")]
+    MissingExecutor(String),
+
+    #[error("Failed to find task cfg {0} referenced in {1}")]
+    MissingTaskCfg(String, String),
+
+    #[error("{0}")]
+    AmeError(#[from] crate::AmeError),
 }
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
-
-impl TryFrom<self::CreateTaskRequest> for Task {
-    type Error = Error;
-
-    fn try_from(t: CreateTaskRequest) -> Result<Self> {
-        let CreateTaskRequest {
-            id: Some(TaskIdentifier { name: id }),
-            template: Some(template),
-        } = t else {
-            return Err(Error::ConversionError("Failed to extract id and template from CreateTaskRequest".to_string()))
-        };
-
-        Ok(Task {
-            metadata: ObjectMeta {
-                name: Some(id),
-                ..ObjectMeta::default()
-            },
-            spec: TaskSpec {
-                projectid: Some(template.projectid),
-                runcommand: Some(template.command),
-                image: template.image,
-                task_type: template.task_type.map(|t| match t {
-                    2 => TaskType::Poetry,
-                    1 => TaskType::Mlflow,
-                    _ => TaskType::PipEnv,
-                }),
-                ..TaskSpec::default()
-            },
-            status: None,
-        })
-    }
-}
 
 impl From<ProjectSourceCfg> for ProjectSource {
     fn from(project_src: ProjectSourceCfg) -> Self {
@@ -152,58 +125,28 @@ impl From<ProjectSourceCfg> for ProjectSource {
     }
 }
 
-impl From<TaskTemplate> for Task {
-    fn from(t: TaskTemplate) -> Self {
-        Task {
-            metadata: ObjectMeta {
-                generate_name: Some("mytask".to_string()),
-                ..ObjectMeta::default()
-            },
-            spec: TaskSpec {
-                projectid: Some(t.projectid),
-                runcommand: Some(t.command),
-                image: t.image,
-                task_type: t.task_type.map(|t| {
-                    if t == 1 {
-                        TaskType::Mlflow
-                    } else {
-                        TaskType::PipEnv
-                    }
-                }),
-                ..TaskSpec::default()
-            },
-            status: None,
-        }
-    }
-}
-
-impl From<Task> for TaskTemplate {
-    fn from(t: Task) -> Self {
-        TaskTemplate {
-            name: "".to_string(),
-            command: t.spec.runcommand.unwrap_or("".to_string()),
-            projectid: t.spec.projectid.unwrap_or("".to_string()),
-            image: t.spec.image,
-            task_type: t.spec.task_type.map(|t| match t {
-                TaskType::Mlflow => 1,
-                TaskType::Poetry => 2,
-                TaskType::PipEnv => 0,
-            }),
-        }
-    }
-}
-
 impl From<Task> for TaskIdentifier {
     fn from(t: Task) -> Self {
         TaskIdentifier { name: t.name_any() }
     }
 }
 
-impl TryFrom<TaskCfg> for TaskSpec {
-    type Error = AmeError;
-    fn try_from(cfg: TaskCfg) -> crate::Result<Self> {
-        Ok(TaskSpec::from_ref(cfg.task_ref.ok_or(
-            AmeError::MissingTaskRef(cfg.name.unwrap_or_default()),
-        )?))
+pub async fn find_project(
+    projects: Api<Project>,
+    name: String,
+    _source: String,
+) -> Result<Project> {
+    let matches: Vec<Project> = projects
+        .list(&ListParams::default())
+        .await?
+        .items
+        .into_iter()
+        .filter(|p| p.spec.cfg.name == name)
+        .collect();
+
+    if matches.len() != 1 {
+        return Err(Error::MissingProject(name));
     }
+
+    Ok(matches[0].clone())
 }

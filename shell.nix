@@ -18,12 +18,14 @@ pkgs.mkShell {
     s3cmd
     minio-client
     argo
-    python310Packages.mlflow
     kubernetes-helm
     grpcurl
     sass
     rust-analyzer
     jq
+    python311Packages.mkdocs-material
+    python311Packages.mkdocs
+    ripgrep
   ];
 
   # Certain Rust tools won't work without this

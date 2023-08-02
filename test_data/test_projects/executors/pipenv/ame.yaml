@@ -1,0 +1,9 @@
+name: pipenvtest
+models: 
+data_sets:
+templates:
+tasks:
+ - name: training
+   executor:
+     !pipEnv
+     command: python nn.py

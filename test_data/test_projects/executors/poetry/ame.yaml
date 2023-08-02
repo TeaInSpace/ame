@@ -1,0 +1,17 @@
+name: poetry
+models: 
+data_sets:
+templates:
+tasks:
+ - name: crontraining
+   triggers:
+     schedule: "* * * * *"
+   executor:
+     !poetry
+     pythonVersion: 3.10.9
+     command: python nn.py
+ - name: training
+   executor:
+     !poetry
+     pythonVersion: 3.10.9
+     command: python nn.py

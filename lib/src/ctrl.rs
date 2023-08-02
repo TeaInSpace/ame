@@ -1,22 +1,61 @@
 use std::fmt::Debug;
 
 use crate::{
+    custom_resources::common::kind_is_project,
     error::AmeError,
     grpc::{resource_id, ProjectSourceId, ResourceId},
     Result,
 };
 use async_trait::async_trait;
 use futures::StreamExt;
+use k8s_openapi::apimachinery::pkg::apis::meta::v1::OwnerReference;
 use kube::{
     api::{DeleteParams, ListParams, Patch, PatchParams, PostParams},
     runtime::{watcher, WatchStreamExt},
-    Api, Resource, ResourceExt,
+    Api, CustomResourceExt, Resource, ResourceExt,
 };
 use serde::{de::DeserializeOwned, Serialize};
 use serde_merge::omerge;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::Status;
+
+fn oref_is_project(oref: &OwnerReference) -> bool {
+    kind_is_project(&oref.kind)
+}
+
+impl<K: Resource<DynamicType = ()> + CustomResourceExt> AmeResource for K {
+    fn gen_owner_ref(&self) -> Option<OwnerReference> {
+        let mut oref = self.controller_owner_ref(&())?;
+        oref.controller = Some(false);
+        Some(oref)
+    }
+}
+
+pub trait AmeResource: ResourceExt {
+    fn parent_project_oref(&self) -> Result<OwnerReference> {
+        let potential_orefs: Vec<OwnerReference> = self
+            .meta()
+            .owner_references
+            .to_owned()
+            .map(|orefs| orefs.into_iter().filter(oref_is_project).collect())
+            .unwrap_or(vec![]);
+        if potential_orefs.len() != 1 {
+            return Err(AmeError::FailedToFindParentProjectOref(
+                self.name_any(),
+                potential_orefs.len(),
+            ));
+        }
+
+        Ok(potential_orefs[0].clone())
+    }
+
+    fn parent_project_name(&self) -> Result<String> {
+        Ok(self.parent_project_oref()?.name)
+    }
+
+    fn gen_owner_ref(&self) -> Option<OwnerReference>;
+}
 
 #[async_trait]
 pub trait AmeKubeResourceCtrl {

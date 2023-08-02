@@ -2,6 +2,27 @@
 source: cli/tests/cli.rs
 expression: "&String::from_utf8(res.get_output().stdout.clone())?"
 ---
-uploaded project!
-myoutput
+Uploading project!
+download: 's3://ame/tasks/redacted/projectfiles/ame.yaml' -> './ame.yaml' (149 bytes in redactedseconds, redactedKB/s)
+download: 's3://ame/tasks/redacted/projectfiles/nn.py' -> './nn.py' (58 bytes in redactedseconds, redactedKB/s)
+download: 's3://ame/tasks/redacted/projectfiles/poetry.lock' -> './poetry.lock' (4587 bytes in redactedseconds, redactedMB/s)
+download: 's3://ame/tasks/redacted/projectfiles/pyproject.toml' -> './pyproject.toml' (297 bytes in redactedseconds, redactedKB/s)
+/home/ame/.pyenv/shims:/home/ame/.pyenv/bin:/home/ame/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+Downloading Python-3.10.9.tar.xz...
+-> https://www.python.org/ftp/python/3.10.9/Python-3.10.9.tar.xz
+Installing Python-3.10.9...
+Installed Python-3.redactedto /home/ame/.pyenv/versions/3.10.9
+The currently activated Python version 3.redactedis not supported by the project (3.10.9).
+Trying to find and use a compatible version. 
+Using python3 (3.10.9)
+Creating virtualenv test-6gE1vKXj-pyredactedin /home/ame/.cache/pypoetry/virtualenvs
+Installing dependencies from lock file
+
+Package operations: 1 install, 0 updates, 0 removals
+
+  • Installing numpy (1.24.3)
+The currently activated Python version 3.redactedis not supported by the project (3.10.9).
+Trying to find and use a compatible version. 
+Using python3 (3.10.9)
+np array:  [1 2 3]
 

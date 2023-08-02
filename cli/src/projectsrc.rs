@@ -1,12 +1,9 @@
 use std::time::Duration;
 
-use ame::grpc::GitProjectSource;
-use ame::grpc::ProjectSourceCfg;
-use ame::grpc::ProjectSourceListParams;
-use ame::grpc::ProjectSourceState;
-use ame::grpc::ProjectSourceStatus;
-use ame::grpc::ProjectSrcIdRequest;
-use ame::grpc::ProjectSrcPatchRequest;
+use ame::grpc::{
+    GitProjectSource, ProjectSourceCfg, ProjectSourceListParams, ProjectSourceState,
+    ProjectSourceStatus, ProjectSrcIdRequest, ProjectSrcPatchRequest,
+};
 use clap::Subcommand;
 use colored::Colorize;
 use futures_util::StreamExt;
@@ -14,7 +11,7 @@ use spinners::Spinner;
 use tonic::Request;
 
 use crate::CliConfiguration;
-use crate::Result;
+use anyhow::Result;
 
 ///  handles all operations on Project Sources.
 ///

@@ -1,16 +1,18 @@
 use std::time::Duration;
 
-use ame::client::native_client::build_ame_client;
-use ame::grpc::Empty;
-use ame::grpc::{AmeSecret, AmeSecretId};
-use ame::AmeServiceClientCfg;
+use ame::{
+    client::native_client::build_ame_client,
+    grpc::{AmeSecret, AmeSecretId, Empty},
+    AmeServiceClientCfg,
+};
 use clap::Subcommand;
 use colored::Colorize;
 use dialoguer::{Input, Password};
 use spinners::Spinner;
 use tonic::Request;
 
-use crate::{CliConfiguration, Result};
+use crate::CliConfiguration;
+use anyhow::Result;
 
 /// Manage secrets in  secret store.
 #[derive(Subcommand)]

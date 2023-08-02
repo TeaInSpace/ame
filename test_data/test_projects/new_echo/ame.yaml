@@ -1,6 +1,9 @@
-projectid: echo
+name: echo
 tasks:
   - name: echo
+    executor:
+      pythonVersion: 3.11
+      command: python train.py
     resources:
       cpu: "2"
       memory: 4Gi

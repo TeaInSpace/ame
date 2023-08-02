@@ -1,14 +1,17 @@
-use ame::client::wasm_client::{build_ame_client, AmeClient};
-use ame::client::AmeCtrl;
-use ame::grpc::*;
-use ame::web::{Header, HeaderProps};
-use ame::AmeServiceClientCfg;
-use leptos::html::Input;
+use ame::{
+    client::{
+        wasm_client::{build_ame_client, AmeClient},
+        AmeCtrl,
+    },
+    grpc::*,
+    web::{Header, HeaderProps},
+    AmeServiceClientCfg,
+};
 use leptos::{
     component, create_action, create_local_resource, create_node_ref, create_rw_signal,
-    create_signal, create_signal_from_stream, log, provide_context, use_context, view, Children,
-    For, ForProps, IntoView, ReadSignal, RwSignal, Scope, SignalGet, SignalSet, SignalWith,
-    WriteSignal,
+    create_signal, create_signal_from_stream, html::Input, log, provide_context, use_context, view,
+    Children, For, ForProps, IntoView, ReadSignal, RwSignal, Scope, SignalGet, SignalSet,
+    SignalWith, WriteSignal,
 };
 
 #[allow(unused)]
@@ -20,7 +23,7 @@ use tonic::Request;
 use tonic_web_wasm_client::Client;
 
 pub fn gen_client(_endpoint: String) -> AmeClient {
-    let ame_endpoint = "http://ame.local:32662".to_string();
+    let ame_endpoint = "http://ame.local:30735".to_string();
     build_ame_client(AmeServiceClientCfg {
         id_token: None,
         endpoint: ame_endpoint,

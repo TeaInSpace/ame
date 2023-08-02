@@ -21,17 +21,106 @@ spec:
         properties:
           spec:
             properties:
+              deletionApproved:
+                type: boolean
               name:
                 type: string
               path:
                 type: string
+              project:
+                nullable: true
+                type: string
+              size:
+                nullable: true
+                type: string
               task:
                 nullable: true
                 properties:
-                  name:
+                  artifactCfg:
                     nullable: true
-                    type: string
-                  task_ref:
+                    properties:
+                      paths:
+                        default: []
+                        items:
+                          type: string
+                        type: array
+                      saveChangedFiles:
+                        type: boolean
+                    required:
+                    - saveChangedFiles
+                    type: object
+                  dataSets:
+                    items:
+                      type: string
+                    type: array
+                  env:
+                    default: []
+                    items:
+                      properties:
+                        key:
+                          type: string
+                        val:
+                          type: string
+                      required:
+                      - key
+                      - val
+                      type: object
+                    type: array
+                  executor:
+                    nullable: true
+                    oneOf:
+                    - required:
+                      - poetry
+                    - required:
+                      - mlflow
+                    - required:
+                      - pipEnv
+                    - required:
+                      - pip
+                    - required:
+                      - custom
+                    properties:
+                      custom:
+                        properties:
+                          command:
+                            type: string
+                          pythonVersion:
+                            type: string
+                        required:
+                        - command
+                        - pythonVersion
+                        type: object
+                      mlflow:
+                        type: object
+                      pip:
+                        properties:
+                          command:
+                            type: string
+                          pythonVersion:
+                            type: string
+                        required:
+                        - command
+                        - pythonVersion
+                        type: object
+                      pipEnv:
+                        properties:
+                          command:
+                            type: string
+                        required:
+                        - command
+                        type: object
+                      poetry:
+                        properties:
+                          command:
+                            type: string
+                          pythonVersion:
+                            type: string
+                        required:
+                        - command
+                        - pythonVersion
+                        type: object
+                    type: object
+                  fromTemplate:
                     nullable: true
                     properties:
                       name:
@@ -42,8 +131,54 @@ spec:
                     required:
                     - name
                     type: object
+                  name:
+                    nullable: true
+                    type: string
+                  resources:
+                    additionalProperties:
+                      type: string
+                    default: {}
+                    type: object
+                  secrets:
+                    default: []
+                    items:
+                      oneOf:
+                      - required:
+                        - ame
+                      properties:
+                        ame:
+                          properties:
+                            injectAs:
+                              type: string
+                            key:
+                              type: string
+                          required:
+                          - injectAs
+                          - key
+                          type: object
+                      type: object
+                    type: array
+                  taskRef:
+                    nullable: true
+                    properties:
+                      name:
+                        type: string
+                      project:
+                        nullable: true
+                        type: string
+                    required:
+                    - name
+                    type: object
+                  triggers:
+                    nullable: true
+                    properties:
+                      schedule:
+                        nullable: true
+                        type: string
+                    type: object
                 type: object
             required:
+            - deletionApproved
             - name
             - path
             type: object
@@ -51,6 +186,7 @@ spec:
             nullable: true
             properties:
               phase:
+                nullable: true
                 oneOf:
                 - required:
                   - pending
@@ -85,8 +221,6 @@ spec:
                     - task_name
                     type: object
                 type: object
-            required:
-            - phase
             type: object
         required:
         - spec

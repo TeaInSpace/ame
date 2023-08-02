@@ -5,8 +5,7 @@ async fn main() {
     use leptos::*;
     use leptos_axum::{generate_route_list, LeptosRoutes};
     use std::sync::Arc;
-    use web::app::*;
-    use web::fileserv::file_and_error_handler;
+    use web::{app::*, fileserv::file_and_error_handler};
 
     simple_logger::init_with_level(log::Level::Debug).expect("couldn't initialize logging");
 

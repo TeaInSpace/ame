@@ -29,26 +29,30 @@ name = "data_set_crdgen"
 path = "src/data_set_crd_gen.rs"
 
 [dependencies]
-ame = { version = "0.1.0", path = "../lib", features = ["ame-control", "custom-resources"] }
-async-trait = "0.1.66"
+ame = { version = "0.1.0", path = "../lib", features = ["ame-control", "custom-resources", "project-tools"] }
+async-trait = "0.1.72"
+chrono = "0.4.26"
+cron-parser = "0.8.0"
 duration-string = "0.2.0"
-either = "1.8.0"
+either = "1.9.0"
 envconfig = "0.10.0"
-futures = "0.3.25"
-git2 = "0.17.0"
+futures = "0.3.28"
+git2 = "0.17.2"
 humantime = "2.1.0"
 k8s-openapi = { version = "0.17.0", features = ["v1_23", "schemars" ] }
 kube = { version = "0.80.0", features = ["runtime", "client", "derive"] }
-reqwest = { version = "0.11.14", features = ["json"] }
-schemars = "0.8.11"
-serde = {version = "1.0.147", features = ["derive"]}
-serde_json = "1.0.87"
-serde_yaml = "0.9.14"
-thiserror = "1.0.37"
-tokio = { version = "1.21.2", features = ["macros", "rt-multi-thread"] }
+reqwest = { version = "0.11.18", features = ["json"] }
+schemars = "0.8.12"
+serde = {version = "1.0.180", features = ["derive"]}
+serde_json = "1.0.104"
+serde_merge = "0.1.3"
+serde_yaml = "0.9.25"
+thiserror = "1.0.44"
+tokio = { version = "1.29.1", features = ["macros", "rt-multi-thread"] }
 tonic = "0.8.3"
 tracing = "0.1.37"
-tracing-subscriber = { version = "0.3.16", features = ["env-filter"] }
+tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
 
 [dev-dependencies]
 k8s-openapi = { version = "0.17.0", features = ["v1_23", "schemars" ] }
+insta = { version = "1.31.0", features = ["filters", "redactions", "yaml"] }

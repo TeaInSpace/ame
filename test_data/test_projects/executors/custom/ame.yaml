@@ -1,0 +1,10 @@
+name: customtest
+models: 
+data_sets:
+templates:
+tasks:
+ - name: training
+   executor:
+     !custom
+     command: python nn.py
+     pythonVersion: 3.10

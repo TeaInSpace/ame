@@ -1,0 +1,32 @@
+site_name: AME 
+theme: 
+  name: material
+  features:
+    - navigation.tabs
+  palette:
+     # Palette toggle for light mode
+    - scheme: default
+      primary: green 
+      accent: light green 
+      toggle:
+        icon: material/brightness-7 
+
+        name: Switch to dark mode
+
+    # Palette toggle for dark mode
+    - scheme: slate
+      primary: green 
+      accent: light green
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+

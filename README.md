@@ -94,7 +94,7 @@ TODO: show an example of this.
 
 ### Pipelines
 
-You might have multiple Tasks meant to be executed together, for example downloading data, preparing data, model training, model upload. Each of these Tasks will have different requirements. This can be expressed using a pipeline. Each Task in a pipeline is executed in a separate container potentially on different machines if their compute requirements are different. To ensure that your code will work without modification, all of the state is transferred between steps transparently so it appears as if all of the steps are executed on the same machine. For example data is downloaed in step 1, prepared in step 2 and trained on in step 3 AME will make sure to transfer these files automatically between steps so no adjustments are reqired to the project's code.
+You might have multiple Tasks meant to be executed together, for example downloading data, preparing data, model training, model upload. Each of these Tasks will have different requirements. This can be expressed using a pipeline. Each Task in a pipeline is executed in a separate container potentially on different machines if their compute requirements are different. To ensure that your code will work without modification, all of the state is transferred between steps transparently so it appears as if all of the steps are executed on the same machine. For example data is downloaed in step 1, prepared in step 2 and trained on in step 3 AME will make sure to transfer these files automatically between steps so no adjustments are required to the project's code.
 
 ```yaml
 #ame.yaml

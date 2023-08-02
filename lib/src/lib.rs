@@ -15,12 +15,45 @@ pub mod web;
 #[cfg(any(feature = "web-components", feature = "native-client"))]
 pub mod client;
 
+#[cfg(feature = "project-tools")]
+pub mod project;
+
 pub mod grpc {
     #![allow(clippy::all)]
 
-    use std::fmt::{self, Display};
+    use std::{
+        collections::BTreeMap,
+        fmt::{self, Display},
+    };
+
+    use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
+
+    use self::task_cfg::Executor;
 
     tonic::include_proto!("ame.v1");
+
+    impl Display for task_status::Phase {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            let output = match self {
+                task_status::Phase::Pending(_) => "Pending",
+                task_status::Phase::Succeeded(_) => "Succeeded",
+                task_status::Phase::Running(_) => "Running",
+                task_status::Phase::Failed(_) => "Failed",
+            };
+
+            write!(f, "{output}")
+        }
+    }
+
+    impl self::task_status::Phase {
+        pub fn success(&self) -> bool {
+            if let self::task_status::Phase::Succeeded(_) = self {
+                true
+            } else {
+                false
+            }
+        }
+    }
 
     impl Display for ResourceId {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -53,31 +86,21 @@ pub mod grpc {
         }
     }
 
+    pub fn resource_map_conv(resources: BTreeMap<String, String>) -> BTreeMap<String, Quantity> {
+        let mut new_resources = BTreeMap::<String, Quantity>::new();
+        for (k, v) in resources.into_iter() {
+            new_resources.insert(k, Quantity(v));
+        }
+
+        new_resources
+    }
+
     impl TaskLogRequest {
         pub fn stream_from_beginning(task_name: &str, watch: bool) -> Self {
             Self {
                 taskid: Some(TaskIdentifier::from(task_name)),
                 start_from: Some(1),
                 watch: Some(watch),
-            }
-        }
-    }
-
-    impl CreateTaskRequest {
-        pub fn new(task_name: &str, task_template: TaskTemplate) -> Self {
-            Self {
-                id: Some(TaskIdentifier::from(task_name)),
-                template: Some(task_template),
-            }
-        }
-    }
-
-    impl TaskProjectDirectoryStructure {
-        pub fn new(task_name: &str, project_id: &str, paths: Vec<String>) -> Self {
-            Self {
-                taskid: Some(TaskIdentifier::from(task_name)),
-                projectid: project_id.to_string(),
-                paths,
             }
         }
     }
@@ -111,6 +134,86 @@ pub mod grpc {
                     repository: repo,
                     ..GitProjectSource::default()
                 }),
+            }
+        }
+    }
+
+    impl Executor {
+        pub fn command(&self) -> String {
+            match self {
+                Executor::Poetry(PoetryExecutor {
+                    python_version,
+                    command,
+                }) => {
+                    format!(
+                        "
+                        source ~/.bashrc
+                        
+                        pyenv install {python_version}
+
+                        pyenv global {python_version}
+
+                        poetry install
+                    
+                        poetry run {command}
+                    "
+                    )
+                }
+                Executor::Mlflow(_) => "export PATH=$HOME/.pyenv/bin:$PATH
+
+             unset AWS_SECRET_ACCESS_KEY
+
+             unset AWS_ACCESS_KEY_ID
+
+             mlflow run ."
+                    .to_string(),
+                Executor::PipEnv(PipEnvExecutor { command }) => {
+                    format!(
+                        "
+                            pipenv sync
+
+                            pipenv run {command}
+                           
+                        "
+                    )
+                }
+
+                Executor::Pip(PipExecutor {
+                    python_version,
+                    command,
+                }) => {
+                    format!(
+                        "
+
+                        source ~/.bashrc
+                        
+                        pyenv install {python_version}
+
+                        pyenv global {python_version}
+
+                        pip install -r requirements.txt
+                    
+                        {command}
+                    "
+                    )
+                }
+
+                Executor::Custom(CustomExecutor {
+                    python_version,
+                    command,
+                }) => {
+                    format!(
+                        "
+                        source ~/.bashrc
+                        
+                        pyenv install {python_version}
+
+                        pyenv global {python_version}
+                    
+                        {command}
+                    "
+                    )
+                }
             }
         }
     }

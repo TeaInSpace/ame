@@ -1,18 +1,21 @@
 use ame::{
     client::{auth::browser_login, native_client::build_ame_client},
-    grpc::TaskIdentifier,
-    grpc::TrainRequest,
+    grpc::{ProjectCfg, TaskIdentifier, TrainRequest},
     AmeServiceClientCfg,
 };
 use clap::{Parser, Subcommand};
 use cli::{
     project::Project,
+    project_cmd::{exec_project_command, ProjectCommands},
     projectsrc::ProjectSrcCommands,
     secrets::{exec_secret_command, SecretCommand},
-    CliConfiguration, Result,
+    task::{exec_task_command, TaskCommand},
+    CliConfiguration,
 };
 
 use http::StatusCode;
+
+use anyhow::Result;
 
 use tonic::Request;
 
@@ -28,9 +31,6 @@ enum Commands {
     Init {
         name: String,
     },
-    Run {
-        name: String,
-    },
     Setup {
         endpoint: String,
     },
@@ -43,6 +43,11 @@ enum Commands {
     Projectsrc(ProjectSrcCommands),
     #[command(subcommand)]
     Secret(SecretCommand),
+    #[command(subcommand)]
+    Task(TaskCommand),
+    #[command(subcommand)]
+    Project(ProjectCommands),
+    Validate,
 }
 
 #[tokio::main]
@@ -53,20 +58,6 @@ async fn main() -> Result<()> {
     match &cli.command {
         // TODO: if an error is returned here the output will be confusing to the user.
         Commands::Init { name } => Project::init(name),
-        Commands::Run { name: name_arg } => {
-            let task_template_name = name_arg.as_ref();
-            let project = Project::init_from_working_dir()?;
-            let mut client = build_ame_client(AmeServiceClientCfg {
-                disable_tls_cert_check: true,
-                endpoint: config.endpoint.parse().unwrap(),
-                id_token: config.id_token,
-            })
-            .await?;
-
-            project.run_task(&mut client, task_template_name).await?;
-
-            Ok(())
-        }
         Commands::Setup { endpoint } => {
             let cli_cfg = CliConfiguration::init_with_endpoint(endpoint.to_string());
             let mut client = build_ame_client(cli_cfg.clone().try_into()?).await?;
@@ -135,7 +126,15 @@ async fn main() -> Result<()> {
         }
         Commands::Projectsrc(cmd) => cmd.run(&config).await,
         Commands::Secret(cmd) => exec_secret_command(config, cmd).await,
-    }
+        Commands::Task(cmd) => exec_task_command(config, cmd).await,
+        Commands::Project(cmd) => exec_project_command(config, cmd).await,
+        Commands::Validate => {
+            ProjectCfg::try_from_working_dir().unwrap();
+            Ok(())
+        }
+    }?;
+
+    Ok(())
 }
 
 #[test]
