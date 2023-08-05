@@ -25,12 +25,12 @@ This is easiet to do with the ame [CLI]() by running `ame project init`. The [CL
 that looks like this:
 
 ```yaml
-projectName: sklearn_logistic_regression
+name: sklearn_logistic_regression
 ```
 
 ### The first training
 
-Not very exciting but it is a start. Next we want to set up our model to be run by AME. The most important thing here is the Task that will train the model so
+Next we want to set up our model to be run by AME. The most important thing here is the Task that will train the model so
 lets start with that.
 
 Here we need to consider a few things, what command is used to train a model, how are dependencies managed in our project, what python version do we need and
@@ -39,8 +39,7 @@ how many resources does our model training require.
 If you are using the [repo]() for this guide, you will want a task configured as below. 
 
 ```yaml
-
-projectid: sklearn_logistic_regression
+name: sklearn_logistic_regression
 tasks:
   - name: training
     !poetry
@@ -53,6 +52,70 @@ tasks:
       storage: 30G 
       nvidia.com/gpu: 1 
 ```
+
+To try out our task we can run `ame task run training --logs` and see the task get deployed and executed.
+
+For model specific features such validation and deployment we want to declare a model in our AME file.
+
+We add a simple [model](model) called logreg and specify the training task. This will allow AME to automatically
+train new model versions when appropriate.
+ 
+```yaml
+name: sklearn_logistic_regression
+models:
+  - name: logreg
+    training:
+      task:
+        taskRef: training
+tasks:
+  - name: training
+    !poetry
+    executor:
+      pythonVersion: 3.11
+      command: python train.py
+    resources:
+      memory: 10G 
+      cpu: 4 
+      storage: 30G 
+      nvidia.com/gpu: 1 
+```
+
+`training.task` can contain a complete task, we simply use the taskRef field to keep our file readable. We could have placed an 
+entire task inside the model configuration directly.  
+
+Now we can run `ame model train logreg --logs` and perform a training. Under the hood this does essentially the same thing as 
+just running the task directly.
+
+Now lets look at deploying our model.
+
+```yaml
+name: sklearn_logistic_regression
+models:
+  - name: logreg
+    training:
+      task:
+        taskRef: training
+    deployment:
+      autoDeploy: true
+
+tasks:
+  - name: training
+    !poetry
+    executor:
+      pythonVersion: 3.11
+      command: python train.py
+    resources:
+      memory: 10G 
+      cpu: 4 
+      storage: 30G 
+      nvidia.com/gpu: 1 
+```
+
+Setting auto deployment to true will tell AME to always deploy latest version of a model. Deployment in this context means spinning
+up an inference server. As AME needs some persitent context when managing a model deployment we have to synchronize our project to 
+the AME instance. This could be done via a Git repo and for production use cases that is highly recommended. For experimention and 
+educational purposes we can manually place our local version of the project in the cluster. Run `ame project sync` and AME will
+automatically train a version of the model, if needed and deploy an inference server for the model.
 
 ## Your first Task
 

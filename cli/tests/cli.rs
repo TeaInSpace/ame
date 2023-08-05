@@ -68,7 +68,7 @@ fn ame_file_does_not_exist() -> Result<(), Box<dyn std::error::Error>> {
         .assert()
         .success();
 
-    test_file.assert(format!("projectid: {}\n", &project_id));
+    test_file.assert(format!("name: {}\n", &project_id));
 
     Ok(())
 }

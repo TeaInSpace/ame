@@ -22,6 +22,39 @@ In this case AME will ensure that the specified python version is present and us
 To run the task manually simply enter the directory with the file and project and run `ame task run -l train_my_model`. The `-l` ensures that we are using the local context and not trying
 to run a remote task already present in the AME cluster. Alternatively if you don't want to type the name omit it and AME will present a list of the available `Tasks`.
 
+This page provides an overview of working with Task's using the [cli](TODO) and [dashboard]() as well as reference of all configuration options. 
+
+## Working with Tasks
+
+### Cli commands
+
+The AME [cli](TODO) contains a subcommand `ame task` which is for operating on Tasks.
+
+#### View deployed Tasks
+
+```shell
+ame task list
+
+Name                                                        Status    Project 
+ameprojectsrc56k2rlogregtrainingsklearn-logistic-regression Succeeded Unknown 
+ameprojectsrcj8264logregtrainingdatasetdemo                 Failed    Unknown 
+datasetdatasetdemodataset1dataset1-fetcher                  Succeeded Unknown 
+validate-logreg-1                                           Succeeded Unknown 
+
+```
+
+#### Run a task
+
+Individual task's can be run with `ame task run`. This will look for Tasks in your current project. Upload any files necessary and execute the task. 
+
+#### View task logs
+
+Task logs for any running task can be viewed with `ame task logs`.
+
+
+## Task Reference
+
+Reference for all configuration for AME Tasks.
  
 ### Resource requirements
 

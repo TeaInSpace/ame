@@ -9,7 +9,7 @@ use std::{fs, fs::File};
 
 #[derive(Clone, Default, Deserialize, Serialize)]
 pub struct Project {
-    #[serde(rename = "projectid")]
+    #[serde(rename = "name")]
     id: String,
 
     #[serde(skip_serializing_if = "Option::is_none")]

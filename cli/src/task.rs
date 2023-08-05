@@ -378,10 +378,11 @@ pub async fn exec_task_command(cfg: CliConfiguration, cmd: &TaskCommand) -> Resu
         let Ok(mut f) = File::open(entry.clone().path()).await else {
             continue;
         };
+        println!("Uploading file: {}", entry.clone().path().to_str().unwrap());
 
         let _task_name = task_name.clone();
 
-        let mut buf: [u8; 100] = [0; 100];
+        let mut buf: [u8; 1000] = [0; 1000];
 
         // TODO: How do we test that files are uploaded transferred correctly? in the
         // common ame-client library perhaps?
@@ -416,7 +417,7 @@ pub async fn exec_task_command(cfg: CliConfiguration, cmd: &TaskCommand) -> Resu
             })),
          };
 
-        buf = [0; 100];
+        buf = [0; 1000];
          }
 
             };
