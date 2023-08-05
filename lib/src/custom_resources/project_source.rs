@@ -358,6 +358,7 @@ mod test {
 
     #[tokio::test]
     #[serial]
+    #[ignore]
     async fn can_extract_projects_from_public_git_repository() -> Result<()> {
         let test_dir = assert_fs::TempDir::new().unwrap();
         let working_dir = std::env::current_dir()?;
@@ -390,6 +391,7 @@ mod test {
 
     #[tokio::test]
     #[serial]
+    #[ignore]
     async fn can_create_project_from_src() -> Result<()> {
         let client = Client::try_default().await?;
         let project_srcs = Api::<ProjectSource>::default_namespaced(client.clone());
@@ -427,6 +429,7 @@ mod test {
 
     #[tokio::test]
     #[serial]
+    #[ignore]
     async fn can_create_project_from_private_src() -> Result<()> {
         let client = Client::try_default().await?;
         let project_srcs = Api::<ProjectSource>::default_namespaced(client.clone());

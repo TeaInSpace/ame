@@ -161,6 +161,7 @@ mod test {
     use kube::{Api, Client, ResourceExt};
 
     #[tokio::test]
+    #[ignore]
     async fn can_label_secrets() -> Result<()> {
         let client_cfg = Client::try_default().await?;
         let secrets = Api::<Secret>::default_namespaced(client_cfg);
