@@ -12,9 +12,6 @@ jobs:
         with:
           shared-key: ame-ci-cache
           cache-on-failure: "true"
-      - uses: rinx/setup-k3d@v0.0.3
-        with:
-          skipClusterCreation: true
       - name: Prep test environment
         run: |
           sudo apt-get update
@@ -23,10 +20,6 @@ jobs:
           cargo binstall --force -y just
           just setup_toolchains
           just ci_tools
-          just add_helm_repos
-          just setup_cluster
-          just deploy_ame_to_cluster
-          just set_host_entries
       - name: Validate commit
         env:
           AME_TEST_GH_TOKEN: ${{ secrets.AME_TEST_GH_TOKEN }}
