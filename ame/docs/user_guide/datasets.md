@@ -2,7 +2,11 @@
 
 AME has a builtin notion of data sets in allowing user's to think in terms of data sets and not just raw tasks. 
 
+It is important to note that DataSets in AME should be treated as ephemeral and not long term storage. If AME is running
+out of space any cached data can be deleted.
+
 Here is an example of what a simple data set configuration looks like:
+
 
 ```yaml
 # ame.yaml
@@ -31,11 +35,28 @@ Lets start with that here:
 dataSets:
   - name: mnist
     path: ./data # Specifies where the tasks stores data.
-#    task:
+    task:
       taskRef: fetch_mnist # References a task which produces data.     
 ```
 
 So far so good, we have a path `data` and reference a `Task` that produces our data.
+
+#### Dataset size
+
+If a dataset is large it is a good idea to specifiy the storage requirements. This will allow AME to warn you if the object storage is running out.
+
+If you do not specify the size AME will attempt to save the dataset, detect the failure and then produce an alert.
+
+```yaml
+# ame.yaml
+...
+dataSets:
+  - name: mnist
+    path: ./data # Specifies where the tasks stores data.
+    size: 50Gi
+    task:
+      taskRef: fetch_mnist # References a task which produces data.     
+```
 
 
 ### Interacting with data sets
@@ -43,6 +64,16 @@ So far so good, we have a path `data` and reference a `Task` that produces our d
 To see the status of live data sets, use the AME's cli. Current it is only possible to see data sets that are in use, meaning referenced by some running task.
 
 ```bash
-ame ds list
+ame dataset list
+ame ds list # or shortend
 ```  
- 
+
+You can also view datasets from AME's dashboard:
+
+TODO: dataset image
+
+### Consuming data from object storage
+
+AME does not yet have builtin support for extracing data from object storage, although it will in the near future, see the tracking issue [here](). 
+It is still quite simplte to accomplish this in pure python, so we shall demonstrate that here.
+

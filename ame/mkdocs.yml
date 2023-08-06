@@ -1,8 +1,12 @@
 site_name: AME 
+repo_url: https://github.com/teainspace/ame
 theme: 
   name: material
   features:
     - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.top
+    - navigation.path
   palette:
      # Palette toggle for light mode
     - scheme: default
