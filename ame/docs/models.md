@@ -36,18 +36,60 @@ tasks:
 
 If AME is setup with a model reigstry see supported registries [here](todo) models can be deployed for inference.
 
-There are multiple
+Just like for [`Tasks`](task), you can and probably should define the resources required to perform inference with your model.
+Here are configuration examples with the serving options available with AME.
 
 #### Mlflow
 
-
+```yaml
+# main project ame.yml
+project: xgboost_project
+models:
+  - name: product_recommendor
+    training:
+      task: 
+        taskRef: train_my_model 
+    deployment:
+      resources:
+        memory: 10G
+        cpu: 4
+        storage: 10G
+        nvidia.com/gpu: 1
+      autoDeploy: true
+tasks:
+  ...
+```
 
 #### MLserver
 
+Mlserver support is planned for a future release, see [issue](todo)
+
 #### Kserve
 
+Mlserver support is planned for a future release, see [issue](todo)
+
+##### Triton
+
 #### Model validation
+
+AME supports validating models versions before they are deployed. To enable this we have to provide a task that will succeed or fail based on the validity of a model version.
+See a guide [here]().
+
+```yaml
+# main project ame.yml
+project: xgboost_project
+models:
+  - name: product_recommendor
+    validation:
+      task:
+        taskRef: model_validation
+tasks:
+  ...
+
+```
 
 #### Model monitoring
 
 ### Batch inference
+
+TODO add a reference with all objects and options.

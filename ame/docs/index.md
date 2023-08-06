@@ -1,17 +1,19 @@
-# Welcome to MkDocs
+# AME
 
-For full documentation visit [mkdocs.org](https://www.mkdocs.org).
+## What is AME?
 
-## Commands
+AME(Artificial MLOps Engineer) automates operations for the entire model life cycle from early experimentation to deploying models for inferece.
 
-* `mkdocs new [dir-name]` - Create a new project.
-* `mkdocs serve` - Start the live-reloading docs server.
-* `mkdocs build` - Build the documentation site.
-* `mkdocs -h` - Print help message and exit.
+AME abstracts away details regarding infrastructure allowing data scientists to focus on datascience.
 
-## Project layout
+Getting a project started with AME can be as simple as:
 
-    mkdocs.yml    # The configuration file.
-    docs/
-        index.md  # The documentation homepage.
-        ...       # Other markdown pages, images and other files.
+```sh
+ame init myproject
+ame add task training
+ame task run training
+```
+
+## How does AME differ from existing MLOps tools?
+
+
