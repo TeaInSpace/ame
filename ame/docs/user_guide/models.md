@@ -70,7 +70,76 @@ Mlserver support is planned for a future release, see [issue](todo)
 
 ##### Triton
 
-#### Model validation
+#### Advanced deployment configuration
+
+##### Ingress
+
+If you are hosting AME your self, there are a number of decisions that need to be made with regards to mode deployment. Currently AME does not automatically generate an ingress
+configuration and therefore one must be provided either. You can provide a cluster wide default as well as individual override for models.
+
+See how to set a cluster wide default [here](clusterwideingress).
+
+Model specific ingress can be set here. The plan is to provide better abstractions to avoid having to work with this directly, see [this](ingressabstractionissue).
+
+Setting model deployment ingress:
+
+
+```yaml
+# main project ame.yml
+project: xgboost_project
+models:
+  - name: product_recommendor
+    deployment:
+      ingressAnnotations:
+        TODO
+      resources:
+        memory: 10G
+        cpu: 4
+        storage: 10G
+        nvidia.com/gpu: 1
+      autoDeploy: true
+tasks:
+  ...
+```
+
+##### Replicas
+
+For productioon deploiyments you will likely want some degree of relication for model instances. Custer wide defaults can be set [here](todo).
+Model specific replicas can set like this:
+
+```yaml
+# main project ame.yml
+project: xgboost_project
+models:
+  - name: product_recommendor
+    deployment:
+      replicas: 3
+      ...
+tasks:
+  ...
+```
+
+##### Image
+
+If AME's default deployment image is insufficient for your use case a custom image can be set. This can be change cluster wide [here](todo).
+
+Model specific deployment images can be set like this:
+
+```yaml
+# main project ame.yml
+project: xgboost_project
+models:
+  - name: product_recommendor
+    deployment:
+      image: my.deployment.image
+      ...
+tasks:
+  ...
+```
+
+If a secret is required to access the image remember to provide that secret to AME, a guide is [here]().
+
+### Model validation
 
 AME supports validating models versions before they are deployed. To enable this we have to provide a task that will succeed or fail based on the validity of a model version.
 See a guide [here]().
