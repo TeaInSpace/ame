@@ -1,0 +1,3900 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+        <link rel="prev" href="../field_reference/">
+      
+      
+        <link rel="next" href="../model_validation/">
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.4.2, mkdocs-material-9.1.8">
+    
+    
+      
+        <title>Protocol Documentation - AME</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ded33207.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.a0c5b2b5.min.css">
+      
+      
+
+    
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="green" data-md-color-accent="light-green">
+  
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&"object"==typeof palette.color)for(var key of Object.keys(palette.color))document.body.setAttribute("data-md-color-"+key,palette.color[key])</script>
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#protocol-documentation" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="AME" class="md-header__button md-logo" aria-label="AME" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            AME
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Protocol Documentation
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+          
+            
+            
+            
+            <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="green" data-md-color-accent="light-green"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+            
+              <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_2" hidden>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12 20 8.69Z"/></svg>
+              </label>
+            
+          
+            
+            
+            
+            <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="green" data-md-color-accent="light-green"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_2">
+            
+              <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12c0-2.42-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12 20 8.69Z"/></svg>
+              </label>
+            
+          
+        </form>
+      
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/teainspace/ame" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.4.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2023 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+
+
+  <li class="md-tabs__item">
+    <a href="../.." class="md-tabs__link">
+      AME
+    </a>
+  </li>
+
+      
+        
+  
+  
+
+
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../developer_manual/developer/" class="md-tabs__link">
+        Developer manual
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+
+
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../getting_started/0_quick_start/" class="md-tabs__link">
+        Getting started
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+
+
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../operator_manual/deploy-ame/" class="md-tabs__link">
+        Operator manual
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+    
+  
+
+
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../0_introduction/" class="md-tabs__link md-tabs__link--active">
+        User guide
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="AME" class="md-nav__button md-logo" aria-label="AME" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    AME
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/teainspace/ame" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.4.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2023 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        AME
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+          Developer manual
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+        <label class="md-nav__title" for="__nav_2">
+          <span class="md-nav__icon md-icon"></span>
+          Developer manual
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer_manual/developer/" class="md-nav__link">
+        Working on AME
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+          Getting started
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+        <label class="md-nav__title" for="__nav_3">
+          <span class="md-nav__icon md-icon"></span>
+          Getting started
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting_started/0_quick_start/" class="md-nav__link">
+        Quick Start
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_2" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_3_2" id="__nav_3_2_label" tabindex="0">
+          Walkthrough
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_2_label" aria-expanded="false">
+        <label class="md-nav__title" for="__nav_3_2">
+          <span class="md-nav__icon md-icon"></span>
+          Walkthrough
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting_started/walkthrough/0_introduction/" class="md-nav__link">
+        Introduction
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting_started/walkthrough/1_run_a_task/" class="md-nav__link">
+        Running a Task with the CLI
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+          Operator manual
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+        <label class="md-nav__title" for="__nav_4">
+          <span class="md-nav__icon md-icon"></span>
+          Operator manual
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operator_manual/deploy-ame/" class="md-nav__link">
+        Deploying AME
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+    
+  
+  
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+      
+      
+      
+        <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+          User guide
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+        <label class="md-nav__title" for="__nav_5">
+          <span class="md-nav__icon md-icon"></span>
+          User guide
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../0_introduction/" class="md-nav__link">
+        Introduction
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../datasets/" class="md-nav__link">
+        Data Sets
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../field_reference/" class="md-nav__link">
+        Field reference
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+    
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          Protocol Documentation
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        Protocol Documentation
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#table-of-contents" class="md-nav__link">
+    Table of Contents
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#libameproto" class="md-nav__link">
+    lib/ame.proto
+  </a>
+  
+    <nav class="md-nav" aria-label="lib/ame.proto">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#amesecret" class="md-nav__link">
+    AmeSecret
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#amesecretid" class="md-nav__link">
+    AmeSecretId
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#amesecretvariant" class="md-nav__link">
+    AmeSecretVariant
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#amesecrets" class="md-nav__link">
+    AmeSecrets
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#artifactcfg" class="md-nav__link">
+    ArtifactCfg
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#createprojectrequest" class="md-nav__link">
+    CreateProjectRequest
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#customexecutor" class="md-nav__link">
+    CustomExecutor
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#datasetcfg" class="md-nav__link">
+    DataSetCfg
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#empty" class="md-nav__link">
+    Empty
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#envvar" class="md-nav__link">
+    EnvVar
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#filechunk" class="md-nav__link">
+    FileChunk
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gitprojectsource" class="md-nav__link">
+    GitProjectSource
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#listprojectsrcsresponse" class="md-nav__link">
+    ListProjectSrcsResponse
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#listtasksrequest" class="md-nav__link">
+    ListTasksRequest
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#listtasksresponse" class="md-nav__link">
+    ListTasksResponse
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#listtasksresponsetasksentry" class="md-nav__link">
+    ListTasksResponse.TasksEntry
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#logentry" class="md-nav__link">
+    LogEntry
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mlflowexecutor" class="md-nav__link">
+    MlflowExecutor
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#model" class="md-nav__link">
+    Model
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#modeldeploymentcfg" class="md-nav__link">
+    ModelDeploymentCfg
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#modeldeploymentcfgingressannotationsentry" class="md-nav__link">
+    ModelDeploymentCfg.IngressAnnotationsEntry
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#modeldeploymentcfgresourcesentry" class="md-nav__link">
+    ModelDeploymentCfg.ResourcesEntry
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#modelstatus" class="md-nav__link">
+    ModelStatus
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#modeltrainingcfg" class="md-nav__link">
+    ModelTrainingCfg
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pipenvexecutor" class="md-nav__link">
+    PipEnvExecutor
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pipexecutor" class="md-nav__link">
+    PipExecutor
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#poetryexecutor" class="md-nav__link">
+    PoetryExecutor
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#projectcfg" class="md-nav__link">
+    ProjectCfg
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#projectfilechunk" class="md-nav__link">
+    ProjectFileChunk
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#projectfileidentifier" class="md-nav__link">
+    ProjectFileIdentifier
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#projectid" class="md-nav__link">
+    ProjectId
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#projectsourcecfg" class="md-nav__link">
+    ProjectSourceCfg
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#projectsourceid" class="md-nav__link">
+    ProjectSourceId
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#projectsourceissue" class="md-nav__link">
+    ProjectSourceIssue
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#projectsourcelistparams" class="md-nav__link">
+    ProjectSourceListParams
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#projectsourcestatus" class="md-nav__link">
+    ProjectSourceStatus
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#projectsrcidrequest" class="md-nav__link">
+    ProjectSrcIdRequest
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#projectsrcpatchrequest" class="md-nav__link">
+    ProjectSrcPatchRequest
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#projectstatus" class="md-nav__link">
+    ProjectStatus
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#projectstatusmodelsentry" class="md-nav__link">
+    ProjectStatus.ModelsEntry
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#removetaskrequest" class="md-nav__link">
+    RemoveTaskRequest
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#resourcecfg" class="md-nav__link">
+    ResourceCfg
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#resourceid" class="md-nav__link">
+    ResourceId
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#resourceids" class="md-nav__link">
+    ResourceIds
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#resourcelistparams" class="md-nav__link">
+    ResourceListParams
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#runtaskrequest" class="md-nav__link">
+    RunTaskRequest
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#secret" class="md-nav__link">
+    Secret
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#taskcfg" class="md-nav__link">
+    TaskCfg
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#taskcfgresourcesentry" class="md-nav__link">
+    TaskCfg.ResourcesEntry
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#taskid" class="md-nav__link">
+    TaskId
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#taskidentifier" class="md-nav__link">
+    TaskIdentifier
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tasklistentry" class="md-nav__link">
+    TaskListEntry
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tasklogrequest" class="md-nav__link">
+    TaskLogRequest
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#taskphasefailed" class="md-nav__link">
+    TaskPhaseFailed
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#taskphasepending" class="md-nav__link">
+    TaskPhasePending
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#taskphaserunning" class="md-nav__link">
+    TaskPhaseRunning
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#taskphasesucceeded" class="md-nav__link">
+    TaskPhaseSucceeded
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#taskprojectdirectorystructure" class="md-nav__link">
+    TaskProjectDirectoryStructure
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#taskref" class="md-nav__link">
+    TaskRef
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#taskstatus" class="md-nav__link">
+    TaskStatus
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#templateref" class="md-nav__link">
+    TemplateRef
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#trainrequest" class="md-nav__link">
+    TrainRequest
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#triggercfg" class="md-nav__link">
+    TriggerCfg
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#projectsourceissuetype" class="md-nav__link">
+    ProjectSourceIssueType
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#projectsourcestate" class="md-nav__link">
+    ProjectSourceState
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tasktype" class="md-nav__link">
+    TaskType
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ameservice" class="md-nav__link">
+    AmeService
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scalar-value-types" class="md-nav__link">
+    Scalar Value Types
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../model_validation/" class="md-nav__link">
+        Guides
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../models/" class="md-nav__link">
+        Models
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../project_sources/" class="md-nav__link">
+        Project sources
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tasks/" class="md-nav__link">
+        Tasks
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#table-of-contents" class="md-nav__link">
+    Table of Contents
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#libameproto" class="md-nav__link">
+    lib/ame.proto
+  </a>
+  
+    <nav class="md-nav" aria-label="lib/ame.proto">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#amesecret" class="md-nav__link">
+    AmeSecret
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#amesecretid" class="md-nav__link">
+    AmeSecretId
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#amesecretvariant" class="md-nav__link">
+    AmeSecretVariant
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#amesecrets" class="md-nav__link">
+    AmeSecrets
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#artifactcfg" class="md-nav__link">
+    ArtifactCfg
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#createprojectrequest" class="md-nav__link">
+    CreateProjectRequest
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#customexecutor" class="md-nav__link">
+    CustomExecutor
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#datasetcfg" class="md-nav__link">
+    DataSetCfg
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#empty" class="md-nav__link">
+    Empty
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#envvar" class="md-nav__link">
+    EnvVar
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#filechunk" class="md-nav__link">
+    FileChunk
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gitprojectsource" class="md-nav__link">
+    GitProjectSource
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#listprojectsrcsresponse" class="md-nav__link">
+    ListProjectSrcsResponse
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#listtasksrequest" class="md-nav__link">
+    ListTasksRequest
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#listtasksresponse" class="md-nav__link">
+    ListTasksResponse
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#listtasksresponsetasksentry" class="md-nav__link">
+    ListTasksResponse.TasksEntry
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#logentry" class="md-nav__link">
+    LogEntry
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mlflowexecutor" class="md-nav__link">
+    MlflowExecutor
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#model" class="md-nav__link">
+    Model
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#modeldeploymentcfg" class="md-nav__link">
+    ModelDeploymentCfg
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#modeldeploymentcfgingressannotationsentry" class="md-nav__link">
+    ModelDeploymentCfg.IngressAnnotationsEntry
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#modeldeploymentcfgresourcesentry" class="md-nav__link">
+    ModelDeploymentCfg.ResourcesEntry
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#modelstatus" class="md-nav__link">
+    ModelStatus
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#modeltrainingcfg" class="md-nav__link">
+    ModelTrainingCfg
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pipenvexecutor" class="md-nav__link">
+    PipEnvExecutor
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pipexecutor" class="md-nav__link">
+    PipExecutor
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#poetryexecutor" class="md-nav__link">
+    PoetryExecutor
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#projectcfg" class="md-nav__link">
+    ProjectCfg
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#projectfilechunk" class="md-nav__link">
+    ProjectFileChunk
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#projectfileidentifier" class="md-nav__link">
+    ProjectFileIdentifier
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#projectid" class="md-nav__link">
+    ProjectId
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#projectsourcecfg" class="md-nav__link">
+    ProjectSourceCfg
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#projectsourceid" class="md-nav__link">
+    ProjectSourceId
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#projectsourceissue" class="md-nav__link">
+    ProjectSourceIssue
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#projectsourcelistparams" class="md-nav__link">
+    ProjectSourceListParams
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#projectsourcestatus" class="md-nav__link">
+    ProjectSourceStatus
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#projectsrcidrequest" class="md-nav__link">
+    ProjectSrcIdRequest
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#projectsrcpatchrequest" class="md-nav__link">
+    ProjectSrcPatchRequest
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#projectstatus" class="md-nav__link">
+    ProjectStatus
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#projectstatusmodelsentry" class="md-nav__link">
+    ProjectStatus.ModelsEntry
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#removetaskrequest" class="md-nav__link">
+    RemoveTaskRequest
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#resourcecfg" class="md-nav__link">
+    ResourceCfg
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#resourceid" class="md-nav__link">
+    ResourceId
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#resourceids" class="md-nav__link">
+    ResourceIds
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#resourcelistparams" class="md-nav__link">
+    ResourceListParams
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#runtaskrequest" class="md-nav__link">
+    RunTaskRequest
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#secret" class="md-nav__link">
+    Secret
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#taskcfg" class="md-nav__link">
+    TaskCfg
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#taskcfgresourcesentry" class="md-nav__link">
+    TaskCfg.ResourcesEntry
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#taskid" class="md-nav__link">
+    TaskId
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#taskidentifier" class="md-nav__link">
+    TaskIdentifier
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tasklistentry" class="md-nav__link">
+    TaskListEntry
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tasklogrequest" class="md-nav__link">
+    TaskLogRequest
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#taskphasefailed" class="md-nav__link">
+    TaskPhaseFailed
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#taskphasepending" class="md-nav__link">
+    TaskPhasePending
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#taskphaserunning" class="md-nav__link">
+    TaskPhaseRunning
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#taskphasesucceeded" class="md-nav__link">
+    TaskPhaseSucceeded
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#taskprojectdirectorystructure" class="md-nav__link">
+    TaskProjectDirectoryStructure
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#taskref" class="md-nav__link">
+    TaskRef
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#taskstatus" class="md-nav__link">
+    TaskStatus
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#templateref" class="md-nav__link">
+    TemplateRef
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#trainrequest" class="md-nav__link">
+    TrainRequest
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#triggercfg" class="md-nav__link">
+    TriggerCfg
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#projectsourceissuetype" class="md-nav__link">
+    ProjectSourceIssueType
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#projectsourcestate" class="md-nav__link">
+    ProjectSourceState
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tasktype" class="md-nav__link">
+    TaskType
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ameservice" class="md-nav__link">
+    AmeService
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scalar-value-types" class="md-nav__link">
+    Scalar Value Types
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+  
+
+
+<h1 id="protocol-documentation">Protocol Documentation</h1>
+<p><a name="top"></a></p>
+<h2 id="table-of-contents">Table of Contents</h2>
+<ul>
+<li>
+<p><a href="#lib_ame-proto">lib/ame.proto</a></p>
+<ul>
+<li><a href="#ame-v1-AmeSecret">AmeSecret</a></li>
+<li><a href="#ame-v1-AmeSecretId">AmeSecretId</a></li>
+<li><a href="#ame-v1-AmeSecretVariant">AmeSecretVariant</a></li>
+<li><a href="#ame-v1-AmeSecrets">AmeSecrets</a></li>
+<li><a href="#ame-v1-ArtifactCfg">ArtifactCfg</a></li>
+<li><a href="#ame-v1-CreateProjectRequest">CreateProjectRequest</a></li>
+<li><a href="#ame-v1-CustomExecutor">CustomExecutor</a></li>
+<li><a href="#ame-v1-DataSetCfg">DataSetCfg</a></li>
+<li><a href="#ame-v1-Empty">Empty</a></li>
+<li><a href="#ame-v1-EnvVar">EnvVar</a></li>
+<li><a href="#ame-v1-FileChunk">FileChunk</a></li>
+<li><a href="#ame-v1-GitProjectSource">GitProjectSource</a></li>
+<li><a href="#ame-v1-ListProjectSrcsResponse">ListProjectSrcsResponse</a></li>
+<li><a href="#ame-v1-ListTasksRequest">ListTasksRequest</a></li>
+<li><a href="#ame-v1-ListTasksResponse">ListTasksResponse</a></li>
+<li><a href="#ame-v1-ListTasksResponse-TasksEntry">ListTasksResponse.TasksEntry</a></li>
+<li><a href="#ame-v1-LogEntry">LogEntry</a></li>
+<li><a href="#ame-v1-MlflowExecutor">MlflowExecutor</a></li>
+<li><a href="#ame-v1-Model">Model</a></li>
+<li><a href="#ame-v1-ModelDeploymentCfg">ModelDeploymentCfg</a></li>
+<li><a href="#ame-v1-ModelDeploymentCfg-IngressAnnotationsEntry">ModelDeploymentCfg.IngressAnnotationsEntry</a></li>
+<li><a href="#ame-v1-ModelDeploymentCfg-ResourcesEntry">ModelDeploymentCfg.ResourcesEntry</a></li>
+<li><a href="#ame-v1-ModelStatus">ModelStatus</a></li>
+<li><a href="#ame-v1-ModelTrainingCfg">ModelTrainingCfg</a></li>
+<li><a href="#ame-v1-PipEnvExecutor">PipEnvExecutor</a></li>
+<li><a href="#ame-v1-PipExecutor">PipExecutor</a></li>
+<li><a href="#ame-v1-PoetryExecutor">PoetryExecutor</a></li>
+<li><a href="#ame-v1-ProjectCfg">ProjectCfg</a></li>
+<li><a href="#ame-v1-ProjectFileChunk">ProjectFileChunk</a></li>
+<li><a href="#ame-v1-ProjectFileIdentifier">ProjectFileIdentifier</a></li>
+<li><a href="#ame-v1-ProjectId">ProjectId</a></li>
+<li><a href="#ame-v1-ProjectSourceCfg">ProjectSourceCfg</a></li>
+<li><a href="#ame-v1-ProjectSourceId">ProjectSourceId</a></li>
+<li><a href="#ame-v1-ProjectSourceIssue">ProjectSourceIssue</a></li>
+<li><a href="#ame-v1-ProjectSourceListParams">ProjectSourceListParams</a></li>
+<li><a href="#ame-v1-ProjectSourceStatus">ProjectSourceStatus</a></li>
+<li><a href="#ame-v1-ProjectSrcIdRequest">ProjectSrcIdRequest</a></li>
+<li><a href="#ame-v1-ProjectSrcPatchRequest">ProjectSrcPatchRequest</a></li>
+<li><a href="#ame-v1-ProjectStatus">ProjectStatus</a></li>
+<li><a href="#ame-v1-ProjectStatus-ModelsEntry">ProjectStatus.ModelsEntry</a></li>
+<li><a href="#ame-v1-RemoveTaskRequest">RemoveTaskRequest</a></li>
+<li><a href="#ame-v1-ResourceCfg">ResourceCfg</a></li>
+<li><a href="#ame-v1-ResourceId">ResourceId</a></li>
+<li><a href="#ame-v1-ResourceIds">ResourceIds</a></li>
+<li><a href="#ame-v1-ResourceListParams">ResourceListParams</a></li>
+<li><a href="#ame-v1-RunTaskRequest">RunTaskRequest</a></li>
+<li><a href="#ame-v1-Secret">Secret</a></li>
+<li><a href="#ame-v1-TaskCfg">TaskCfg</a></li>
+<li><a href="#ame-v1-TaskCfg-ResourcesEntry">TaskCfg.ResourcesEntry</a></li>
+<li><a href="#ame-v1-TaskId">TaskId</a></li>
+<li><a href="#ame-v1-TaskIdentifier">TaskIdentifier</a></li>
+<li><a href="#ame-v1-TaskListEntry">TaskListEntry</a></li>
+<li><a href="#ame-v1-TaskLogRequest">TaskLogRequest</a></li>
+<li><a href="#ame-v1-TaskPhaseFailed">TaskPhaseFailed</a></li>
+<li><a href="#ame-v1-TaskPhasePending">TaskPhasePending</a></li>
+<li><a href="#ame-v1-TaskPhaseRunning">TaskPhaseRunning</a></li>
+<li><a href="#ame-v1-TaskPhaseSucceeded">TaskPhaseSucceeded</a></li>
+<li><a href="#ame-v1-TaskProjectDirectoryStructure">TaskProjectDirectoryStructure</a></li>
+<li><a href="#ame-v1-TaskRef">TaskRef</a></li>
+<li><a href="#ame-v1-TaskStatus">TaskStatus</a></li>
+<li><a href="#ame-v1-TemplateRef">TemplateRef</a></li>
+<li><a href="#ame-v1-TrainRequest">TrainRequest</a></li>
+<li>
+<p><a href="#ame-v1-TriggerCfg">TriggerCfg</a></p>
+</li>
+<li>
+<p><a href="#ame-v1-ProjectSourceIssueType">ProjectSourceIssueType</a></p>
+</li>
+<li><a href="#ame-v1-ProjectSourceState">ProjectSourceState</a></li>
+<li>
+<p><a href="#ame-v1-TaskType">TaskType</a></p>
+</li>
+<li>
+<p><a href="#ame-v1-AmeService">AmeService</a></p>
+</li>
+</ul>
+</li>
+<li>
+<p><a href="#scalar-value-types">Scalar Value Types</a></p>
+</li>
+</ul>
+<p><a name="lib_ame-proto"></a></p>
+<p align="right"><a href="#top">Top</a></p>
+
+<h2 id="libameproto">lib/ame.proto</h2>
+<p><a name="ame-v1-AmeSecret"></a></p>
+<h3 id="amesecret">AmeSecret</h3>
+<p>This is a secret stored by AME</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Label</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>key</td>
+<td><a href="#string">string</a></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>value</td>
+<td><a href="#string">string</a></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><a name="ame-v1-AmeSecretId"></a></p>
+<h3 id="amesecretid">AmeSecretId</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Label</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>key</td>
+<td><a href="#string">string</a></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><a name="ame-v1-AmeSecretVariant"></a></p>
+<h3 id="amesecretvariant">AmeSecretVariant</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Label</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>key</td>
+<td><a href="#string">string</a></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>injectAs</td>
+<td><a href="#string">string</a></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><a name="ame-v1-AmeSecrets"></a></p>
+<h3 id="amesecrets">AmeSecrets</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Label</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>secrets</td>
+<td><a href="#ame-v1-AmeSecretId">AmeSecretId</a></td>
+<td>repeated</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><a name="ame-v1-ArtifactCfg"></a></p>
+<h3 id="artifactcfg">ArtifactCfg</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Label</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>save_changed_files</td>
+<td><a href="#bool">bool</a></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>paths</td>
+<td><a href="#string">string</a></td>
+<td>repeated</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><a name="ame-v1-CreateProjectRequest"></a></p>
+<h3 id="createprojectrequest">CreateProjectRequest</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Label</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>cfg</td>
+<td><a href="#ame-v1-ProjectCfg">ProjectCfg</a></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>enableTriggers</td>
+<td><a href="#bool">bool</a></td>
+<td>optional</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><a name="ame-v1-CustomExecutor"></a></p>
+<h3 id="customexecutor">CustomExecutor</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Label</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>pythonVersion</td>
+<td><a href="#string">string</a></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>command</td>
+<td><a href="#string">string</a></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><a name="ame-v1-DataSetCfg"></a></p>
+<h3 id="datasetcfg">DataSetCfg</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Label</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>name</td>
+<td><a href="#string">string</a></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>task</td>
+<td><a href="#ame-v1-TaskCfg">TaskCfg</a></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>path</td>
+<td><a href="#string">string</a></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>size</td>
+<td><a href="#string">string</a></td>
+<td>optional</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><a name="ame-v1-Empty"></a></p>
+<h3 id="empty">Empty</h3>
+<p><a name="ame-v1-EnvVar"></a></p>
+<h3 id="envvar">EnvVar</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Label</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>key</td>
+<td><a href="#string">string</a></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>val</td>
+<td><a href="#string">string</a></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><a name="ame-v1-FileChunk"></a></p>
+<h3 id="filechunk">FileChunk</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Label</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>contents</td>
+<td><a href="#bytes">bytes</a></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><a name="ame-v1-GitProjectSource"></a></p>
+<h3 id="gitprojectsource">GitProjectSource</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Label</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>repository</td>
+<td><a href="#string">string</a></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>username</td>
+<td><a href="#string">string</a></td>
+<td>optional</td>
+<td></td>
+</tr>
+<tr>
+<td>secret</td>
+<td><a href="#string">string</a></td>
+<td>optional</td>
+<td></td>
+</tr>
+<tr>
+<td>sync_interval</td>
+<td><a href="#string">string</a></td>
+<td>optional</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><a name="ame-v1-ListProjectSrcsResponse"></a></p>
+<h3 id="listprojectsrcsresponse">ListProjectSrcsResponse</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Label</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>cfgs</td>
+<td><a href="#ame-v1-ProjectSourceCfg">ProjectSourceCfg</a></td>
+<td>repeated</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><a name="ame-v1-ListTasksRequest"></a></p>
+<h3 id="listtasksrequest">ListTasksRequest</h3>
+<p><a name="ame-v1-ListTasksResponse"></a></p>
+<h3 id="listtasksresponse">ListTasksResponse</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Label</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>tasks</td>
+<td><a href="#ame-v1-ListTasksResponse-TasksEntry">ListTasksResponse.TasksEntry</a></td>
+<td>repeated</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><a name="ame-v1-ListTasksResponse-TasksEntry"></a></p>
+<h3 id="listtasksresponsetasksentry">ListTasksResponse.TasksEntry</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Label</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>key</td>
+<td><a href="#string">string</a></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>value</td>
+<td><a href="#ame-v1-TaskListEntry">TaskListEntry</a></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><a name="ame-v1-LogEntry"></a></p>
+<h3 id="logentry">LogEntry</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Label</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>contents</td>
+<td><a href="#bytes">bytes</a></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><a name="ame-v1-MlflowExecutor"></a></p>
+<h3 id="mlflowexecutor">MlflowExecutor</h3>
+<p><a name="ame-v1-Model"></a></p>
+<h3 id="model">Model</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Label</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>name</td>
+<td><a href="#string">string</a></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>validationTask</td>
+<td><a href="#ame-v1-TaskCfg">TaskCfg</a></td>
+<td>optional</td>
+<td></td>
+</tr>
+<tr>
+<td>training</td>
+<td><a href="#ame-v1-ModelTrainingCfg">ModelTrainingCfg</a></td>
+<td>optional</td>
+<td></td>
+</tr>
+<tr>
+<td>deployment</td>
+<td><a href="#ame-v1-ModelDeploymentCfg">ModelDeploymentCfg</a></td>
+<td>optional</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><a name="ame-v1-ModelDeploymentCfg"></a></p>
+<h3 id="modeldeploymentcfg">ModelDeploymentCfg</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Label</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ingressAnnotations</td>
+<td><a href="#ame-v1-ModelDeploymentCfg-IngressAnnotationsEntry">ModelDeploymentCfg.IngressAnnotationsEntry</a></td>
+<td>repeated</td>
+<td></td>
+</tr>
+<tr>
+<td>replicas</td>
+<td><a href="#int32">int32</a></td>
+<td>optional</td>
+<td></td>
+</tr>
+<tr>
+<td>image</td>
+<td><a href="#string">string</a></td>
+<td>optional</td>
+<td></td>
+</tr>
+<tr>
+<td>resources</td>
+<td><a href="#ame-v1-ModelDeploymentCfg-ResourcesEntry">ModelDeploymentCfg.ResourcesEntry</a></td>
+<td>repeated</td>
+<td></td>
+</tr>
+<tr>
+<td>enableTls</td>
+<td><a href="#bool">bool</a></td>
+<td>optional</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><a name="ame-v1-ModelDeploymentCfg-IngressAnnotationsEntry"></a></p>
+<h3 id="modeldeploymentcfgingressannotationsentry">ModelDeploymentCfg.IngressAnnotationsEntry</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Label</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>key</td>
+<td><a href="#string">string</a></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>value</td>
+<td><a href="#string">string</a></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><a name="ame-v1-ModelDeploymentCfg-ResourcesEntry"></a></p>
+<h3 id="modeldeploymentcfgresourcesentry">ModelDeploymentCfg.ResourcesEntry</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Label</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>key</td>
+<td><a href="#string">string</a></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>value</td>
+<td><a href="#string">string</a></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><a name="ame-v1-ModelStatus"></a></p>
+<h3 id="modelstatus">ModelStatus</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Label</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>latestValidatedModelVersion</td>
+<td><a href="#string">string</a></td>
+<td>optional</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><a name="ame-v1-ModelTrainingCfg"></a></p>
+<h3 id="modeltrainingcfg">ModelTrainingCfg</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Label</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>task</td>
+<td><a href="#ame-v1-TaskCfg">TaskCfg</a></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><a name="ame-v1-PipEnvExecutor"></a></p>
+<h3 id="pipenvexecutor">PipEnvExecutor</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Label</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>command</td>
+<td><a href="#string">string</a></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><a name="ame-v1-PipExecutor"></a></p>
+<h3 id="pipexecutor">PipExecutor</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Label</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>pythonVersion</td>
+<td><a href="#string">string</a></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>command</td>
+<td><a href="#string">string</a></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><a name="ame-v1-PoetryExecutor"></a></p>
+<h3 id="poetryexecutor">PoetryExecutor</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Label</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>pythonVersion</td>
+<td><a href="#string">string</a></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>command</td>
+<td><a href="#string">string</a></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><a name="ame-v1-ProjectCfg"></a></p>
+<h3 id="projectcfg">ProjectCfg</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Label</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>name</td>
+<td><a href="#string">string</a></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>models</td>
+<td><a href="#ame-v1-Model">Model</a></td>
+<td>repeated</td>
+<td></td>
+</tr>
+<tr>
+<td>dataSets</td>
+<td><a href="#ame-v1-DataSetCfg">DataSetCfg</a></td>
+<td>repeated</td>
+<td></td>
+</tr>
+<tr>
+<td>tasks</td>
+<td><a href="#ame-v1-TaskCfg">TaskCfg</a></td>
+<td>repeated</td>
+<td></td>
+</tr>
+<tr>
+<td>templates</td>
+<td><a href="#ame-v1-TaskCfg">TaskCfg</a></td>
+<td>repeated</td>
+<td></td>
+</tr>
+<tr>
+<td>enableTriggers</td>
+<td><a href="#bool">bool</a></td>
+<td>optional</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><a name="ame-v1-ProjectFileChunk"></a></p>
+<h3 id="projectfilechunk">ProjectFileChunk</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Label</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>chunk</td>
+<td><a href="#ame-v1-FileChunk">FileChunk</a></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>identifier</td>
+<td><a href="#ame-v1-ProjectFileIdentifier">ProjectFileIdentifier</a></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><a name="ame-v1-ProjectFileIdentifier"></a></p>
+<h3 id="projectfileidentifier">ProjectFileIdentifier</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Label</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>taskid</td>
+<td><a href="#string">string</a></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>filepath</td>
+<td><a href="#string">string</a></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><a name="ame-v1-ProjectId"></a></p>
+<h3 id="projectid">ProjectId</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Label</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>name</td>
+<td><a href="#string">string</a></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><a name="ame-v1-ProjectSourceCfg"></a></p>
+<h3 id="projectsourcecfg">ProjectSourceCfg</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Label</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>git</td>
+<td><a href="#ame-v1-GitProjectSource">GitProjectSource</a></td>
+<td>optional</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><a name="ame-v1-ProjectSourceId"></a></p>
+<h3 id="projectsourceid">ProjectSourceId</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Label</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>name</td>
+<td><a href="#string">string</a></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><a name="ame-v1-ProjectSourceIssue"></a></p>
+<h3 id="projectsourceissue">ProjectSourceIssue</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Label</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>issue_type</td>
+<td><a href="#ame-v1-ProjectSourceIssueType">ProjectSourceIssueType</a></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>explanation</td>
+<td><a href="#string">string</a></td>
+<td>optional</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><a name="ame-v1-ProjectSourceListParams"></a></p>
+<h3 id="projectsourcelistparams">ProjectSourceListParams</h3>
+<p><a name="ame-v1-ProjectSourceStatus"></a></p>
+<h3 id="projectsourcestatus">ProjectSourceStatus</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Label</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>last_synced</td>
+<td><a href="#string">string</a></td>
+<td>optional</td>
+<td></td>
+</tr>
+<tr>
+<td>state</td>
+<td><a href="#ame-v1-ProjectSourceState">ProjectSourceState</a></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>reason</td>
+<td><a href="#string">string</a></td>
+<td>optional</td>
+<td></td>
+</tr>
+<tr>
+<td>issues</td>
+<td><a href="#ame-v1-ProjectSourceIssue">ProjectSourceIssue</a></td>
+<td>repeated</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><a name="ame-v1-ProjectSrcIdRequest"></a></p>
+<h3 id="projectsrcidrequest">ProjectSrcIdRequest</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Label</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>repo</td>
+<td><a href="#string">string</a></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><a name="ame-v1-ProjectSrcPatchRequest"></a></p>
+<h3 id="projectsrcpatchrequest">ProjectSrcPatchRequest</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Label</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td><a href="#ame-v1-ProjectSourceId">ProjectSourceId</a></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>cfg</td>
+<td><a href="#ame-v1-ProjectSourceCfg">ProjectSourceCfg</a></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><a name="ame-v1-ProjectStatus"></a></p>
+<h3 id="projectstatus">ProjectStatus</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Label</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>models</td>
+<td><a href="#ame-v1-ProjectStatus-ModelsEntry">ProjectStatus.ModelsEntry</a></td>
+<td>repeated</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><a name="ame-v1-ProjectStatus-ModelsEntry"></a></p>
+<h3 id="projectstatusmodelsentry">ProjectStatus.ModelsEntry</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Label</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>key</td>
+<td><a href="#string">string</a></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>value</td>
+<td><a href="#ame-v1-ModelStatus">ModelStatus</a></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><a name="ame-v1-RemoveTaskRequest"></a></p>
+<h3 id="removetaskrequest">RemoveTaskRequest</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Label</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>name</td>
+<td><a href="#string">string</a></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>approve</td>
+<td><a href="#bool">bool</a></td>
+<td>optional</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><a name="ame-v1-ResourceCfg"></a></p>
+<h3 id="resourcecfg">ResourceCfg</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Label</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>projectSrcCfg</td>
+<td><a href="#ame-v1-ProjectSourceCfg">ProjectSourceCfg</a></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><a name="ame-v1-ResourceId"></a></p>
+<h3 id="resourceid">ResourceId</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Label</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>projectSrcId</td>
+<td><a href="#ame-v1-ProjectSourceId">ProjectSourceId</a></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><a name="ame-v1-ResourceIds"></a></p>
+<h3 id="resourceids">ResourceIds</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Label</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ids</td>
+<td><a href="#ame-v1-ResourceId">ResourceId</a></td>
+<td>repeated</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><a name="ame-v1-ResourceListParams"></a></p>
+<h3 id="resourcelistparams">ResourceListParams</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Label</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>projectSourceListParams</td>
+<td><a href="#ame-v1-ProjectSourceListParams">ProjectSourceListParams</a></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><a name="ame-v1-RunTaskRequest"></a></p>
+<h3 id="runtaskrequest">RunTaskRequest</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Label</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>projectId</td>
+<td><a href="#ame-v1-ProjectId">ProjectId</a></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>taskCfg</td>
+<td><a href="#ame-v1-TaskCfg">TaskCfg</a></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><a name="ame-v1-Secret"></a></p>
+<h3 id="secret">Secret</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Label</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ame</td>
+<td><a href="#ame-v1-AmeSecretVariant">AmeSecretVariant</a></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><a name="ame-v1-TaskCfg"></a></p>
+<h3 id="taskcfg">TaskCfg</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Label</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>name</td>
+<td><a href="#string">string</a></td>
+<td>optional</td>
+<td></td>
+</tr>
+<tr>
+<td>taskRef</td>
+<td><a href="#ame-v1-TaskRef">TaskRef</a></td>
+<td>optional</td>
+<td></td>
+</tr>
+<tr>
+<td>resources</td>
+<td><a href="#ame-v1-TaskCfg-ResourcesEntry">TaskCfg.ResourcesEntry</a></td>
+<td>repeated</td>
+<td></td>
+</tr>
+<tr>
+<td>poetry</td>
+<td><a href="#ame-v1-PoetryExecutor">PoetryExecutor</a></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>mlflow</td>
+<td><a href="#ame-v1-MlflowExecutor">MlflowExecutor</a></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>pipEnv</td>
+<td><a href="#ame-v1-PipEnvExecutor">PipEnvExecutor</a></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>pip</td>
+<td><a href="#ame-v1-PipExecutor">PipExecutor</a></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>custom</td>
+<td><a href="#ame-v1-CustomExecutor">CustomExecutor</a></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>dataSets</td>
+<td><a href="#string">string</a></td>
+<td>repeated</td>
+<td></td>
+</tr>
+<tr>
+<td>fromTemplate</td>
+<td><a href="#ame-v1-TemplateRef">TemplateRef</a></td>
+<td>optional</td>
+<td></td>
+</tr>
+<tr>
+<td>artifactCfg</td>
+<td><a href="#ame-v1-ArtifactCfg">ArtifactCfg</a></td>
+<td>optional</td>
+<td></td>
+</tr>
+<tr>
+<td>triggers</td>
+<td><a href="#ame-v1-TriggerCfg">TriggerCfg</a></td>
+<td>optional</td>
+<td></td>
+</tr>
+<tr>
+<td>env</td>
+<td><a href="#ame-v1-EnvVar">EnvVar</a></td>
+<td>repeated</td>
+<td></td>
+</tr>
+<tr>
+<td>secrets</td>
+<td><a href="#ame-v1-Secret">Secret</a></td>
+<td>repeated</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><a name="ame-v1-TaskCfg-ResourcesEntry"></a></p>
+<h3 id="taskcfgresourcesentry">TaskCfg.ResourcesEntry</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Label</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>key</td>
+<td><a href="#string">string</a></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>value</td>
+<td><a href="#string">string</a></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><a name="ame-v1-TaskId"></a></p>
+<h3 id="taskid">TaskId</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Label</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>name</td>
+<td><a href="#string">string</a></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><a name="ame-v1-TaskIdentifier"></a></p>
+<h3 id="taskidentifier">TaskIdentifier</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Label</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>name</td>
+<td><a href="#string">string</a></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><a name="ame-v1-TaskListEntry"></a></p>
+<h3 id="tasklistentry">TaskListEntry</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Label</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>status</td>
+<td><a href="#ame-v1-TaskStatus">TaskStatus</a></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>timeStamp</td>
+<td><a href="#string">string</a></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><a name="ame-v1-TaskLogRequest"></a></p>
+<h3 id="tasklogrequest">TaskLogRequest</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Label</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>taskid</td>
+<td><a href="#ame-v1-TaskIdentifier">TaskIdentifier</a></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>start_from</td>
+<td><a href="#int32">int32</a></td>
+<td>optional</td>
+<td></td>
+</tr>
+<tr>
+<td>watch</td>
+<td><a href="#bool">bool</a></td>
+<td>optional</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><a name="ame-v1-TaskPhaseFailed"></a></p>
+<h3 id="taskphasefailed">TaskPhaseFailed</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Label</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>workflowName</td>
+<td><a href="#string">string</a></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><a name="ame-v1-TaskPhasePending"></a></p>
+<h3 id="taskphasepending">TaskPhasePending</h3>
+<p><a name="ame-v1-TaskPhaseRunning"></a></p>
+<h3 id="taskphaserunning">TaskPhaseRunning</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Label</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>workflowName</td>
+<td><a href="#string">string</a></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><a name="ame-v1-TaskPhaseSucceeded"></a></p>
+<h3 id="taskphasesucceeded">TaskPhaseSucceeded</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Label</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>workflowName</td>
+<td><a href="#string">string</a></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><a name="ame-v1-TaskProjectDirectoryStructure"></a></p>
+<h3 id="taskprojectdirectorystructure">TaskProjectDirectoryStructure</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Label</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>projectid</td>
+<td><a href="#string">string</a></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>taskid</td>
+<td><a href="#ame-v1-TaskIdentifier">TaskIdentifier</a></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>paths</td>
+<td><a href="#string">string</a></td>
+<td>repeated</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><a name="ame-v1-TaskRef"></a></p>
+<h3 id="taskref">TaskRef</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Label</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>name</td>
+<td><a href="#string">string</a></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>project</td>
+<td><a href="#string">string</a></td>
+<td>optional</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><a name="ame-v1-TaskStatus"></a></p>
+<h3 id="taskstatus">TaskStatus</h3>
+<p>TODO: should there be an error case?</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Label</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>pending</td>
+<td><a href="#ame-v1-TaskPhasePending">TaskPhasePending</a></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>running</td>
+<td><a href="#ame-v1-TaskPhaseRunning">TaskPhaseRunning</a></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>failed</td>
+<td><a href="#ame-v1-TaskPhaseFailed">TaskPhaseFailed</a></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>succeeded</td>
+<td><a href="#ame-v1-TaskPhaseSucceeded">TaskPhaseSucceeded</a></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><a name="ame-v1-TemplateRef"></a></p>
+<h3 id="templateref">TemplateRef</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Label</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>name</td>
+<td><a href="#string">string</a></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>project</td>
+<td><a href="#string">string</a></td>
+<td>optional</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><a name="ame-v1-TrainRequest"></a></p>
+<h3 id="trainrequest">TrainRequest</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Label</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>projectid</td>
+<td><a href="#string">string</a></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>model_name</td>
+<td><a href="#string">string</a></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><a name="ame-v1-TriggerCfg"></a></p>
+<h3 id="triggercfg">TriggerCfg</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Label</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>schedule</td>
+<td><a href="#string">string</a></td>
+<td>optional</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><a name="ame-v1-ProjectSourceIssueType"></a></p>
+<h3 id="projectsourceissuetype">ProjectSourceIssueType</h3>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Number</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Unknown</td>
+<td>0</td>
+<td></td>
+</tr>
+<tr>
+<td>AuthFailure</td>
+<td>1</td>
+<td></td>
+</tr>
+<tr>
+<td>RepositoryNotFound</td>
+<td>2</td>
+<td></td>
+</tr>
+<tr>
+<td>AmeProjectNotFound</td>
+<td>3</td>
+<td></td>
+</tr>
+<tr>
+<td>GitSecretNotFound</td>
+<td>4</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><a name="ame-v1-ProjectSourceState"></a></p>
+<h3 id="projectsourcestate">ProjectSourceState</h3>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Number</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Pending</td>
+<td>0</td>
+<td></td>
+</tr>
+<tr>
+<td>Synchronising</td>
+<td>1</td>
+<td></td>
+</tr>
+<tr>
+<td>Synchronized</td>
+<td>2</td>
+<td></td>
+</tr>
+<tr>
+<td>Error</td>
+<td>3</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><a name="ame-v1-TaskType"></a></p>
+<h3 id="tasktype">TaskType</h3>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Number</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Pipenv</td>
+<td>0</td>
+<td></td>
+</tr>
+<tr>
+<td>Mlflow</td>
+<td>1</td>
+<td></td>
+</tr>
+<tr>
+<td>Poetry</td>
+<td>2</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><a name="ame-v1-AmeService"></a></p>
+<h3 id="ameservice">AmeService</h3>
+<table>
+<thead>
+<tr>
+<th>Method Name</th>
+<th>Request Type</th>
+<th>Response Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>RunTask</td>
+<td><a href="#ame-v1-RunTaskRequest">RunTaskRequest</a></td>
+<td><a href="#ame-v1-TaskIdentifier">TaskIdentifier</a></td>
+<td></td>
+</tr>
+<tr>
+<td>GetTask</td>
+<td><a href="#ame-v1-TaskIdentifier">TaskIdentifier</a></td>
+<td><a href="#ame-v1-TaskCfg">TaskCfg</a></td>
+<td></td>
+</tr>
+<tr>
+<td>DeleteTask</td>
+<td><a href="#ame-v1-TaskIdentifier">TaskIdentifier</a></td>
+<td><a href="#ame-v1-Empty">Empty</a></td>
+<td></td>
+</tr>
+<tr>
+<td>CreateTaskProjectDirectory</td>
+<td><a href="#ame-v1-TaskProjectDirectoryStructure">TaskProjectDirectoryStructure</a></td>
+<td><a href="#ame-v1-Empty">Empty</a></td>
+<td></td>
+</tr>
+<tr>
+<td>UploadProjectFile</td>
+<td><a href="#ame-v1-ProjectFileChunk">ProjectFileChunk</a> stream</td>
+<td><a href="#ame-v1-Empty">Empty</a></td>
+<td></td>
+</tr>
+<tr>
+<td>StreamTaskLogs</td>
+<td><a href="#ame-v1-TaskLogRequest">TaskLogRequest</a></td>
+<td><a href="#ame-v1-LogEntry">LogEntry</a> stream</td>
+<td></td>
+</tr>
+<tr>
+<td>CreateProjectSrc</td>
+<td><a href="#ame-v1-ProjectSourceCfg">ProjectSourceCfg</a></td>
+<td><a href="#ame-v1-ProjectSourceId">ProjectSourceId</a></td>
+<td></td>
+</tr>
+<tr>
+<td>DeleteProjectSrc</td>
+<td><a href="#ame-v1-ProjectSourceId">ProjectSourceId</a></td>
+<td><a href="#ame-v1-Empty">Empty</a></td>
+<td></td>
+</tr>
+<tr>
+<td>TrainModel</td>
+<td><a href="#ame-v1-TrainRequest">TrainRequest</a></td>
+<td><a href="#ame-v1-Empty">Empty</a></td>
+<td></td>
+</tr>
+<tr>
+<td>WatchProjectSrc</td>
+<td><a href="#ame-v1-ProjectSourceId">ProjectSourceId</a></td>
+<td><a href="#ame-v1-ProjectSourceStatus">ProjectSourceStatus</a> stream</td>
+<td></td>
+</tr>
+<tr>
+<td>CreateSecret</td>
+<td><a href="#ame-v1-AmeSecret">AmeSecret</a></td>
+<td><a href="#ame-v1-Empty">Empty</a></td>
+<td></td>
+</tr>
+<tr>
+<td>DeleteSecret</td>
+<td><a href="#ame-v1-AmeSecretId">AmeSecretId</a></td>
+<td><a href="#ame-v1-Empty">Empty</a></td>
+<td></td>
+</tr>
+<tr>
+<td>ListSecrets</td>
+<td><a href="#ame-v1-Empty">Empty</a></td>
+<td><a href="#ame-v1-AmeSecrets">AmeSecrets</a></td>
+<td></td>
+</tr>
+<tr>
+<td>UpdateProjectSrc</td>
+<td><a href="#ame-v1-ProjectSrcPatchRequest">ProjectSrcPatchRequest</a></td>
+<td><a href="#ame-v1-Empty">Empty</a></td>
+<td></td>
+</tr>
+<tr>
+<td>CreateResource</td>
+<td><a href="#ame-v1-ResourceCfg">ResourceCfg</a></td>
+<td><a href="#ame-v1-ResourceId">ResourceId</a></td>
+<td></td>
+</tr>
+<tr>
+<td>ListResource</td>
+<td><a href="#ame-v1-ResourceListParams">ResourceListParams</a></td>
+<td><a href="#ame-v1-ResourceIds">ResourceIds</a></td>
+<td></td>
+</tr>
+<tr>
+<td>GetProjectSrcCfg</td>
+<td><a href="#ame-v1-ProjectSourceId">ProjectSourceId</a></td>
+<td><a href="#ame-v1-ProjectSourceCfg">ProjectSourceCfg</a></td>
+<td></td>
+</tr>
+<tr>
+<td>GetProjectSrcStatus</td>
+<td><a href="#ame-v1-ProjectSourceId">ProjectSourceId</a></td>
+<td><a href="#ame-v1-ProjectSourceStatus">ProjectSourceStatus</a></td>
+<td></td>
+</tr>
+<tr>
+<td>GetProjectSrcId</td>
+<td><a href="#ame-v1-ProjectSrcIdRequest">ProjectSrcIdRequest</a></td>
+<td><a href="#ame-v1-ProjectSourceId">ProjectSourceId</a></td>
+<td></td>
+</tr>
+<tr>
+<td>ListProjectSrcs</td>
+<td><a href="#ame-v1-ProjectSourceListParams">ProjectSourceListParams</a></td>
+<td><a href="#ame-v1-ListProjectSrcsResponse">ListProjectSrcsResponse</a></td>
+<td></td>
+</tr>
+<tr>
+<td>CreateProject</td>
+<td><a href="#ame-v1-CreateProjectRequest">CreateProjectRequest</a></td>
+<td><a href="#ame-v1-ProjectId">ProjectId</a></td>
+<td></td>
+</tr>
+<tr>
+<td>ListTasks</td>
+<td><a href="#ame-v1-ListTasksRequest">ListTasksRequest</a></td>
+<td><a href="#ame-v1-ListTasksResponse">ListTasksResponse</a></td>
+<td></td>
+</tr>
+<tr>
+<td>RemoveTask</td>
+<td><a href="#ame-v1-RemoveTaskRequest">RemoveTaskRequest</a></td>
+<td><a href="#ame-v1-Empty">Empty</a></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h2 id="scalar-value-types">Scalar Value Types</h2>
+<table>
+<thead>
+<tr>
+<th>.proto Type</th>
+<th>Notes</th>
+<th>C++</th>
+<th>Java</th>
+<th>Python</th>
+<th>Go</th>
+<th>C#</th>
+<th>PHP</th>
+<th>Ruby</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a name="double" /> double</td>
+<td></td>
+<td>double</td>
+<td>double</td>
+<td>float</td>
+<td>float64</td>
+<td>double</td>
+<td>float</td>
+<td>Float</td>
+</tr>
+<tr>
+<td><a name="float" /> float</td>
+<td></td>
+<td>float</td>
+<td>float</td>
+<td>float</td>
+<td>float32</td>
+<td>float</td>
+<td>float</td>
+<td>Float</td>
+</tr>
+<tr>
+<td><a name="int32" /> int32</td>
+<td>Uses variable-length encoding. Inefficient for encoding negative numbers – if your field is likely to have negative values, use sint32 instead.</td>
+<td>int32</td>
+<td>int</td>
+<td>int</td>
+<td>int32</td>
+<td>int</td>
+<td>integer</td>
+<td>Bignum or Fixnum (as required)</td>
+</tr>
+<tr>
+<td><a name="int64" /> int64</td>
+<td>Uses variable-length encoding. Inefficient for encoding negative numbers – if your field is likely to have negative values, use sint64 instead.</td>
+<td>int64</td>
+<td>long</td>
+<td>int/long</td>
+<td>int64</td>
+<td>long</td>
+<td>integer/string</td>
+<td>Bignum</td>
+</tr>
+<tr>
+<td><a name="uint32" /> uint32</td>
+<td>Uses variable-length encoding.</td>
+<td>uint32</td>
+<td>int</td>
+<td>int/long</td>
+<td>uint32</td>
+<td>uint</td>
+<td>integer</td>
+<td>Bignum or Fixnum (as required)</td>
+</tr>
+<tr>
+<td><a name="uint64" /> uint64</td>
+<td>Uses variable-length encoding.</td>
+<td>uint64</td>
+<td>long</td>
+<td>int/long</td>
+<td>uint64</td>
+<td>ulong</td>
+<td>integer/string</td>
+<td>Bignum or Fixnum (as required)</td>
+</tr>
+<tr>
+<td><a name="sint32" /> sint32</td>
+<td>Uses variable-length encoding. Signed int value. These more efficiently encode negative numbers than regular int32s.</td>
+<td>int32</td>
+<td>int</td>
+<td>int</td>
+<td>int32</td>
+<td>int</td>
+<td>integer</td>
+<td>Bignum or Fixnum (as required)</td>
+</tr>
+<tr>
+<td><a name="sint64" /> sint64</td>
+<td>Uses variable-length encoding. Signed int value. These more efficiently encode negative numbers than regular int64s.</td>
+<td>int64</td>
+<td>long</td>
+<td>int/long</td>
+<td>int64</td>
+<td>long</td>
+<td>integer/string</td>
+<td>Bignum</td>
+</tr>
+<tr>
+<td><a name="fixed32" /> fixed32</td>
+<td>Always four bytes. More efficient than uint32 if values are often greater than 2^28.</td>
+<td>uint32</td>
+<td>int</td>
+<td>int</td>
+<td>uint32</td>
+<td>uint</td>
+<td>integer</td>
+<td>Bignum or Fixnum (as required)</td>
+</tr>
+<tr>
+<td><a name="fixed64" /> fixed64</td>
+<td>Always eight bytes. More efficient than uint64 if values are often greater than 2^56.</td>
+<td>uint64</td>
+<td>long</td>
+<td>int/long</td>
+<td>uint64</td>
+<td>ulong</td>
+<td>integer/string</td>
+<td>Bignum</td>
+</tr>
+<tr>
+<td><a name="sfixed32" /> sfixed32</td>
+<td>Always four bytes.</td>
+<td>int32</td>
+<td>int</td>
+<td>int</td>
+<td>int32</td>
+<td>int</td>
+<td>integer</td>
+<td>Bignum or Fixnum (as required)</td>
+</tr>
+<tr>
+<td><a name="sfixed64" /> sfixed64</td>
+<td>Always eight bytes.</td>
+<td>int64</td>
+<td>long</td>
+<td>int/long</td>
+<td>int64</td>
+<td>long</td>
+<td>integer/string</td>
+<td>Bignum</td>
+</tr>
+<tr>
+<td><a name="bool" /> bool</td>
+<td></td>
+<td>bool</td>
+<td>boolean</td>
+<td>boolean</td>
+<td>bool</td>
+<td>bool</td>
+<td>boolean</td>
+<td>TrueClass/FalseClass</td>
+</tr>
+<tr>
+<td><a name="string" /> string</td>
+<td>A string must always contain UTF-8 encoded or 7-bit ASCII text.</td>
+<td>string</td>
+<td>String</td>
+<td>str/unicode</td>
+<td>string</td>
+<td>string</td>
+<td>string</td>
+<td>String (UTF-8)</td>
+</tr>
+<tr>
+<td><a name="bytes" /> bytes</td>
+<td>May contain any arbitrary sequence of bytes.</td>
+<td>string</td>
+<td>ByteString</td>
+<td>str</td>
+<td>[]byte</td>
+<td>ByteString</td>
+<td>string</td>
+<td>String (ASCII-8BIT)</td>
+</tr>
+</tbody>
+</table>
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12Z"/></svg>
+            Back to top
+          </button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.top", "navigation.path"], "search": "../../assets/javascripts/workers/search.208ed371.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.51198bba.min.js"></script>
+      
+    
+  </body>
+</html>
