@@ -42,4 +42,4 @@ For example if there is no available object storage. There should be no issues t
 
 If you think something has gone wrong you can always run `ame admin check` and AME will report any issues. The dashboard will also make it clear if there is any any need to take action.
 
-Noe you are all setup to go through the walkthrough. If you have any questons or problem don't hestitate to ask. TODO where?
+Now you are all setup to go through the walkthrough. If you have any questons or problem don't hestitate to ask. TODO where?
