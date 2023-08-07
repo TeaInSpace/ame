@@ -117,54 +117,6 @@ the AME instance. This could be done via a Git repo and for production use cases
 educational purposes we can manually place our local version of the project in the cluster. Run `ame project sync` and AME will
 automatically train a version of the model, if needed and deploy an inference server for the model.
 
-## Your first Task
-
-[`Tasks`](TODO) are an important building block for AME. This guide will walk you through the basic of constructing and running [`Task`](todo). 
-
-We assume that the AME [CLI](todo) is setup and connected to an AME instance. If not see this [guide](todo). 
-
-Before we can run a task we must have a project setup. To init a project follow the commands as shown below, replacing myproject with the 
-path to your project.
-
-```sh
-cd myproject
-ame init
-```
-
-Now you should have an AME file ame.yaml inside your project:
-```yaml
-name: myproject
-```
-
-Not very exciting yet. Next we want to add a Task to this file so we can run it.
-Update your file to match the changes shown below.
-
-```yaml
-name: myproject
-tasks:
-  - name: training
-    !poetry
-    executor:
-      pythonVersion: 3.11
-      command: python train.py
-    resources:
-      memory: 2G 
-      cpu: 2 
-      storage: 10G 
-```
-
-Here we add a list of tasks for our project, containing a single `Task` called training. Lets look at the anatomy of training.
-
-First we set the name `name: training`, pretty standard YAML. Next we set the [executor](todo). This syntax might seem a bit confusing
-if you have not used this YAML feature before. `!poetry` adds a tag to the executor indicating the executor type. In this case we are 
-using the poetry executor. It requires two fields to be set. the Python version and the command to run. This tells AME how to execute the [`Task`](todo).
-
-Finally we set the required resources. 2G ram, 2 cpu threads and 10G of storage.
-
-To run the task we can use the CLI:
-```sh
-ame task run
-```
 
  
  
