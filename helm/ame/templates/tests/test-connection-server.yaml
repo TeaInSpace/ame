@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ include "ame.server.fullname" . }}-test-connection"
+  labels:
+    {{- include "ame.labels" (dict "context" . "component" .Values.server.name "name" .Values.server.name) | nindent 4 }} 
+  annotations:
+    "helm.sh/hook": test
+spec:
+  containers:
+    - name: wget-server
+      image: busybox
+      command: ['wget']
+      args: ['{{ .Values.server.name  }}:{{ .Values.server.service.port }}']
+  restartPolicy: Never

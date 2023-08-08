@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ include "ame.controller.fullname" . }}-test-connection"
+  labels:
+    {{- include "ame.labels" (dict "context" . "component" .Values.controller.name "name" .Values.controller.name) | nindent 4 }} 
+  annotations:
+    "helm.sh/hook": test
+spec:
+  containers:
+    - name: wget-controller
+      image: busybox
+      command: ['wget']
+      args: ['{{ .Values.controller.name  }}:{{ .Values.controller.service.port }}']
+  restartPolicy: Never

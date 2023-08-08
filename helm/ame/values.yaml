@@ -1,0 +1,190 @@
+# Default values for ame.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+  # -- Version used to select the images for AME's server, controller and default images Tasks and model deployments.
+ameVersion: ""
+
+# -- The namepace AME will operate within, this includes any depencies like Argo workflows, minio and keycloak.
+namespace: 
+  create: true
+  name: "ame-system"
+
+server:
+  replicaCount: 1
+  service:
+    type: ClusterIP
+    port: 3342
+  name: server
+  serviceAccount:
+    create: true
+    name: ame-server
+  ingress:
+    enabled: true
+    hosts:
+      - host: ame.local
+        http:
+          paths:
+          - path: /
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: ame-server-service
+                port:
+                  number: 3342 
+    tls: 
+      - hosts:
+        - ame.local
+        secretName: ame-tls-cert
+  autoscaling:
+    enabled: false
+  labels: {}
+  podSecurityContext: {}
+  image:
+    repository: ""
+    tag: ""
+
+controller:
+  name: controller
+  replicaCount: 1
+  service:
+    type: ClusterIP
+    port: 80
+  serviceAccount:
+    create: true
+    name: ame-controller
+  ingress:
+    enabled: true
+  autoscaling:
+    enabled: false
+  labels: {}
+  podSecurityContext: {}
+  image:
+    repository: ""
+    tag: ""
+
+mlflow:
+  enabled: true
+
+argo-workflows:
+  enabled: true
+
+# minio options
+minio:
+  enabled: true
+
+nginx-ingress:
+  enable: true
+
+objectStorage:
+  s3:
+    secretName: "ame-minio-secret"
+    accessIdKey: "MINIO_ROOT_USER"
+    accessSecretKey: "MINIO_ROOT_PASSWORD"
+
+tasks:
+
+  # TODO add security options here
+  securty:
+
+    podSecurityContext: {}
+      # fsGroup: 2000
+
+    securityContext: {}
+      # capabilities:
+      #   drop:
+      #   - ALL
+      # readOnlyRootFilesystem: true
+      # runAsNonRoot: true
+      # runAsUser: 1000
+
+  # TODO: set default resources
+  resources:
+
+  # -- The service account used by Tasks with minimal permissions.
+  serviceAccount:
+    # Specifies whether a service account should be created
+    create: true
+    # Annotations to add to the service account
+    annotations: {}
+    # The name of the service account to use.
+    # If not set and create is true, a name is generated using the fullname template
+    name: "ame-task"
+  
+  tolerations: []
+
+
+  affinity: {}
+  nodeSelector: {}
+
+modelDeployments:
+  # TODO add security options here
+  securty:
+
+    podSecurityContext: {}
+      # fsGroup: 2000
+
+    securityContext: {}
+      # capabilities:
+      #   drop:
+      #   - ALL
+      # readOnlyRootFilesystem: true
+      # runAsNonRoot: true
+      # runAsUser: 1000
+
+  # TODO: set default resources
+  resources:
+  # -- The service account used by Tasks with minimal permissions.
+  serviceAccount:
+    # Specifies whether a service account should be created
+    create: true
+    # Annotations to add to the service account
+    annotations: {}
+    # The name of the service account to use.
+    # If not set and create is true, a name is generated using the fullname template
+    name: "ame-model"
+  
+  nodeSelector: {}
+
+
+  resources: {}
+    # We usually recommend not to specify default resources and to leave this as a conscious
+    # choice for the user. This also increases chances charts run on environments with little
+    # resources, such as Minikube. If you do want to specify resources, uncomment the following
+    # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+    # limits:
+    #   cpu: 100m
+    #   memory: 128Mi
+    # requests:
+    #   cpu: 100m
+    #   memory: 128Mi
+
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+      # kubernetes.io/ingress.class: nginx
+      # kubernetes.io/tls-acme: "true"
+    hosts:
+      - host: chart-example.local
+        paths:
+          - path: /
+            pathType: ImplementationSpecific
+    tls: []
+    #  - secretName: chart-example-tls
+    #    hosts:
+    #      - chart-example.local
+
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 100
+    targetCPUUtilizationPercentage: 80
+    # targetMemoryUtilizationPercentage: 80
+
+  tolerations: []
+
+
+  affinity: {}
+
+
