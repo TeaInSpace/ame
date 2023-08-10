@@ -1,0 +1,81 @@
+{{- if .Values.crds.install }}
+
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: projectsources.ame.teainspace.com
+spec:
+  group: ame.teainspace.com
+  names:
+    categories: []
+    kind: ProjectSource
+    plural: projectsources
+    shortNames:
+    - psrc
+    singular: projectsource
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns: []
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: Auto-generated derived type for ProjectSourceSpec via `CustomResource`
+        properties:
+          spec:
+            properties:
+              git:
+                nullable: true
+                properties:
+                  repository:
+                    type: string
+                  secret:
+                    nullable: true
+                    type: string
+                  syncInterval:
+                    nullable: true
+                    type: string
+                  username:
+                    nullable: true
+                    type: string
+                required:
+                - repository
+                type: object
+            type: object
+          status:
+            nullable: true
+            properties:
+              issues:
+                items:
+                  properties:
+                    explanation:
+                      nullable: true
+                      type: string
+                    issueType:
+                      format: int32
+                      type: integer
+                  required:
+                  - issueType
+                  type: object
+                type: array
+              lastSynced:
+                nullable: true
+                type: string
+              reason:
+                nullable: true
+                type: string
+              state:
+                format: int32
+                type: integer
+            required:
+            - issues
+            - state
+            type: object
+        required:
+        - spec
+        title: ProjectSource
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+{{- end }}

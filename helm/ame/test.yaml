@@ -96,6 +96,18 @@ metadata:
     app.kubernetes.io/component: server
     app.kubernetes.io/part-of: ame
 ---
+# Source: ame/templates/tasks/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ame-task
+  labels:
+    helm.sh/chart: ame-0.1.0-alpha1
+    app.kubernetes.io/name: ame-server
+    
+    app.kubernetes.io/component: controller
+    app.kubernetes.io/part-of: ame
+---
 # Source: ame/charts/minio/templates/secrets.yaml
 apiVersion: v1
 kind: Secret
@@ -110,7 +122,7 @@ metadata:
 type: Opaque
 data:
   root-user: "YWRtaW4="
-  root-password: "N2JyV3psRU1uZQ=="
+  root-password: "TnlQcGRZa2F4Rg=="
 ---
 # Source: ame/charts/mlflow/templates/secret.yaml
 apiVersion: v1
@@ -171,6 +183,21 @@ metadata:
     release: release-name
     heritage: Helm
 data:
+---
+# Source: ame/templates/server/config_map.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: release-name-server-configmap
+  namespace: "default"
+  labels:
+    helm.sh/chart: ame-0.1.0-alpha1
+    
+    app.kubernetes.io/part-of: ame
+data:
+  AME_SERVER_PORT: "3342"
+  AME_OBJECT_STORAGE_ENDPOINT: http://ame-minio:9000
+  AME_OBJECT_STORAGE_BUCKET: ameprojectstorageh7gkoe
 ---
 # Source: ame/charts/minio/templates/pvc.yaml
 kind: PersistentVolumeClaim
@@ -1548,6 +1575,323 @@ rules:
       - watch
       - get
 ---
+# Source: ame/templates/controller/rbac.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: ame-controller-role
+rules:
+- apiGroups:
+  - ame.teainspace.com
+  resources:
+  - reccurringtasks
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ame.teainspace.com
+  resources:
+  - reccurringtasks/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - ame.teainspace.com
+  resources:
+  - reccurringtasks/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - ame.teainspace.com
+  resources:
+  - tasks
+  - datasets
+  - datasets/finalizers
+  - datasets/status
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ame.teainspace.com
+  resources:
+  - tasks/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - ame.teainspace.com
+  resources:
+  - tasks/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - argoproj.io
+  resources:
+  - cronworkflows
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - argoproj.io
+  resources:
+  - workflows
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - argoproj.io
+  resources:
+  - workflows/status
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ame.teainspace.com
+  resources:
+  - projects
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ame.teainspace.com
+  resources:
+  - projects/status
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ame.teainspace.com
+  resources:
+  - projectsources
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ame.teainspace.com
+  resources:
+  - projectsources/status
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - apps
+  resources:
+  - deployments
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - services
+  - secrets
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - networking.k8s.io
+  resources:
+  - ingresses
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+---
+# Source: ame/templates/server/rbac.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: ame-server-role
+rules:
+- apiGroups:
+  - ame.teainspace.com
+  resources:
+  - tasks
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ame.teainspace.com
+  resources:
+  - tasks/status
+  verbs:
+  - get
+- apiGroups:
+  - ame.teainspace.com
+  resources:
+  - projectsources 
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ame.teainspace.com
+  resources:
+  - projectsources/status
+  verbs:
+  - get
+- apiGroups: 
+  - ""
+  resources: 
+  - pods
+  - pods/log
+  - pods/status
+  - secrets
+  verbs:
+  - get
+  - watch
+  - list
+  - patch
+  - create
+  - delete
+- apiGroups:
+  - ame.teainspace.com
+  resources:
+  - projects
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+---
+# Source: ame/templates/tasks/rbac.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: ame-task-role
+rules:
+- apiGroups:
+  - ame.teainspace.com
+  resources:
+  - tasks
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ame.teainspace.com
+  resources:
+  - tasks/status
+  verbs:
+  - get
+- apiGroups:
+  - ame.teainspace.com
+  resources:
+  - projectsources 
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ame.teainspace.com
+  resources:
+  - projectsources/status
+  verbs:
+  - get
+- apiGroups: 
+  - ""
+  resources: 
+  - pods
+  - pods/log
+  - pods/status
+  - secrets
+  verbs:
+  - get
+  - watch
+  - list
+  - patch
+  - create
+  - delete
+- apiGroups:
+  - ame.teainspace.com
+  resources:
+  - projects
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+---
 # Source: ame/charts/argo-workflows/templates/controller/workflow-controller-crb.yaml
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -1652,6 +1996,48 @@ subjects:
   - kind: ServiceAccount
     name: release-name-ingress-nginx
     namespace: "default"
+---
+# Source: ame/templates/controller/rbac.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: ame-controller-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: ame-controller-role
+subjects:
+- kind: ServiceAccount
+  name: ame-controller
+  namespace: default
+---
+# Source: ame/templates/server/rbac.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: ame-server-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: ame-server-role
+subjects:
+- kind: ServiceAccount
+  name: ame-server
+  namespace: default
+---
+# Source: ame/templates/tasks/rbac.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: ame-task-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: ame-task-role
+subjects:
+- kind: ServiceAccount
+  name: ame-task
+  namespace: default
 ---
 # Source: ame/charts/argo-workflows/templates/controller/workflow-role.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -2336,7 +2722,7 @@ spec:
         app.kubernetes.io/instance: release-name
         app.kubernetes.io/managed-by: Helm
       annotations:
-        checksum/credentials-secret: 974ac75053141ee4e7869bade54cc3e23dbb1fa2a06b1c2f561473c03725b0f3
+        checksum/credentials-secret: 7f877bf6f2d170ad25016184138764f0da25a90857bb3d540a7f2150ac49b7c0
     spec:
       
       serviceAccountName: release-name-minio
@@ -2519,7 +2905,7 @@ spec:
         - name: ame
           securityContext:
             null
-          image: ":0.1.0-alpha1"
+          image: "ghcr.io/teainspace/ame-controller/main:d162"
           imagePullPolicy: 
           ports:
             - name: http
@@ -2564,7 +2950,7 @@ spec:
         - name: ame
           securityContext:
             null
-          image: ":0.1.0-alpha1"
+          image: "ghcr.io/teainspace/ame-server/main:d162"
           imagePullPolicy: 
           ports:
             - name: http
@@ -2586,12 +2972,14 @@ spec:
           env:
             - name: S3_ACCESS_ID
               valueFrom:
-                name: ame-minio-secret
-                key: MINIO_ROOT_USER
-            - name: S3_ACCESS_SECRET
+                secretKeyRef:
+                  name: ame-minio
+                  key: root-user
+            - name: S3_SECRET
               valueFrom:
-                name: ame-minio-secret
-                key: MINIO_ROOT_PASSWORD
+                secretKeyRef:
+                  name: ame-minio
+                  key: root-password
 ---
 # Source: ame/charts/ingress-nginx/templates/controller-ingressclass.yaml
 # We don't support namespaced ingressClass yet

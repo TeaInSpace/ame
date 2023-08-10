@@ -10,6 +10,9 @@ namespace:
   create: true
   name: "ame-system"
 
+crds:
+  install: true
+
 server:
   replicaCount: 1
   service:
@@ -84,7 +87,7 @@ objectStorage:
     endpoint: "http://ame-minio:9000"
     bucket : ameprojectstorageh7gkoe
 
-tasks:
+task:
 
   # TODO add security options here
   securty:

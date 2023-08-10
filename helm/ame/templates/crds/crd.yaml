@@ -1,0 +1,261 @@
+{{- if .Values.crds.install }}
+
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: tasks.ame.teainspace.com
+spec:
+  group: ame.teainspace.com
+  names:
+    categories: []
+    kind: Task
+    plural: tasks
+    shortNames:
+    - tk
+    singular: task
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns: []
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: Auto-generated derived type for TaskSpec via `CustomResource`
+        properties:
+          spec:
+            properties:
+              artifactCfg:
+                nullable: true
+                properties:
+                  paths:
+                    default: []
+                    items:
+                      type: string
+                    type: array
+                  saveChangedFiles:
+                    type: boolean
+                required:
+                - saveChangedFiles
+                type: object
+              dataSets:
+                items:
+                  type: string
+                type: array
+              deletionApproved:
+                type: boolean
+              env:
+                default: []
+                items:
+                  properties:
+                    key:
+                      type: string
+                    val:
+                      type: string
+                  required:
+                  - key
+                  - val
+                  type: object
+                type: array
+              executor:
+                nullable: true
+                oneOf:
+                - required:
+                  - poetry
+                - required:
+                  - mlflow
+                - required:
+                  - pipEnv
+                - required:
+                  - pip
+                - required:
+                  - custom
+                properties:
+                  custom:
+                    properties:
+                      command:
+                        type: string
+                      pythonVersion:
+                        type: string
+                    required:
+                    - command
+                    - pythonVersion
+                    type: object
+                  mlflow:
+                    type: object
+                  pip:
+                    properties:
+                      command:
+                        type: string
+                      pythonVersion:
+                        type: string
+                    required:
+                    - command
+                    - pythonVersion
+                    type: object
+                  pipEnv:
+                    properties:
+                      command:
+                        type: string
+                    required:
+                    - command
+                    type: object
+                  poetry:
+                    properties:
+                      command:
+                        type: string
+                      pythonVersion:
+                        type: string
+                    required:
+                    - command
+                    - pythonVersion
+                    type: object
+                type: object
+              fromTemplate:
+                nullable: true
+                properties:
+                  name:
+                    type: string
+                  project:
+                    nullable: true
+                    type: string
+                required:
+                - name
+                type: object
+              name:
+                nullable: true
+                type: string
+              project:
+                nullable: true
+                type: string
+              resources:
+                additionalProperties:
+                  type: string
+                default: {}
+                type: object
+              secrets:
+                default: []
+                items:
+                  oneOf:
+                  - required:
+                    - ame
+                  properties:
+                    ame:
+                      properties:
+                        injectAs:
+                          type: string
+                        key:
+                          type: string
+                      required:
+                      - injectAs
+                      - key
+                      type: object
+                  type: object
+                type: array
+              source:
+                nullable: true
+                oneOf:
+                - required:
+                  - git
+                - required:
+                  - ame
+                properties:
+                  ame:
+                    properties:
+                      path:
+                        type: string
+                    required:
+                    - path
+                    type: object
+                  git:
+                    properties:
+                      reference:
+                        type: string
+                      repository:
+                        type: string
+                      secret:
+                        nullable: true
+                        oneOf:
+                        - required:
+                          - AmeSecret
+                        properties:
+                          AmeSecret:
+                            type: string
+                        type: object
+                      user_name:
+                        type: string
+                    required:
+                    - reference
+                    - repository
+                    - user_name
+                    type: object
+                type: object
+              taskRef:
+                nullable: true
+                properties:
+                  name:
+                    type: string
+                  project:
+                    nullable: true
+                    type: string
+                required:
+                - name
+                type: object
+              triggers:
+                nullable: true
+                properties:
+                  schedule:
+                    nullable: true
+                    type: string
+                type: object
+            required:
+            - deletionApproved
+            type: object
+          status:
+            description: 'TODO: should there be an error case?'
+            nullable: true
+            properties:
+              phase:
+                nullable: true
+                oneOf:
+                - required:
+                  - pending
+                - required:
+                  - running
+                - required:
+                  - failed
+                - required:
+                  - succeeded
+                properties:
+                  failed:
+                    properties:
+                      workflowName:
+                        type: string
+                    required:
+                    - workflowName
+                    type: object
+                  pending:
+                    type: object
+                  running:
+                    properties:
+                      workflowName:
+                        type: string
+                    required:
+                    - workflowName
+                    type: object
+                  succeeded:
+                    properties:
+                      workflowName:
+                        type: string
+                    required:
+                    - workflowName
+                    type: object
+                type: object
+            type: object
+        required:
+        - spec
+        title: Task
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+{{- end }}

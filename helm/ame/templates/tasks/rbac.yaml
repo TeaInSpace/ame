@@ -1,0 +1,84 @@
+---
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: ame-task-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: ame-task-role
+subjects:
+- kind: ServiceAccount
+  name: {{ .Values.task.serviceAccount.name }}
+  namespace: {{ .Release.Namespace }}
+---
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: ame-task-role
+rules:
+- apiGroups:
+  - ame.teainspace.com
+  resources:
+  - tasks
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ame.teainspace.com
+  resources:
+  - tasks/status
+  verbs:
+  - get
+- apiGroups:
+  - ame.teainspace.com
+  resources:
+  - projectsources 
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ame.teainspace.com
+  resources:
+  - projectsources/status
+  verbs:
+  - get
+- apiGroups: 
+  - ""
+  resources: 
+  - pods
+  - pods/log
+  - pods/status
+  - secrets
+  verbs:
+  - get
+  - watch
+  - list
+  - patch
+  - create
+  - delete
+- apiGroups:
+  - ame.teainspace.com
+  resources:
+  - projects
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+
