@@ -49,18 +49,20 @@ spec:
               port: http
           resources:
             {{- toYaml .Values.server.resources | nindent 12 }}
-          - endFrom:
+          envFrom:
             - configMapRef:
                 name: ame-server-configmap
           env:
             - name: S3_ACCESS_ID
               valueFrom:
-                name: {{ .Values.objectStorage.s3.secretName }}
-                key: {{ .Values.objectStorage.s3.accessIdKey }}
-            - name: S3_ACCESS_SECRET
+                secretKeyRef:
+                  name: {{ .Values.objectStorage.s3.secretName }}
+                  key: {{ .Values.objectStorage.s3.accessIdKey }}
+            - name: S3_SECRET
               valueFrom:
-                name: {{ .Values.objectStorage.s3.secretName }}
-                key: {{ .Values.objectStorage.s3.accessSecretKey }}
+                secretKeyRef:
+                  name: {{ .Values.objectStorage.s3.secretName }}
+                  key: {{ .Values.objectStorage.s3.accessSecretKey }}
 
 
       {{- with .Values.server.nodeSelector }}

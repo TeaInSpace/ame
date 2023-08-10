@@ -41,9 +41,9 @@ server:
   labels: {}
   podSecurityContext: {}
   image:
-    repository: ""
-    tag: ""
-
+    repository: "ghcr.io/teainspace/ame-server/main"
+    tag: "d162"
+  resources: {}
 controller:
   name: controller
   replicaCount: 1
@@ -60,8 +60,8 @@ controller:
   labels: {}
   podSecurityContext: {}
   image:
-    repository: ""
-    tag: ""
+    repository: "ghcr.io/teainspace/ame-controller/main"
+    tag: "d162"
 
 mlflow:
   enabled: true
@@ -78,9 +78,11 @@ nginx-ingress:
 
 objectStorage:
   s3:
-    secretName: "ame-minio-secret"
-    accessIdKey: "MINIO_ROOT_USER"
-    accessSecretKey: "MINIO_ROOT_PASSWORD"
+    secretName: "ame-minio"
+    accessIdKey: "root-user"
+    accessSecretKey: "root-password"
+    endpoint: "http://ame-minio:9000"
+    bucket : ameprojectstorageh7gkoe
 
 tasks:
 

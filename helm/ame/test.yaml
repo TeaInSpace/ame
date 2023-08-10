@@ -110,7 +110,7 @@ metadata:
 type: Opaque
 data:
   root-user: "YWRtaW4="
-  root-password: "ZGM2NUZPZk9ubA=="
+  root-password: "N2JyV3psRU1uZQ=="
 ---
 # Source: ame/charts/mlflow/templates/secret.yaml
 apiVersion: v1
@@ -2336,7 +2336,7 @@ spec:
         app.kubernetes.io/instance: release-name
         app.kubernetes.io/managed-by: Helm
       annotations:
-        checksum/credentials-secret: b7c145b6c68cc9b1b91f016eb6f0a8e8a67eb8588c0095b7c7da76d5a6e82e75
+        checksum/credentials-secret: 974ac75053141ee4e7869bade54cc3e23dbb1fa2a06b1c2f561473c03725b0f3
     spec:
       
       serviceAccountName: release-name-minio
@@ -2579,7 +2579,10 @@ spec:
               path: /
               port: http
           resources:
-            null
+            {}
+          envFrom:
+            - configMapRef:
+                name: ame-server-configmap
           env:
             - name: S3_ACCESS_ID
               valueFrom:
