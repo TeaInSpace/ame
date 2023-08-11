@@ -543,7 +543,7 @@ impl Model {
                             env: Some(vec![EnvVar {
                                 name: "MLFLOW_TRACKING_URI".to_string(),
                                 value: Some(
-                                    "http://mlflow.default.svc.cluster.local:5000".to_string(),
+                                    "http://mlflow.ame-system.svc.cluster.local:5000".to_string(),
                                 ),
                                 ..EnvVar::default()
                             }]),

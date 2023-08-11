@@ -23,7 +23,14 @@ server:
     create: true
     name: ame-server
   ingress:
+    annotations:
+      nginx.ingress.kubernetes.io/backend-protocol: "GRPC"
+      cert-manager.io/cluster-issuer: "selfsigned-cluster-issuer"
+      nginx.ingress.kubernetes.io/cors-allow-origin: "*"
+      nginx.ingress.kubernetes.io/enable-cors: "false"
+      nginx.ingress.kubernetes.io/cors-allow-headers: "DNT, Keep-Alive, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Range, Authorization, x-grpc-web"
     enabled: true
+    className: nginx
     hosts:
       - host: ame.local
         http:
@@ -56,8 +63,6 @@ controller:
   serviceAccount:
     create: true
     name: ame-controller
-  ingress:
-    enabled: true
   autoscaling:
     enabled: false
   labels: {}
@@ -65,9 +70,11 @@ controller:
   image:
     repository: "ghcr.io/teainspace/ame-controller/main"
     tag: "d162"
+  logging:
+    env_filter: info,controller=debug
 
 mlflow:
-  enabled: true
+  endpoint: "http://mlflow.ame-system.svc.cluster.local:5000"
 
 argo-workflows:
   enabled: true
@@ -76,19 +83,19 @@ argo-workflows:
 minio:
   enabled: true
 
-nginx-ingress:
-  enable: true
-
 objectStorage:
   s3:
     secretName: "ame-minio"
     accessIdKey: "root-user"
     accessSecretKey: "root-password"
     endpoint: "http://ame-minio:9000"
-    bucket : ameprojectstorageh7gkoe
+    bucket : ameprojectstorage
 
 task:
-
+  image:
+    repository:
+      repository: "ghcr.io/teainspace/ame-controller/main"
+      tag: "d162"
   # TODO add security options here
   securty:
 
@@ -122,74 +129,63 @@ task:
   affinity: {}
   nodeSelector: {}
 
-modelDeployments:
-  # TODO add security options here
-  securty:
+models:
+  deployments:
+    # TODO add security options here
+    securty:
 
-    podSecurityContext: {}
-      # fsGroup: 2000
+      podSecurityContext: {}
+        # fsGroup: 2000
 
-    securityContext: {}
-      # capabilities:
-      #   drop:
-      #   - ALL
-      # readOnlyRootFilesystem: true
-      # runAsNonRoot: true
-      # runAsUser: 1000
+      securityContext: {}
+        # capabilities:
+        #   drop:
+        #   - ALL
+        # readOnlyRootFilesystem: true
+        # runAsNonRoot: true
+        # runAsUser: 1000
 
-  # TODO: set default resources
-  resources:
-  # -- The service account used by Tasks with minimal permissions.
-  serviceAccount:
-    # Specifies whether a service account should be created
-    create: true
-    # Annotations to add to the service account
-    annotations: {}
-    # The name of the service account to use.
-    # If not set and create is true, a name is generated using the fullname template
-    name: "ame-model"
+    # TODO: set default resources
+    resources:
+    # -- The service account used by Tasks with minimal permissions.
+    serviceAccount:
+      # Specifies whether a service account should be created
+      create: true
+      # Annotations to add to the service account
+      annotations: {}
+      # The name of the service account to use.
+      # If not set and create is true, a name is generated using the fullname template
+      name: "ame-model"
   
-  nodeSelector: {}
+    nodeSelector: {}
 
 
-  resources: {}
-    # We usually recommend not to specify default resources and to leave this as a conscious
-    # choice for the user. This also increases chances charts run on environments with little
-    # resources, such as Minikube. If you do want to specify resources, uncomment the following
-    # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
-    # limits:
-    #   cpu: 100m
-    #   memory: 128Mi
-    # requests:
-    #   cpu: 100m
-    #   memory: 128Mi
+    resources: {}
+      # We usually recommend not to specify default resources and to leave this as a conscious
+      # choice for the user. This also increases chances charts run on environments with little
+      # resources, such as Minikube. If you do want to specify resources, uncomment the following
+      # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+      # limits:
+      #   cpu: 100m
+      #   memory: 128Mi
+      # requests:
+      #   cpu: 100m
+      #   memory: 128Mi
 
-  ingress:
-    enabled: false
-    className: ""
-    annotations: {}
-      # kubernetes.io/ingress.class: nginx
-      # kubernetes.io/tls-acme: "true"
-    hosts:
-      - host: chart-example.local
-        paths:
-          - path: /
-            pathType: ImplementationSpecific
-    tls: []
-    #  - secretName: chart-example-tls
-    #    hosts:
-    #      - chart-example.local
+    ingress:
+      host: ""
+      defaultIngress: ""
 
-  autoscaling:
-    enabled: false
-    minReplicas: 1
-    maxReplicas: 100
-    targetCPUUtilizationPercentage: 80
-    # targetMemoryUtilizationPercentage: 80
+    autoscaling:
+      enabled: false
+      minReplicas: 1
+      maxReplicas: 100
+      targetCPUUtilizationPercentage: 80
+      # targetMemoryUtilizationPercentage: 80
 
-  tolerations: []
+    tolerations: []
 
 
-  affinity: {}
+    affinity: {}
 
 

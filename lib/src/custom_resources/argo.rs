@@ -380,8 +380,8 @@ impl<'a> WorkflowTemplateBuilder<'a> {
             "name":  "AWS_ACCESS_KEY_ID",
             "valueFrom": {
                 "secretKeyRef":  {
-                    "key": "MINIO_ROOT_USER",
-                    "name": "ame-minio-secret",
+                    "key": "root-user",
+                    "name": "ame-minio",
                     "optional": false,
                 }
             },
@@ -390,15 +390,15 @@ impl<'a> WorkflowTemplateBuilder<'a> {
             "name":  "AWS_SECRET_ACCESS_KEY",
             "valueFrom": {
                 "secretKeyRef":  {
-                    "key": "MINIO_ROOT_PASSWORD",
-                    "name": "ame-minio-secret",
+                    "key": "root-password",
+                    "name": "ame-minio",
                     "optional": false
                 }
             },
         },
         {
             "name": "MLFLOW_TRACKING_URI",
-            "value": "http://mlflow.default.svc.cluster.local:5000"
+            "value": "http://mlflow.ame-system.svc.cluster.local:5000"
         },
         {
             "name":  "MINIO_URL",

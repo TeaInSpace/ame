@@ -20,7 +20,6 @@ pub async fn find_ame_endpoint(
     namespace: &str,
     service_name: &str,
 ) -> Result<String, Box<dyn std::error::Error>> {
-    return Ok("http://localhost:3342".to_string());
     let client = Client::try_default().await?;
     let services = Api::<Service>::namespaced(client.clone(), namespace);
     let service = services.get(service_name).await?;

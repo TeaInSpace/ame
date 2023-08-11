@@ -33,7 +33,6 @@ ci_tools:
   cargo binstall --force -y cargo-outdated
   cargo binstall --force -y cargo-udeps
 
-
 tools:
   rustup component add clippy --toolchain nightly
   rustup component add rustfmt --toolchain nightly
@@ -83,7 +82,7 @@ server_logs *ARGS:
   kubectl logs -n {{TARGET_NAMESPACE}} -l app=ame-server {{ARGS}}
 
 controller_logs *ARGS:
-  kubectl logs -n {{TARGET_NAMESPACE}} -l app=ame-controller {{ARGS}}
+  kubectl logs -n {{TARGET_NAMESPACE}} -l app.kubernetes.io/name=ame-controller {{ARGS}}
 
 watch_web:
   cargo leptos watch
@@ -134,7 +133,7 @@ setup_cli_ingress:
 
 # Local cluster utilities
 
-setup_cluster: k3s create_namespace create_service_accounts install_cert_manager install_argo_workflows deploy_keycloak deploy_minio deploy_nginx
+setup_cluster: k3s create_namespace install_cert_manager deploy_keycloak deploy_nginx build_and_push_ame_images
 
 k3s:
   k3d cluster create main \
@@ -184,13 +183,19 @@ ensure_host_entry IP HOST:
 install_argo_workflows:
   kubectl apply -n {{TARGET_NAMESPACE}} -f https://raw.githubusercontent.com/argoproj/argo-workflows/master/manifests/quick-start-postgres.yaml
 
-deploy_ame_to_cluster: install_crd build_and_deploy_server build_and_deploy_controller build_and_push_executor_image
+deploy_ame_to_cluster: install_crd build_and_deploy_server build_and_deploy_controller 
 
 build_and_deploy_server: build_server_image push_server_image deploy_server
+
+build_and_push_server_image: build_server_image push_server_image
+
+build_and_push_controller_image: build_controller_image push_controller_image
 
 build_and_deploy_controller: build_controller_image push_controller_image deploy_controller 
 
 build_and_push_executor_image: build_executor push_executor_image
+
+build_and_push_ame_images: build_and_push_controller_image build_and_push_server_image build_and_push_executor_image
 
 deploy_server:
   #!/bin/sh
@@ -224,7 +229,7 @@ deploy_controller_to_ask:
 
 deploy_controller:
   #!/bin/sh
-  CONTROLLER_IMAGE_TAG="main:{{AME_REGISTRY_PORT}}/{{CONTROLLER_IMAGE}}:latest"
+  CONTROLLER_IMAGE_TAG="main:{{AME_REGISTRY_PORT}}/{{CONTROLLER_IMAGE}}"
   echo $CONTROLLER_IMAGE_TAG
   cd ./manifests/controller/local/
   cat <<'EOF' > controller_config.yaml
@@ -241,6 +246,16 @@ deploy_controller:
   sleep 1
   kubectl delete pod -n ame-system -l app=ame-controller
   kubectl wait pods -n {{TARGET_NAMESPACE}} -l app=ame-controller --for condition=Ready --timeout=90s
+
+deploy_helm_chart_with_local_images:
+  helm upgrade --install ame ./helm/ame -n {{TARGET_NAMESPACE}} --create-namespace \
+  --set controller.image.repository="main:{{AME_REGISTRY_PORT}}/{{CONTROLLER_IMAGE}}" \
+  --set controller.image.tag=latest \
+  --set server.image.repository="main:{{AME_REGISTRY_PORT}}/{{SERVER_IMAGE}}" \
+  --set server.image.tag=latest \
+  --set task.image.repository="main:{{AME_REGISTRY_PORT}}/{{EXECUTOR_IMAGE}}" \
+  --set task.image.tag=latest
+
 
 
 # Container images
@@ -322,6 +337,17 @@ deploy_nginx:
   helm upgrade --install ingress-nginx ingress-nginx \
     --repo https://kubernetes.github.io/ingress-nginx \
     --namespace ingress-nginx --create-namespace 
+
+setup_gke: deploy_keycloak_ask deploy_mlflow  create_namespace create_service_accounts install_argo_workflows deploy_minio 
+  kubectl create clusterrolebinding cluster-admin-binding \
+  --clusterrole cluster-admin \
+  --user $(gcloud config get-value account)
+  kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.6.4/deploy/static/provider/cloud/deploy.yaml
+
+  # Standard cert manager install: https://cert-manager.io/docs/installation/
+  just install_cert_manager
+
+  just deploy_oauth2_proxy
 
 setup_ask:
   # ask ingress nginx install: https://kubernetes.github.io/ingress-nginx/deploy/#azure

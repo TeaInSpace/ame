@@ -1,4 +1,5 @@
 use ame::custom_resources::{
+    common::find_ame_endpoint,
     data_set::{DataSet, DataSetPhase, DataSetStatus},
     new_task::Task,
 };
@@ -25,7 +26,7 @@ use rstest::*;
 use serial_test::serial;
 use std::collections::HashMap;
 
-use time::Instant;
+use time::{Duration, Instant};
 
 use std::{
     path::{Path, PathBuf},
@@ -39,11 +40,11 @@ static INGRESS_SERVICE: &str = "ingress-nginx-controller";
 static AME_NAMESPACE: &str = "ame-system";
 
 async fn test_setup() -> Result<(), Box<dyn std::error::Error>> {
-    // std::env::set_var(
-    //     "AME_ENDPOINT",
-    //     find_ame_endpoint(INGRESS_NAMESPACE, INGRESS_SERVICE).await?,
-    // );
-    std::env::set_var("AME_ENDPOINT", "http://localhost:3342");
+    std::env::set_var(
+        "AME_ENDPOINT",
+        find_ame_endpoint(INGRESS_NAMESPACE, INGRESS_SERVICE).await?,
+    );
+    // std::env::set_var("AME_ENDPOINT", "http://localhost:3342");
 
     Ok(())
 }
@@ -130,6 +131,8 @@ async fn ame_run_task(
     ))
     .unwrap();
 
+    debug!("Uploading project: {project_dir}");
+
     projects
         .patch(
             "shared-templates-project",
@@ -192,43 +195,51 @@ async fn ame_run_task(
         String::from_utf8(res.get_output().stdout.clone()).unwrap()
     );
 
-    // TODO: should be use the ame API server to monitor the status here?
-    let tasks: Api<Task> = Api::namespaced(kube_client().await?.clone(), AME_NAMESPACE);
-    let task_list = tasks.list(&ListParams::default()).await?;
-    let task_obs: Vec<Task> = task_list
-        .items
-        .into_iter()
-        .filter(|t| {
-            t.spec.cfg.name.as_ref().unwrap() == task_id
-                && t.metadata
-                    .owner_references
-                    .as_ref()
-                    .unwrap()
-                    .iter()
-                    .any(|oref| oref.name.contains(&project.name))
-        })
-        .collect();
+    let timeout = Duration::minutes(2);
+    let start = time::Instant::now();
 
-    assert_eq!(
-        task_obs.len(),
-        1,
-        "expected to find a single matching task, instead found {}",
-        task_obs.len()
-    );
+    loop {
+        if start.elapsed() > timeout {
+            return Err(format!(
+                "Task {} was not successfull within timeout {timeout}",
+                task_id
+            )
+            .into());
+        }
 
-    // TODO: we need to identify each task uniqely here
-    assert!(
-        task_obs[0]
-            .status
-            .as_ref()
-            .unwrap()
-            .phase
-            .as_ref()
-            .unwrap()
-            .success(),
-        "task {} was not successful",
-        { task_id }
-    );
+        // TODO: should be use the ame API server to monitor the status here?
+        let tasks: Api<Task> = Api::namespaced(kube_client().await?.clone(), AME_NAMESPACE);
+        let task_list = tasks.list(&ListParams::default()).await?;
+        let task_obs: Vec<Task> = task_list
+            .items
+            .into_iter()
+            .filter(|t| {
+                t.spec.cfg.name.as_ref().unwrap() == task_id
+                    && t.metadata
+                        .owner_references
+                        .as_ref()
+                        .unwrap()
+                        .iter()
+                        .any(|oref| oref.name.contains(&project.name))
+            })
+            .collect();
+
+        assert_eq!(
+            task_obs.len(),
+            1,
+            "expected to find a single matching task, instead found {}",
+            task_obs.len()
+        );
+
+        // TODO: we need to identify each task uniqely here
+        let Some(TaskStatus { phase: Some(ref phase) }) = task_obs[0].status else {
+            continue
+        };
+
+        if phase.success() {
+            break;
+        }
+    }
 
     Ok(())
 }

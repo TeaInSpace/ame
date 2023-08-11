@@ -56,7 +56,7 @@ async fn main() -> Result<()> {
 
     if project_ctrl_cfg.mlflow_url.is_none() {
         project_ctrl_cfg.mlflow_url =
-            Some("http://mlflow.default.svc.cluster.local:5000".to_string());
+            Some("http://mlflow.ame-system.svc.cluster.local:5000".to_string());
     }
 
     let project_controller = start_project_controller(client.clone(), project_ctrl_cfg)

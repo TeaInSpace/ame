@@ -35,14 +35,22 @@ spec:
             - name: http
               containerPort: {{ .Values.controller.service.port }}
               protocol: TCP
-          livenessProbe:
-            httpGet:
-              path: /
-              port: http
-          readinessProbe:
-            httpGet:
-              path: /
-              port: http
+          envFrom:
+            - configMapRef:
+                name: ame-configmap
+          env:
+            - name: S3_ACCESS_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.objectStorage.s3.secretName }}
+                  key: {{ .Values.objectStorage.s3.accessIdKey }}
+            - name: S3_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.objectStorage.s3.secretName }}
+                  key: {{ .Values.objectStorage.s3.accessSecretKey }}
+            - name: RUST_LOG
+              value: {{ .Values.controller.logging.env_filter }}
           resources:
             {{- toYaml .Values.controller.resources | nindent 12 }}
       {{- with .Values.controller.nodeSelector }}

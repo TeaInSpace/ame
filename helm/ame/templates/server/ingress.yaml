@@ -1,5 +1,5 @@
 {{- if .Values.server.ingress.enabled -}}
-{{- $fullName := include "ame.fullname" . -}}
+{{- $fullName := include "ame.server.fullname" . -}}
 {{- $svcPort := .Values.server.service.port -}}
 {{- if and .Values.server.ingress.className (not (semverCompare ">=1.18-0" .Capabilities.KubeVersion.GitVersion)) }}
   {{- if not (hasKey .Values.server.ingress.annotations "kubernetes.io/ingress.class") }}

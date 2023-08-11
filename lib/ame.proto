@@ -94,6 +94,7 @@ message TrainRequest {
   string model_name = 2;
 }
 
+// This is a secret stored by AME
 message AmeSecret {
   string key = 1;
   string value = 2;
