@@ -12,7 +12,10 @@ use super::{
     project::{generate_data_set_task_name, Project},
 };
 
-use crate::custom_resources::project::{local_name, project_name};
+use crate::{
+    custom_resources::project::{local_name, project_name},
+    k8s_safe_types::ImagePullPolicy,
+};
 
 use crate::Result;
 
@@ -48,6 +51,7 @@ impl TaskCtrl {
         task: &Task,
         executor_image: String,
         service_account: String,
+        task_image_pull_policy: ImagePullPolicy,
     ) -> Result<TaskContext> {
         debug!("gathering task context");
         // NOTE: we at least have to get datasets which this task depends on.
@@ -64,6 +68,7 @@ impl TaskCtrl {
 
         Ok(TaskContext {
             executor_image,
+            task_image_pull_policy,
             task_volume: task.name_any(),
             required_data_sets: dependent_data_sets?,
             service_account,

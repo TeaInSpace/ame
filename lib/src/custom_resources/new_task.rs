@@ -11,6 +11,7 @@ use crate::{
     custom_resources::{find_project, task_ctrl::resolve_data_set_path},
     error::AmeError,
     grpc::{task_status, ArtifactCfg, TemplateRef},
+    k8s_safe_types::ImagePullPolicy,
     Result,
 };
 use k8s_openapi::apimachinery::pkg::{api::resource::Quantity, apis::meta::v1::OwnerReference};
@@ -360,6 +361,7 @@ pub async fn resolve_task_templates(
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TaskContext {
     pub executor_image: String,
+    pub task_image_pull_policy: ImagePullPolicy,
     pub task_volume: String,
     pub required_data_sets: Vec<DataSet>,
     pub service_account: String,
@@ -498,6 +500,7 @@ mod test {
             task_volume: "myvolume".to_string(),
             required_data_sets: vec![],
             service_account: "ame-task".to_string(),
+            task_image_pull_policy: ImagePullPolicy::Never,
         };
 
         insta::assert_yaml_snapshot!(build_workflow(task, task_ctx)?);

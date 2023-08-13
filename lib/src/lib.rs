@@ -9,6 +9,9 @@ use http::{
 #[cfg(feature = "custom-resources")]
 pub mod custom_resources;
 
+#[cfg(feature = "custom-resources")]
+pub mod k8s_safe_types;
+
 #[cfg(feature = "web-components")]
 pub mod web;
 

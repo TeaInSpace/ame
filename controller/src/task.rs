@@ -15,6 +15,7 @@ use ame::{
     },
     error::AmeError,
     grpc::{task_status::Phase, TaskPhaseFailed, TaskPhaseRunning, TaskPhaseSucceeded, TaskStatus},
+    k8s_safe_types::ImagePullPolicy,
     Result,
 };
 use envconfig::Envconfig;
@@ -47,6 +48,8 @@ pub struct TaskControllerCfg {
         default = "main.localhost:45373/ame-executor:latest"
     )]
     pub executor_image: String,
+    #[envconfig(from = "AME_TASK_IMAGE_PULL_POLICY", default = "Always")]
+    pub task_image_pull_policy: ImagePullPolicy,
     #[envconfig(from = "NAMESPACE")]
     pub namespace: Option<String>,
     #[envconfig(from = "AME_SERVICE_ACCOUNT", default = "ame-task")]
@@ -192,6 +195,7 @@ async fn apply(task: &Task, ctx: &Context) -> Result<Action> {
             task,
             ctx.cfg.executor_image.to_string(),
             ctx.cfg.service_account.clone(),
+            ctx.cfg.task_image_pull_policy.clone(),
         )
         .await?;
 

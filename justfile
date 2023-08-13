@@ -4,11 +4,11 @@ EXECUTOR_IMAGE := "ame-executor"
 ORG := "teainspace"
 AME_REGISTRY_PORT := `docker port main | grep -o ':.*' | grep -o '[0-9]*' || true`
 IMG_TAG := ":latest"
-AME_REGISTRY := "main.localhost:" + AME_REGISTRY_PORT
-SERVER_IMAGE_TAG := AME_REGISTRY + "/" +  SERVER_IMAGE + IMG_TAG
-EXECUTOR_IMAGE_TAG := AME_REGISTRY + "/" +  EXECUTOR_IMAGE + IMG_TAG
+AME_REGISTRY := "main"
+SERVER_IMAGE_TAG := SERVER_IMAGE + IMG_TAG
+EXECUTOR_IMAGE_TAG := EXECUTOR_IMAGE + IMG_TAG
 LOCAL_EXECUTOR_IMAGE_TAG := "main:" + AME_REGISTRY_PORT + "/" + EXECUTOR_IMAGE + ":latest"
-CONTROLLER_IMAGE_TAG := AME_REGISTRY + "/" +  CONTROLLER_IMAGE + IMG_TAG
+CONTROLLER_IMAGE_TAG := CONTROLLER_IMAGE + IMG_TAG
 TARGET_NAMESPACE := "ame-system"
 TASK_SERVICE_ACCOUNT := "ame-task"
 AME_HOST := "ame.local"
@@ -133,7 +133,7 @@ setup_cli_ingress:
 
 # Local cluster utilities
 
-setup_cluster: k3s create_namespace install_cert_manager deploy_keycloak deploy_nginx build_and_push_ame_images
+setup_cluster: create_namespace install_cert_manager deploy_keycloak deploy_nginx
 
 k3s:
   k3d cluster create main \
@@ -197,6 +197,15 @@ build_and_push_executor_image: build_executor push_executor_image
 
 build_and_push_ame_images: build_and_push_controller_image build_and_push_server_image build_and_push_executor_image
 
+k3s_import_controller_image: 
+  docker build . -f Dockerfile.controller -t {{CONTROLLER_IMAGE_TAG}} 
+  docker save {{CONTROLLER_IMAGE_TAG}} | sudo k3s ctr images import -
+  docker build . -f Dockerfile.server -t {{SERVER_IMAGE_TAG}} 
+  docker save {{SERVER_IMAGE_TAG}} | sudo k3s ctr images import -
+  just build_executor
+  docker save {{EXECUTOR_IMAGE_TAG}} | sudo k3s ctr images import -
+  
+
 deploy_server:
   #!/bin/sh
   SERVER_IMAGE_TAG="main:{{AME_REGISTRY_PORT}}/{{SERVER_IMAGE}}:latest"
@@ -249,14 +258,18 @@ deploy_controller:
 
 deploy_helm_chart_with_local_images:
   helm upgrade --install ame ./helm/ame -n {{TARGET_NAMESPACE}} --create-namespace \
-  --set controller.image.repository="main:{{AME_REGISTRY_PORT}}/{{CONTROLLER_IMAGE}}" \
+  --set controller.image.repository="{{CONTROLLER_IMAGE}}" \
   --set controller.image.tag=latest \
-  --set server.image.repository="main:{{AME_REGISTRY_PORT}}/{{SERVER_IMAGE}}" \
+  --set controller.image.pullPolicy=Never \
+  --set server.image.repository="{{SERVER_IMAGE}}" \
   --set server.image.tag=latest \
-  --set task.image.repository="main:{{AME_REGISTRY_PORT}}/{{EXECUTOR_IMAGE}}" \
-  --set task.image.tag=latest
-
-
+  --set server.image.pullPolicy=Never \
+  --set task.image.repository="{{EXECUTOR_IMAGE}}" \
+  --set task.image.tag=latest \
+  --set task.image.pullPolicy=Never \
+  --set models.deployments.image.repository="{{EXECUTOR_IMAGE}}" \
+  --set models.deployments.image.tag=latest \
+  --set models.deployments.image.pullPolicy=Never 
 
 # Container images
 

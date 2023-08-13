@@ -462,6 +462,7 @@ impl<'a> WorkflowTemplateBuilder<'a> {
             container: serde_json::from_value(json!(
                     {
                       "image": self.ctx.executor_image,
+                      "imagePullPolicy": self.ctx.task_image_pull_policy,
                       "command": ["bash"],
                       "volumeMounts": [{
                           "name": self.ctx.task_volume,

@@ -8,6 +8,7 @@ use crate::{
     custom_resources::{data_set::DataSet, Error, Result},
     error::AmeError,
     grpc::{resource_map_conv, DataSetCfg, Model, ProjectCfg, ProjectStatus, TaskCfg, TaskRef},
+    k8s_safe_types::ImagePullPolicy,
 };
 
 use super::new_task::{ProjectSource, Task, TaskBuilder};
@@ -481,11 +482,7 @@ impl Model {
         })
     }
 
-    pub async fn get_model_version(
-        &self,
-        _ctrl_cfg: &ProjectCtrlCfg,
-        _version: &str,
-    ) -> Result<MlflowModelVersion> {
+    pub async fn get_model_version(&self, _version: &str) -> Result<MlflowModelVersion> {
         todo!();
     }
 
@@ -493,6 +490,7 @@ impl Model {
         &self,
         deployment_image: String,
         model_source: String,
+        image_pull_policy: ImagePullPolicy,
     ) -> Result<Deployment> {
         let Some(model_deployment) = self.deployment.clone() else {
             return Err(Error::MissingDeployment());
@@ -531,10 +529,11 @@ impl Model {
                                     .image
                                     .unwrap_or(deployment_image),
                             ),
+                            image_pull_policy: Some(image_pull_policy.into()),
                             command: Some(vec!["/bin/bash".to_string()]),
-                            args: Some(vec![
+                            args: Some(vec![ // TODO: why do we need to set the port here?
                                 "-c".to_string(),
-                                format!("export PATH=$HOME/.pyenv/bin:$PATH; mlflow models serve -m {model_source} --host 0.0.0.0"),
+                                format!("export PATH=$HOME/.pyenv/bin:$PATH; mlflow models serve -m {model_source} -p 5000 --host 0.0.0.0"),
                             ]),
                             resources: Some(ResourceRequirements{
                                 limits: Some(resource_map_conv(model_deployment.resources)),
@@ -572,37 +571,6 @@ impl Model {
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Default)]
-pub struct ProjectCtrlCfg {
-    namespace: String,
-    deployment_image: String,
-    model_deployment_ingress: Option<Ingress>,
-    model_ingress_annotations: Option<BTreeMap<String, String>>,
-    model_ingress_host: Option<String>,
-    mlflow_url: Option<String>,
-}
-
-impl ProjectCtrlCfg {
-    pub fn from_env() -> Result<Self> {
-        let prefix = "AME";
-
-        Ok(ProjectCtrlCfg {
-            namespace: std::env::var(format!("{prefix}_NAMESPACE"))
-                .unwrap_or("ame-system".to_string()),
-            deployment_image: std::env::var("EXECUTOR_IMAGE")
-                .unwrap_or("main.localhost:45373/ame-executor:latest".to_string()),
-            model_deployment_ingress: serde_yaml::from_str(
-                &std::env::var(format!("{prefix}_MODEL_DEPLOYMENT_INGRESS"))
-                    .unwrap_or("".to_string()),
-            )
-            .ok(),
-            model_ingress_annotations: Some(BTreeMap::new()),
-            model_ingress_host: std::env::var(format!("{prefix}_MODEL_INGRESS_HOST")).ok(),
-            mlflow_url: std::env::var(format!("{prefix}_MLFLOW_URL")).ok(),
-        })
-    }
-}
-
-#[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Default)]
 struct MlflowModelVersionsRes {
     model_versions: Vec<MlflowModelVersion>,
 }
@@ -628,7 +596,9 @@ mod test {
 
     use serde_json::json;
 
-    use super::{Project, ProjectCtrlCfg, Result};
+    use crate::k8s_safe_types::ImagePullPolicy;
+
+    use super::{Project, Result};
     use serial_test::serial;
 
     fn test_project() -> Result<Project> {
@@ -669,20 +639,18 @@ mod test {
     #[tokio::test]
     #[serial]
     async fn produces_valid_deployment() -> Result<()> {
-        let ctrl_cfg = ProjectCtrlCfg {
-            namespace: "default".to_string(),
-            deployment_image: "test_img".to_string(),
-            model_ingress_host: Some("testhost".to_string()),
-            mlflow_url: Some("mlflowurl".to_string()),
-            ..ProjectCtrlCfg::default()
-        };
+        let deployment_image = "test_img".to_string();
         tokio::time::sleep(Duration::from_secs(2)).await;
 
         let project = test_project()?;
 
         insta::assert_yaml_snapshot!(
             &project.spec.cfg.models.clone()[0]
-                .generate_model_deployment(ctrl_cfg.deployment_image, "model_source".to_string())
+                .generate_model_deployment(
+                    deployment_image,
+                    "model_source".to_string(),
+                    ImagePullPolicy::Never,
+                )
                 .await?
         );
 
@@ -700,12 +668,6 @@ mod test {
     #[tokio::test]
     #[serial]
     async fn produces_valid_service() -> Result<()> {
-        let _ctrl_cfg = ProjectCtrlCfg {
-            namespace: "default".to_string(),
-            deployment_image: "test_img".to_string(),
-            model_ingress_host: Some("testhost".to_string()),
-            ..ProjectCtrlCfg::default()
-        };
         tokio::time::sleep(Duration::from_secs(2)).await;
 
         let project = test_project()?;
@@ -718,12 +680,6 @@ mod test {
     #[tokio::test]
     #[serial]
     async fn produces_valid_ingress() -> Result<()> {
-        let _ctrl_cfg = ProjectCtrlCfg {
-            namespace: "default".to_string(),
-            deployment_image: "test_img".to_string(),
-            model_ingress_host: Some("testhost".to_string()),
-            ..ProjectCtrlCfg::default()
-        };
         tokio::time::sleep(Duration::from_secs(2)).await;
 
         let project = test_project()?;

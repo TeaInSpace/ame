@@ -4,6 +4,7 @@ use ame::{
         new_task::{Task, TaskBuilder},
         project::{generate_task_name, get_latest_model_version, Project},
     },
+    k8s_safe_types::ImagePullPolicy,
 };
 
 use ame::{error::AmeError, Result};
@@ -45,6 +46,8 @@ pub struct ProjectControllerCfg {
     model_deployment_ingress: Option<Ingress>,
     model_ingress_annotations: Option<BTreeMap<String, String>>,
     model_ingress_host: Option<String>,
+    pub model_deployment_image: Option<String>,
+    pub model_deployment_image_pull_policy: ImagePullPolicy,
 }
 
 impl ProjectControllerCfg {
@@ -61,6 +64,13 @@ impl ProjectControllerCfg {
             model_ingress_annotations: Some(BTreeMap::new()),
             model_ingress_host: std::env::var(format!("{prefix}_MODEL_INGRESS_HOST")).ok(),
             mlflow_url: std::env::var(format!("{prefix}_MLFLOW_URL")).ok(),
+            model_deployment_image: std::env::var(format!("{prefix}_MODEL_DEPLOYMENT_IMAGE")).ok(),
+            model_deployment_image_pull_policy: std::env::var(format!(
+                "{prefix}_MODEL_DEPLOYMENT_IMAGE_PULL_POLICY"
+            ))
+            .unwrap_or_default()
+            .to_string()
+            .try_into()?,
         })
     }
 }
@@ -74,6 +84,8 @@ impl ProjectControllerCfg {
             model_deployment_ingress: None,
             model_ingress_annotations: None,
             model_ingress_host: None,
+            model_deployment_image: None,
+            model_deployment_image_pull_policy: ImagePullPolicy::None,
         }
     }
 }
@@ -309,7 +321,11 @@ async fn apply(
             }
 
             let deployment = model
-                .generate_model_deployment(deployment_image.clone(), model_source.source)
+                .generate_model_deployment(
+                    deployment_image.clone(),
+                    model_source.source,
+                    ctx.cfg.model_deployment_image_pull_policy.clone(),
+                )
                 .await;
             match deployment {
                 Ok(deployment) => {

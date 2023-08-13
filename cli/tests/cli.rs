@@ -377,6 +377,7 @@ async fn can_delete_project_src() -> Result<(), Box<dyn std::error::Error>> {
 #[tokio::test]
 #[serial]
 async fn can_list_project_srcs() -> Result<(), Box<dyn std::error::Error>> {
+    let _ = setup_cluster(AME_NAMESPACE).await;
     let repos = vec![
         "https://github.com/TeaInSpace/ame-demo.git",
         "https://github.com/TeaInSpace/ame-template-demo.git",

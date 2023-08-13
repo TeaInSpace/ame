@@ -123,6 +123,9 @@ pub enum AmeError {
 
     #[error("Missing model training cfg {0} {1}")]
     MissingModelTrainingTaskCfg(String, String),
+
+    #[error("{0}")]
+    Parsing(String),
 }
 
 impl From<Status> for AmeError {
