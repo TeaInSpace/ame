@@ -14,12 +14,12 @@ tasks:
      name: resource_alloc
    resources:
       cpu: 2
-      memory: 1Gi
+      memory: 4Gi
  - name: training-with-remote-template
    fromTemplate: 
      name: mlflow-template
      project: shared-templates
    resources:
       cpu: 2
-      memory: 1Gi
+      memory: 4Gi
   

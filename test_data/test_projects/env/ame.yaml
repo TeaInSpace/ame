@@ -7,15 +7,15 @@ tasks:
     - key: VAR2
       val: VAL2
     resources:
-      cpu: "2"
-      memory: 4Gi
+      cpu: "1"
+      memory: 2Gi
     executor:
      !pipEnv
      command: python env.py
   - name: testsecret
     resources:
-      cpu: "2"
-      memory: 4Gi
+      cpu: "1"
+      memory: 2Gi
     executor:
      !pipEnv
      command: python env.py VAR1=mysecretval

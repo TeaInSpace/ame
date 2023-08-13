@@ -2,15 +2,11 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
-  # -- Version used to select the images for AME's server, controller and default images Tasks and model deployments.
+# -- Version used to select the images for AME's server, controller and default images Tasks and model deployments.
 ameVersion: ""
 
-# -- The namepace AME will operate within, this includes any depencies like Argo workflows, minio and keycloak.
-namespace: 
-  create: true
-  name: "ame-system"
-
 crds:
+  # -- Flag for installing custom resource definitions with this see, see a discussion on the tradeoffs [here](TODO).
   install: true
 
 server:
@@ -52,8 +48,10 @@ server:
   podSecurityContext: {}
   image:
     repository: "ghcr.io/teainspace/ame-server/main"
-    tag: "d162"
+    tag: "latest"
+    pullPolicy: Always
   resources: {}
+
 controller:
   name: controller
   replicaCount: 1
@@ -70,6 +68,8 @@ controller:
   image:
     repository: "ghcr.io/teainspace/ame-controller/main"
     tag: "d162"
+    pullPolicy: Always
+
   logging:
     env_filter: info,controller=debug
 
@@ -77,16 +77,21 @@ mlflow:
   endpoint: "http://mlflow.ame-system.svc.cluster.local:5000"
 
 argo-workflows:
+  # -- Enabling this will deploy argo workflows a long side AME automatically.
   enabled: true
 
 # minio options
 minio:
+  # -- Enabling this will deploy deploy a minio instance a long side AME.
   enabled: true
 
 objectStorage:
   s3:
+    # -- Name of the Kubernetes secret containing access information for the object storage, this is expected to be in the same namespace as AME.
     secretName: "ame-minio"
+    # -- Key for the access ID in the Kubernetes secret.
     accessIdKey: "root-user"
+    # -- Key for the access password in the Kubernetes secret.
     accessSecretKey: "root-password"
     endpoint: "http://ame-minio:9000"
     bucket : ameprojectstorage
@@ -96,6 +101,7 @@ task:
     repository:
       repository: "ghcr.io/teainspace/ame-controller/main"
       tag: "d162"
+    pullPolicy: Always
   # TODO add security options here
   securty:
 
@@ -132,7 +138,7 @@ task:
 models:
   deployments:
     # TODO add security options here
-    securty:
+    security:
 
       podSecurityContext: {}
         # fsGroup: 2000
@@ -156,6 +162,10 @@ models:
       # The name of the service account to use.
       # If not set and create is true, a name is generated using the fullname template
       name: "ame-model"
+    image:
+      repository: "ghcr.io/teainspace/ame-executor/main"
+      tag: "d162"
+      pullPolicy: Always
   
     nodeSelector: {}
 

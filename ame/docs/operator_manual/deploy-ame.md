@@ -1,5 +1,7 @@
 # Deploying AME
 
+The story for deploying AME is still under construction, we are focusing on getting the user side of AME documented first, stay tuned!
+
 This page contains everything you need to know to deploy and administrate AME.
 
 If you are looking to try out AME quickly see the [quick start](todo).

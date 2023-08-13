@@ -1,6 +1,7 @@
 ---
 source: lib/src/custom_resources/project.rs
-expression: "&project.spec.cfg.models.clone()[0].generate_model_deployment(ctrl_cfg.deployment_image,\n                \"model_source\".to_string()).await?"
+assertion_line: 685
+expression: "&project.spec.cfg.models.clone()[0].generate_model_deployment(ctrl_cfg.deployment_image,\n                \"model_source\".to_string(), \"Never\".to_string()).await?"
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -28,6 +29,7 @@ spec:
             - name: MLFLOW_TRACKING_URI
               value: "http://mlflow.ame-system.svc.cluster.local:5000"
           image: test_img
+          imagePullPolicy: Never
           name: main
           ports:
             - containerPort: 5000

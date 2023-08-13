@@ -13,7 +13,10 @@ data:
   AME_MODEL_INGRESS_HOST: {{ .Values.models.deployments.ingress.host }}
   AME_MODEL_DEPLOYMENT_DEFAULT_INGRESS: {{ .Values.models.deployments.defaultIngress }}
   AME_EXECUTOR_IMAGE: {{ .Values.task.image.repository }}:{{ .Values.task.image.tag }}
+  AME_TASK_IMAGE_PULL_POLICY: {{ .Values.task.image.pullPolicy }}
+  AME_MODEL_DEPLOYMENT_IMAGE_PULL_POLICY: {{ .Values.models.deployments.image.pullPolicy }}
+  AME_MODEL_DEPLOYMENT_IMAGE: {{ .Values.models.deployments.image.repository }}:{{ .Values.models.deployments.image.tag }}
   AME_OBJECT_STORAGE_SECRET: {{ .Values.objectStorage.s3.secretName }}
   AME_OBJECT_STORAGE_SECRET_KEY: {{ .Values.objectStorage.s3.secretName }}
-  AME_OBJECT_STORAGE_SECRET_ID_KEY: {{ .Values.objectStorage.s3.secretName }}
+  AME_OBJECT_STORAGE_ID_KEY: {{ .Values.objectStorage.s3.secretName }}
 

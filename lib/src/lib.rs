@@ -6,6 +6,8 @@ use http::{
     Uri,
 };
 
+pub mod config;
+
 #[cfg(feature = "custom-resources")]
 pub mod custom_resources;
 
