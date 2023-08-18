@@ -933,9 +933,8 @@
 
 
 <h1 id="data-sets">Data Sets</h1>
-<p>AME has a builtin notion of data sets in allowing user's to think in terms of data sets and not just raw tasks. </p>
-<p>It is important to note that DataSets in AME should be treated as ephemeral and not long term storage. If AME is running
-out of space any cached data can be deleted.</p>
+<p>In the simplest form a data set is just a <a href="../tasks">Task</a> which produces data a long with a storage mechanism. This allows for a number of benefits over just using tasks directly.
+Data can be produced once and used many times. For example if a number of <a href="../tasks"><code>Tasks</code></a> depend of the same Dataset AME can prepare the dataset once.</p>
 <p>Here is an example of what a simple data set configuration looks like:</p>
 <div class="language-yaml highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># ame.yaml</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nn">...</span>
@@ -945,8 +944,6 @@ out of space any cached data can be deleted.</p>
 </span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="c1">#    task:</span>
 </span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">      </span><span class="nt">taskRef</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fetch_mnist</span><span class="w"> </span><span class="c1"># References a task which produces data.     </span>
 </span></code></pre></div>
-<p>In the simplest form a data set is just a <a href="todo">task</a> which produces data a long with a storage mechanism. This allows for a number of benefits over just using tasks directly.
-Data can be produced once and used many times, for example if a number of tasks are scheduled AME can prepare the dataset once and use it across all of the dependent tasks.</p>
 <h3 id="configuring-a-data-set">Configuring a data set</h3>
 <p>A simple data set cfg is quick to set and can then be progressively enhanced as your needs expand. Here we will walk through the process of first setting up a simple data set
 and then go through the more advanced options.</p>

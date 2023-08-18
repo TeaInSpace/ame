@@ -962,13 +962,13 @@
 
 <h1 id="introduction">Introduction</h1>
 <p>This page will introduce you to the core concepts in AME.</p>
-<p>For end to end guies of specific setups go <a href="">here</a>.</p>
 <h2 id="core-concepts">Core concepts</h2>
-<p>AME is designed with a notion of simple building blocks which add exponetially more value when combining them together.</p>
+<p>AME provides a number of simple building blocks which can be used in isolation for simple workflows or combined for more complex
+requirements.</p>
 <p>TODO: reformulate this</p>
 <h3 id="tasks">Tasks</h3>
-<p><strong>Note</strong>: that yaml configuraion files are used here as a way to easily show different configurations. the CLI and fronted for
-AME will help du generate, edit and valdidate these files so you don't have write mountains of error prone YAML by hand :).</p>
+<p><strong>Note</strong>: that yaml configuraion files are used here as a way to easily show different configurations. the CLI and dashboard 
+will help du generate, edit and valdidate these files so you don't have write mountains of error prone YAML by hand :).</p>
 <p>A <a href="tasks">'Task'</a> is the fundamental unit of work in AME. It can be as simple as running a single command <code>python train.py</code>:</p>
 <div class="language-yaml highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">project</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">logreg</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nt">tasks</span><span class="p">:</span>
@@ -979,7 +979,7 @@ AME will help du generate, edit and valdidate these files so you don't have writ
 </span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">      </span><span class="nt">command</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">python train</span>
 </span></code></pre></div>
 <p>or more complex such as orchestrating
-a <a href="pipeline">'pipline'</a> or <a href="dags">'DAG'</a> with many sub tasks:</p>
+a <a href="../tasks/#pipeline">pipline</a> or <a href="../tasks/#dags">DAG</a> with many sub tasks:</p>
 <div class="language-yaml highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nt">project</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">logreg</span>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="nt">tasks</span><span class="p">:</span>
 </span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">train</span>
@@ -1002,11 +1002,11 @@ a <a href="pipeline">'pipline'</a> or <a href="dags">'DAG'</a> with many sub tas
 </span><span id="__span-1-20"><a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a><span class="w">          </span><span class="kt">!poetry</span>
 </span><span id="__span-1-21"><a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a><span class="w">          </span><span class="nt">command</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">python save_model.py</span>
 </span></code></pre></div>
-<p>Task's also have a notion of dependencies where a <code>Task</code> can depend on a [<code>Dataset</code>]. Indicating dependencies 
-too AME allows for more efficient scheduling of Task and cacheing to avoid repeating the same work. Task's are designed to be able to execute most python projects out of the box.
-If you have start building custom docker images in day to day usage, that is considered a failure on our part and please submit an <a href="repo">issue</a>.</p>
-<p>We can't cover every possible case therefore if any of the defaults are unssuitable there are escape hatches to allow for things such as custom container images, custom setup commands and
-patching the underlying K8S resources. This should be a last resort, if you find yourself doing this feel free to submit an issue and we will likely expand AME to cover your usecase properly :)</p>
+<p>Task's also have a notion of dependencies where a <code>Task</code> can depend on a <a href="../datasets"><code>Dataset</code></a>. Indicating dependencies 
+too AME allows for more efficient scheduling of Tasks and caching to avoid repeating the same work. Task's are designed to be able to execute most python projects out of the box.
+If you have start building custom docker images in day to day usage, that is considered a failure on our part and please submit an <a href="https://github.com/TeaInSpace/ame/issues/new">issue</a>.</p>
+<p>We can't cover every possible case therefore if any of the defaults are unssuitable there are <a href="../tasks/#escape-hatches">escape hatches</a> to allow for things such as custom container images, custom setup commands and
+patching the underlying K8S resources. This should be a last resort, if you find yourself doing this feel free to submit an issue and we probably expand AME to cover your usecase properly :)</p>
 <h3 id="projects">Projects</h3>
 <p>Projects a specific directory and often repostiory. It provides the context for which Tasks are executed within. The AME file <code>ame.yaml</code> servers as a declaractive way of defining any configuration
 related to a specific project. This includes Tasks, TaskTemplates, DataSets, Models and project wide defaults.</p>
@@ -1020,9 +1020,8 @@ related to a specific project. This includes Tasks, TaskTemplates, DataSets, Mod
 </span></code></pre></div>
 <p>AME will then watch every branch on this repo for project files and pull them into the AME cluster.</p>
 <h3 id="datasets">DataSets</h3>
-<p>A <a href="datasets"><code>DataSet</code></a> i essentially a <code>Task</code> with extra semantics. Where artifacts generated by the underlying <code>Task</code>. Currently this doesn't add match but in the future
-this will allow AME to perform much smarted scheduling. The main advantage right now is that <code>Task</code> can depend of a <code>DataSet</code> and once a <code>DataSet</code> is cached the work will not be 
-repaeated. There many <code>Tasks</code> can depend on the same DataSet an the dataset will only be generated once.  </p>
+<p>A <a href="../datasets"><code>DataSet</code></a> is essentially a <code>Task</code> with extra semantics. Where artifacts generated by the underlying <code>Task</code> are treated as a dataset to be consumed by <code>Tasks</code>. Currently this doesn't add muc. In the future this will allow AME to perform better scheduling. The main advantage right now is that a <code>Task</code> can depend on a <code>DataSet</code> and once a <code>DataSet</code> is cached the work will not be 
+repeated. Therefore many <code>Tasks</code> can depend on the same DataSet an the dataset will only be generated once. </p>
 <p>Example dataset</p>
 <div class="language-yaml highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="c1"># ame.yaml</span>
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="nn">...</span>
@@ -1033,9 +1032,8 @@ repaeated. There many <code>Tasks</code> can depend on the same DataSet an the d
 </span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="w">      </span><span class="nt">taskRef</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fetch_mnist</span><span class="w"> </span><span class="c1"># References a task which produces data.     </span>
 </span></code></pre></div>
 <h3 id="models">Models</h3>
-<p>A <a href="models"><code>Model</code></a> defines how to train, validate and deploy a model. All you have to do is tell AME how to train and validate your model in the form of
-<code>Tasks</code> and then then lifecycle of a model can be autoted. AME currently does not have it's own model registry but instead supports deploying with an 
-<a href="todo">mlflow</a> instance.</p>
+<p>A <a href="../models"><code>Model</code></a> defines how to train, validate and deploy a machine learning model. All you have to do is tell AME how to train and validate your model in the form of
+<code>Tasks</code> and then then lifecycle of a model can be automated. AME currently does not have it's own model registry but instead integrates with an <a href="https://mlflow.org/">mlflow</a>.</p>
 
 
 
